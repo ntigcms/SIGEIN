@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Equipamentos - SIGEN{% endblock %}
+
+{% block content %}
+<h2>Equipamentos</h2>
+<a href="{% url 'cadastrar_equipamento' %}" class="btn">Cadastrar Novo</a>
+
+
+<table style="width:100%; margin-top:20px; border-collapse: collapse;">
+    <thead>
+        <tr style="background:#0077cc; color:white;">
+            <th style="padding:10px; border:1px solid #ccc;">ID</th>
+            <th style="padding:10px; border:1px solid #ccc;">Nome</th>
+            <th style="padding:10px; border:1px solid #ccc;">Tipo</th>
+            <th style="padding:10px; border:1px solid #ccc;">Unidade</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for eq in equipments %}
+        <tr>
+            <td style="padding:10px; border:1px solid #ccc;">{{ eq.id }}</td>
+            <td style="padding:10px; border:1px solid #ccc;">{{ eq.name }}</td>
+            <td style="padding:10px; border:1px solid #ccc;">{{ eq.type }}</td>
+            <td style="padding:10px; border:1px solid #ccc;">{{ eq.unit }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

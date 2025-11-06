@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Unidades - SIGEN{% endblock %}
+
+{% block content %}
+<h2>Unidades</h2>
+<a href="/units/add"><button>Adicionar Unidade</button></a>
+
+<table style="width:100%; margin-top:20px; border-collapse: collapse;">
+    <thead>
+        <tr style="background:#0077cc; color:white;">
+            <th style="padding:10px; border:1px solid #ccc;">ID</th>
+            <th style="padding:10px; border:1px solid #ccc;">Nome</th>
+            <th style="padding:10px; border:1px solid #ccc;">Responsável</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for unit in units %}
+        <tr>
+            <td style="padding:10px; border:1px solid #ccc;">{{ unit.id }}</td>
+            <td style="padding:10px; border:1px solid #ccc;">{{ unit.name }}</td>
+            <td style="padding:10px; border:1px solid #ccc;">{{ unit.manager }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

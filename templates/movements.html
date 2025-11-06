@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Movimentações - SIGEN{% endblock %}
+
+{% block content %}
+<h2>Movimentações</h2>
+<a href="/movements/add"><button>Registrar Movimentação</button></a>
+
+<table style="width:100%; margin-top:20px; border-collapse: collapse;">
+    <thead>
+        <tr style="background:#0077cc; color:white;">
+            <th style="padding:10px; border:1px solid #ccc;">ID</th>
+            <th style="padding:10px; border:1px solid #ccc;">Equipamento</th>
+            <th style="padding:10px; border:1px solid #ccc;">Usuário</th>
+            <th style="padding:10px; border:1px solid #ccc;">Data</th>
+            <th style="padding:10px; border:1px solid #ccc;">Tipo</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for move in movements %}
+        <tr>
+            <td style="padding:10px; border:1px solid #ccc;">{{ move.id }}</td>
+            <td style="padding:10px; border:1px solid #ccc;">{{ move.equipment }}</td>
+            <td style="padding:10px; border:1px solid #ccc;">{{ move.user }}</td>
+            <td style="padding:10px; border:1px solid #ccc;">{{ move.date }}</td>
+            <td style="padding:10px; border:1px solid #ccc;">{{ move.type }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Equipamentos{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 20px;">
+    <h2>Equipamentos</h2>
+    <!-- Corrigido: URL direta -->
+    <a href="/equipment/add"><button class="animated-btn">Cadastrar Novo</button></a>
+</div>
+
+<table style="width:100%; border-collapse: collapse; text-align:left;">
+    <thead>
+        <tr style="background-color: #004080; color:white;">
+            <th><input type="checkbox" id="select-all" onclick="toggleAll(this)"></th>
+            <th>ID</th>
+            <th>Nome</th>
+            <th>Tipo</th>
+            <th>Marca</th>
+            <th>Status</th>
+            <th>Estado</th>
+            <th>Local</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for eq in equipments %}
+        <tr style="border-bottom:1px solid #ccc;">
+            <td><input type="checkbox" class="select-item"></td>
+            <td>{{ eq.id }}</td>
+            <td>{{ eq.nome }}</td>
+            <td>{{ eq.tipo }}</td>
+            <td>{{ eq.brand }}</td>
+            <td>{{ eq.status }}</td>
+            <td>{{ eq.state }}</td>
+            <td>{{ eq.location }}</td>
+            <td>
+                <a href="/equipment/edit/{{ eq.id }}" title="Editar">
+                    <i class="fas fa-pen" style="color:#ffaa00; font-size: 18px; margin-right: 10px; cursor:pointer;"></i>
+                </a>
+                <a href="/equipment/delete/{{ eq.id }}" title="Excluir"
+   onclick="return confirm('Tem certeza que deseja excluir este equipamento?');">
+    <i class="fas fa-trash" style="color:#cc0000; font-size: 18px; cursor:pointer;"></i>
+</a>
+
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+<script>
+function toggleAll(source) {
+    let checkboxes = document.getElementsByClassName('select-item');
+    for(let i=0; i<checkboxes.length; i++) {
+        checkboxes[i].checked = source.checked;
+    }
+}
+</script>
+{% endblock %}

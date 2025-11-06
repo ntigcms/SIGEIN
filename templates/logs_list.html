@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Logs do Sistema</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        h1 { color: #333; }
+        .btn { 
+            display: inline-block; 
+            padding: 8px 12px; 
+            background-color: #4CAF50; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 4px; 
+            margin-bottom: 10px;
+            margin-right: 5px;
+        }
+        .btn:hover { background-color: #45a049; }
+        .btn-pdf { background-color: #e74c3c; }
+        .btn-pdf:hover { background-color: #c0392b; }
+    </style>
+</head>
+<body>
+    <h1>Logs do Sistema</h1>
+    <p>Usuário logado: <strong>{{ user }}</strong></p>
+
+    <!-- Botões -->
+    <div style="margin-bottom: 20px;">
+    <a href="/dashboard" class="btn" style="padding:8px 12px; background:#3498db; color:white; text-decoration:none; border-radius:4px;">
+        ⬅️ Voltar à Home
+    </a>
+    <a href="/logs/export/pdf" class="btn" style="padding:8px 12px; background:#e74c3c; color:white; text-decoration:none; border-radius:4px; margin-left:10px;">
+        📄 Exportar PDF
+    </a>
+    <a href="/logs/export/xlsx" class="btn" style="padding:8px 12px; background:#27ae60; color:white; text-decoration:none; border-radius:4px; margin-left:10px;">
+        📊 Exportar Excel (.xlsx)
+    </a>
+</div>
+
+
+    <table>
+        <thead>
+            <tr>
+                <th>Data/Hora</th>
+                <th>Usuário</th>
+                <th>Ação</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.data_hora.strftime("%d/%m/%Y %H:%M:%S") }}</td>
+                <td>{{ log.usuario }}</td>
+                <td>{{ log.acao }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="3" style="text-align:center;">Nenhum log registrado</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

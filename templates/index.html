@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Bem-vindo, {{ user }}</h2>
+<table border="1" cellpadding="5">
+<tr><th>ID</th><th>Nome</th><th>Serial</th><th>Local</th><th>Status</th><th>Atribuído</th></tr>
+{% for eq in equipments %}
+<tr>
+    <td>{{ eq.id }}</td>
+    <td>{{ eq.name }}</td>
+    <td>{{ eq.serial_number }}</td>
+    <td>{{ eq.location }}</td>
+    <td>{{ eq.status }}</td>
+    <td>{{ eq.assigned_to }}</td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}

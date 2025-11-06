@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}SIGEN{% endblock %}</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #d0e7ff;
+        }
+
+        /* Menu lateral */
+        .sidebar {
+            height: 100vh;
+            width: 220px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #0077cc;
+            padding-top: 60px;
+            display: flex;
+            flex-direction: column;
+        }
+
+       .sidebar a {
+    display: flex;          /* alinha ícone e texto */
+    align-items: center;
+    padding: 12px 20px;
+    text-decoration: none;
+    color: white;
+    border-radius: 5px;
+    margin: 2px 10px;       /* espaçamento entre os botões */
+    transition: background 0.3s;
+}
+
+        .sidebar-title {
+    color: white !important;          /* força a cor branca */
+    text-align: center !important;    /* força o alinhamento central */
+    font-size: 1.3rem;
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+
+.sidebar a i {
+    margin-right: 10px;
+    font-size: 1.2rem;
+    color: #ffd700;         /* ícones dourados */
+}
+
+
+        .sidebar a:hover {
+    background-color: #005fa3;
+}
+
+        /* Conteúdo principal */
+        .main-content {
+            margin-left: 220px;
+            padding: 40px;
+            min-height: 100vh;
+        }
+
+        /* Container para formulários ou cards */
+        .container {
+            background: #ffffff;
+            padding: 30px 40px;
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        /* Nome da aplicação / título central */
+        .app-title {
+            text-align: center;
+            color: rgba(8, 31, 245, 0.911);
+            font-family: monospace;
+            margin-bottom: 30px;
+        }
+
+        .app-title h1, 
+        .app-title h3, 
+        .app-title h4 {
+            margin: 5px 0;
+        }
+
+        /* Menu do usuário no topo direito */
+        .user-menu {
+            position: absolute;
+            top: 0;
+            right: 0;
+            margin: 10px 20px;
+        }
+
+        .user-btn {
+            background: none;
+            border: none;
+            font-size: 1rem;
+            cursor: pointer;
+            color: #0077cc;
+        }
+
+        .dropdown {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background-color: white;
+            min-width: 150px;
+            box-shadow: 0px 2px 5px rgba(0,0,0,0.2);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .dropdown a {
+            display: block;
+            padding: 10px;
+            text-decoration: none;
+            color: #333;
+            transition: 0.2s;
+        }
+
+        .dropdown a:hover {
+            background-color: #f0f0f0;
+        }
+
+        .user-menu:hover .dropdown {
+            display: block;
+        }
+
+        input[type="text"], input[type="password"], input[type="number"], textarea {
+            width: 100%;
+            padding: 12px 15px;
+            margin: 10px 0 20px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        button {
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1rem;
+            color: white;
+            background: linear-gradient(90deg, #0077cc, #00aaff);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: linear-gradient(90deg, #00aaff, #0077cc);
+            transform: scale(1.05);
+        }
+
+        .error {
+            color: red;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        a {
+            color: #0077cc;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+    background: #fff;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    max-width: 600px;
+    margin: auto;
+}
+
+.container h2 {
+    text-align: center;
+    color: #0077cc;
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-top: 15px;
+    font-weight: bold;
+}
+
+input[type="text"], select, textarea {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+textarea {
+    resize: vertical;
+}
+
+.form-buttons {
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-between;
+}
+
+button {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 5px;
+    background-color: #0077cc;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button:hover {
+    background-color: #005fa3;
+}
+
+.btn-cancel {
+    padding: 12px 25px;
+    border-radius: 5px;
+    background-color: #ccc;
+    color: black;
+    text-decoration: none;
+    text-align: center;
+}
+
+.btn-cancel:hover {
+    background-color: #999;
+}
+
+/* === GRID PARA FORMULÁRIOS DE EQUIPAMENTOS === */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px 25px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+label {
+    font-weight: bold;
+    color: #005fa3;
+    margin-bottom: 5px;
+}
+
+input,
+select {
+    padding: 6px 10px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.form-group.wide { grid-column: span 2; }
+.form-group.full { grid-column: span 3; }
+
+.btn-submit {
+    grid-column: span 3;
+    margin-top: 20px;
+    padding: 10px 20px;
+    background-color: #0077cc;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-submit:hover {
+    background-color: #005fa3;
+}
+
+/* Responsivo */
+@media (max-width: 900px) {
+    .form-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+    .form-grid { grid-template-columns: 1fr; }
+}
+
+
+</style>
+
+<link rel="stylesheet" href="/static/styles.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+
+</head>
+<body>
+
+    <!-- Menu lateral -->
+    <div class="sidebar">
+    <h2 class="sidebar-title">MENU</h2>
+        <a href="/dashboard"><i class="fa fa-gauge"></i>Dashboard</a>
+        <a href="/equipment"><i class="fa fa-computer"></i>Equipamentos</a>
+        <a href="/users"><i class="fa fa-users"></i>Usuários</a>
+        <a href="/units"><i class="fa fa-building"></i>Unidades</a>
+        <a href="/movements"><i class="fa fa-arrows-rotate"></i>Movimentações</a>
+        <a href="/logs"><i class="fa-solid fa-list"></i>Logs</a> <!-- 🔹 Novo botão -->
+    </div>
+
+    <!-- Conteúdo principal -->
+    <div class="main-content">
+        <!-- Título da aplicação -->
+        <div class="app-title">
+            <h1>SIGEIN – Sistema Integrado de Gestão de Estoque e Inventário</h1>
+            <h3>Núcleo de Tecnologia da Informação</h3>
+            <h4>Guarda Civil Municipal de Salvador</h4>
+        </div>
+
+         <!-- Menu do usuário visível em todas as telas -->
+        
+        <div class="user-menu">
+            <span class="user-icon"><i class="fas fa-user-circle"></i></span>
+            <span class="user-name">{{ user }}</span>
+            <div class="dropdown">
+                <a href="/meus-dados"><i class="fas fa-id-card"></i> Meus Dados</a>
+                <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </div>
+        
+
+        <!-- Conteúdo específico de cada página -->
+        {% block content %}
+        {% endblock %}
+    </div>
+
+</body>
+</html>

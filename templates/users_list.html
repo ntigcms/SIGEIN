@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Usuários{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 20px;">
+    <h2>Usuários</h2>
+    <a href="/users/add">
+        <button class="animated-btn">Cadastrar Novo</button>
+    </a>
+</div>
+
+<table style="width:100%; border-collapse: collapse; text-align:left;">
+    <thead>
+        <tr style="background-color: #004080; color:white;">
+            <th><input type="checkbox" id="select-all" onclick="toggleAll(this)"></th>
+            <th>ID</th>
+            <th>Nome</th>
+            <th>Email</th>
+            <th>Perfil</th>
+            <th>Status</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for user in users %}
+        <tr style="border-bottom:1px solid #ccc;">
+            <td><input type="checkbox" class="select-item"></td>
+            <td>{{ user.id }}</td>
+            <td>{{ user.username }}</td>
+            <td>{{ user.email }}</td>
+            <td>{{ user.role }}</td>
+            <td>{{ user.status }}</td>
+            <td>
+                <a href="/users/edit/{{ user.id }}"title="Editar">
+                    <i class="fas fa-pen" style="color:#ffaa00; font-size: 18px; margin-right: 10px; cursor:pointer;"></i>
+                </a>
+                <a href="/users/delete/{{ user.id }}"title="Excluir">
+                    <i class="fas fa-trash" style="color:#cc0000; font-size: 18px; cursor:pointer;"></i>
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+<script>
+function toggleAll(source) {
+    checkboxes = document.getElementsByClassName('select-item');
+    for(var i=0, n=checkboxes.length;i<n;i++) {
+        checkboxes[i].checked = source.checked;
+    }
+}
+</script>
+{% endblock %}

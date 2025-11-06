@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Confirmar Exclusão</title>
+</head>
+<body>
+    <h2>Tem certeza que deseja excluir o equipamento:</h2>
+    <p><strong>{{ equipment.nome }} ({{ equipment.tipo }})</strong></p>
+
+    <form action="/equipment/delete/{{ equipment.id }}" method="get">
+        <button type="submit">Sim, excluir</button>
+        <a href="/equipment">Cancelar</a>
+    </form>
+</body>
+</html>

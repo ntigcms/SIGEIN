@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>{% if action == 'add' %}Adicionar Equipamento{% else %}Editar Equipamento{% endif %}</h1>
+
+<form id="equipmentForm" method="POST"
+      action="{% if action == 'add' %}/equipment/add{% else %}/equipment/edit/{{ equipment.id }}{% endif %}">
+
+      
+    <div class="form-grid">
+
+        <div class="form-group">
+    <label for="name">Nome:</label>
+    <input type="text" id="name" name="nome" required
+           value="{% if equipment %}{{ equipment.nome }}{% endif %}">
+</div>
+
+<div class="form-group">
+    <label for="type">Tipo:</label>
+    <input type="text" id="type" name="tipo" required
+           value="{% if equipment %}{{ equipment.tipo }}{% endif %}">
+</div>
+
+<div class="form-group">
+    <label for="brand">Marca:</label>
+    <input type="text" id="brand" name="marca" required
+           value="{% if equipment %}{{ equipment.marca }}{% endif %}">
+</div>
+
+<div class="form-group">
+    <label for="status">Status:</label>
+    <select id="status" name="status" required>
+        <option value="Ativo" {% if equipment and equipment.status == "Ativo" %}selected{% endif %}>Ativo</option>
+        <option value="Inativo" {% if equipment and equipment.status == "Inativo" %}selected{% endif %}>Inativo</option>
+    </select>
+</div>
+
+<div class="form-group">
+    <label for="state">Estado:</label>
+    <input type="text" id="state" name="estado" required
+           value="{% if equipment %}{{ equipment.estado }}{% endif %}">
+</div>
+
+<div class="form-group">
+    <label for="location">Localização:</label>
+    <input type="text" id="location" name="localizacao" required
+           value="{% if equipment %}{{ equipment.localizacao }}{% endif %}">
+</div>
+
+
+    </div>
+
+    <button type="submit" class="btn-submit">
+        {% if action == 'add' %}Adicionar{% else %}Salvar Alterações{% endif %}
+    </button>
+
+</form>
+
+<br>
+<a href="/equipment">Voltar à lista de equipamentos</a>
+{% endblock %}

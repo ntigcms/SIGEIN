@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - SIGEN{% endblock %}
+
+{% block content %}
+    <h2>Bem-vindo ao Dashboard!</h2>
+    <p>Escolha uma opção no menu lateral para começar.</p>
+
+    <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 20px;">
+        <div style="flex:1; min-width: 150px; background:#0077cc; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
+            Equipamentos
+        </div>
+        <div style="flex:1; min-width: 150px; background:#00aaff; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
+            Usuários
+        </div>
+        <div style="flex:1; min-width: 150px; background:#0077cc; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
+            Unidades
+        </div>
+        <div style="flex:1; min-width: 150px; background:#00aaff; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
+            Movimentações
+        </div>
+    </div>
+{% endblock %}
