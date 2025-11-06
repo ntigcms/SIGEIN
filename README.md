@@ -1,108 +1,145 @@
-# SIGEN — Sistema Integrado de Gestão de Estoque e Inventário
+# 🧭 SIGEN — Sistema Integrado de Gestão de Estoque e Inventário
 
-Pequena aplicação web em FastAPI + Jinja2 para gerenciar equipamentos, unidades, usuários, movimentações e logs.
+![SIGEN](https://img.shields.io/badge/SIGEN-v1.0-0d6efd)
+![FastAPI](https://img.shields.io/badge/FastAPI-✨-00a7c4)
+![Jinja2](https://img.shields.io/badge/Jinja2-Templates-ff5b5b)
+![SQLite](https://img.shields.io/badge/SQLite-DB-003b57)
 
-Principais arquivos
-- [main.py](main.py) — ponto de entrada da aplicação.
-- [requirements.txt](requirements.txt) — dependências.
-- [database.py](database.py) — configuração do SQLAlchemy e provider `get_db`.
-- [dependencies.py](dependencies.py) — sessão simples em memória e `registrar_log` / `get_current_user`.
-  - [`dependencies.get_current_user`](dependencies.py)
-  - [`dependencies.registrar_log`](dependencies.py)
-- [models.py](models.py) — modelos ORM (User, Unit, Equipment, Movement, Log).
-  - [`models.Equipment`](models.py)
-  - [`models.User`](models.py)
-  - [`models.Log`](models.py)
-- Rotas (APIRouters)
-  - [`routers.auth.login_post`](routers/auth.py) — login/logout e registro de sessão.
-  - [`routers.auth.login_form`](routers/auth.py)
-  - [`routers.dashboard.dashboard`](routers/dashboard.py)
-  - [`routers.equipment.list_equipment`](routers/equipment.py)
-  - [`routers.equipment.add_equipment`](routers/equipment.py)
-  - [`routers.equipment.edit_equipment`](routers/equipment.py)
-  - [`routers.equipment.confirm_delete_equipment`](routers/equipment.py)
-  - [`routers.users.list_users`](routers/users.py)
-  - [`routers.users.add_user`](routers/users.py)
-  - [`routers.users.edit_user_form`](routers/users.py)
-  - [`routers.logs.listar_logs`](routers/logs.py) — listagem e exportação de logs.
-  - [`routers.logs.export_logs_pdf`](routers/logs.py)
-  - [`routers.logs.export_logs_xlsx`](routers/logs.py)
-- Templates principais (Jinja2)
-  - [templates/base.html](templates/base.html)
-  - [templates/login.html](templates/login.html)
-  - [templates/dashboard.html](templates/dashboard.html)
-  - [templates/equipment_list.html](templates/equipment_list.html)
-  - [templates/equipment_form.html](templates/equipment_form.html)
-  - [templates/equipment_confirm_delete.html](templates/equipment_confirm_delete.html)
-  - [templates/users_list.html](templates/users_list.html)
-  - [templates/user_form.html](templates/user_form.html)
-  - [templates/logs_list.html](templates/logs_list.html)
-- Arquivos auxiliares
-  - [static/style.css](static/style.css)
-  - [init_db.py](init_db.py) — script para inicializar o banco (drop/create + seed).
-  - [create_admin.py](create_admin.py) — cria usuário admin.
-  - [create_tables.py](create_tables.py) — recria tabelas (drop/create).
-  - [auth.py](auth.py) — helpers de hash de senha (passlib) — não totalmente integrado ao fluxo atual.
+Aplicação web em FastAPI + Jinja2 para gerenciar equipamentos, unidades, usuários, movimentações e logs.
 
-Instalação (local)
+---
 
-1. Criar e ativar venv:
-```sh
+## 🎯 Visão geral
+- Backend: FastAPI  
+- Templates: Jinja2  
+- Banco de dados: SQLite (sigen.db)  
+- Exportações: PDF (ReportLab) e XLSX (openpyxl)
+
+## 🎨 Paleta de cores (interface)
+| Cor | Variável | Hex |
+|---:|:---:|:---:|
+| 🟦 Azul Primário | --color-primary | #0d6efd |
+| 🟩 Verde | --color-success | #198754 |
+| 🟨 Amarelo | --color-warning | #ffc107 |
+| 🟥 Vermelho | --color-danger | #dc3545 |
+| ⬜ Fundo | --color-bg | #ffffff |
+| ⚫ Texto | --color-text | #222222 |
+
+---
+
+## 📁 Estrutura principal do projeto
+| Arquivo / Pasta | Descrição |
+|---|---|
+| main.py | Ponto de entrada da aplicação |
+| requirements.txt | Dependências do projeto |
+| database.py | Configuração do SQLAlchemy / engine / get_db |
+| dependencies.py | Sessões em memória e helpers (registrar_log, get_current_user) |
+| models.py | Modelos ORM (User, Unit, Equipment, Movement, Log) |
+| routers/ | Rotas organizadas por domínio (auth, dashboard, equipment, users, logs) |
+| templates/ | Templates Jinja2 (views) |
+| static/style.css | Estilos principais |
+| init_db.py | Cria tabelas + seed |
+| create_admin.py | Cria usuário administrador |
+| create_tables.py | Recria tabelas (apaga dados) |
+| auth.py | Helpers de hash (passlib) — integrar ao fluxo de persistência de senhas |
+
+---
+
+## 🚀 Rotas principais
+| Método | Caminho | Descrição |
+|---:|:---|:---|
+| GET | /login | Formulário de login |
+| POST | /login | Autenticar usuário |
+| GET | /dashboard | Painel principal |
+| GET | /equipment | Listagem de equipamentos |
+| GET / POST | /equipment/add | Adicionar equipamento |
+| GET / POST | /equipment/edit/{id} | Editar equipamento |
+| GET / POST | /equipment/confirm_delete/{id} | Confirmar / excluir equipamento |
+| GET /users | CRUD de usuários |
+| GET | /logs | Listar logs |
+| GET | /logs/export/pdf | Exportar logs em PDF |
+| GET | /logs/export/xlsx | Exportar logs em XLSX |
+
+(Ver arquivos em `routers/` para detalhes de implementação.)
+
+---
+
+## ⚙️ Instalação (ambiente local)
+1. Criar e ativar virtualenv:
+```powershell
 python -m venv .venv
-# Windows
-.\venv\Scripts\Activate.ps1
-# Unix / macOS
+# PowerShell (Windows)
+.\.venv\Scripts\Activate.ps1
+# CMD (Windows)
+.\.venv\Scripts\activate.bat
+# macOS / Linux
 source .venv/bin/activate
+```
 
-2. Instalar dependências:
-pip install -r [requirements.txt](http://_vscodecontentref_/0)
+2. Instalar dependências
+pip install -r requirements.txt
 
-Preparar banco de dados
+3. Preparar banco de dados
 
-O projeto usa SQLite em sigen.db (definido em database.py).
-Para criar as tabelas iniciais e dados de exemplo:
+O projeto usa SQLite (sigen.db) definido em database.py.
 
-python [init_db.py](http://_vscodecontentref_/1)
+Criar tabelas e dados iniciais:
 
-Para criar apenas um admin:
+python init_db.py
 
-python [create_admin.py](http://_vscodecontentref_/2)
 
-Executar a aplicação:
+Criar apenas o admin:
 
+python create_admin.py
+
+4. Executar a aplicação
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
-A aplicação ficará disponível em http://127.0.0.1:8000
 
-Rotas importantes (exemplos)
+Acesse em: http://127.0.0.1:8000
 
-/login — formulário de login (routers.auth.login_form)
-/dashboard — painel principal (routers.dashboard.dashboard)
-/equipment — listagem de equipamentos (routers.equipment.list_equipment)
-/equipment/add — adicionar equipamento (form + POST) (routers.equipment.add_equipment)
-/equipment/edit/{id} — editar equipamento (routers.equipment.edit_equipment)
-/equipment/confirm_delete/{id} — confirmar exclusão (routers.equipment.confirm_delete_equipment)
-/users — listagem/cadastro/edição/exclusão de usuários (routers.users.list_users, routers.users.add_user)
-/logs — listar logs e exportar:
-/logs/export/pdf — exporta PDF (routers.logs.export_logs_pdf)
-/logs/export/xlsx — exporta XLSX (routers.logs.export_logs_xlsx)
-Observações importantes / melhorias sugeridas
+🚀 Rotas Principais
+Caminho	Descrição
+/login	Formulário de login
+/dashboard	Painel principal
+/equipment	Listagem de equipamentos
+/equipment/add	Adicionar novo equipamento
+/equipment/edit/{id}	Editar equipamento
+/equipment/confirm_delete/{id}	Confirmar exclusão
+/users	Gerenciar usuários
+/logs	Listar logs
+/logs/export/pdf	Exportar logs em PDF
+/logs/export/xlsx	Exportar logs em Excel
+🧩 Observações e Melhorias Sugeridas
 
-Senhas de usuários são armazenadas em texto em vários pontos (ex.: routers.auth.login_post, routers.users.add_user). Use hashing com as funções em auth.py e nunca salve senhas em texto.
-O armazenamento de sessões é um dicionário em memória (sessions em dependencies.py); para produção, use backend persistente (Redis, DB) e tokens seguros.
-Algumas inconsistências de nomes entre templates e modelos (por exemplo nome vs name, marca vs brand) estão mapeadas em routers/equipment.py, revisar modelos e formulários para unificar.
-Exports de logs usam bibliotecas diferentes (ReportLab e openpyxl) em routers/logs.py. Conferir requisitos/versões se for executar exportação.
-Rotas e templates estão escritos em português — ajustar conforme público alvo.
-Como contribuir / desenvolvimento
+⚠️ Senhas: atualmente armazenadas em texto. Utilize hashing (funções em auth.py).
 
-Criar branch, alterar código, rodar testes manuais navegando nas páginas.
-Para recriar tabelas (perde dados):
+🧠 Sessões: armazenadas em dicionário em memória (dependencies.py).
+Use Redis ou DB para produção.
 
-python [create_tables.py](http://_vscodecontentref_/3)
+🧾 Nomes inconsistentes entre templates e modelos (routers/equipment.py) — revisar para unificação.
 
-Licença
+📦 Exportações de logs usam bibliotecas diferentes (ReportLab, openpyxl) — verificar versões.
 
-Projeto sem licença especificada — adicionar LICENSE conforme necessário.
-Contato
+🌍 Idioma: todas as rotas e templates estão em português — ajustar conforme público-alvo.
 
-Abrir issues/PR neste repositório.
+🤝 Contribuição / Desenvolvimento
+
+Crie uma nova branch
+
+Faça as alterações
+
+Teste localmente acessando as rotas
+
+Para recriar tabelas (⚠️ apaga dados):
+
+python create_tables.py
+
+📜 Licença
+
+Projeto sem licença especificada.
+Adicione um arquivo LICENSE conforme necessário.
+
+📬 Contato
+
+Abra uma issue ou pull request neste repositório para sugestões, correções ou dúvidas.
