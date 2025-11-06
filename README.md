@@ -74,42 +74,46 @@ python -m venv .venv
 .\.venv\Scripts\activate.bat
 # macOS / Linux
 source .venv/bin/activate
-```
+
 
 2. Instalar dependências
 pip install -r requirements.txt
 
 3. Preparar banco de dados
 
-O projeto usa SQLite (sigen.db) definido em database.py.
+# O projeto usa SQLite (sigen.db) definido em database.py.
 
-Criar tabelas e dados iniciais:
+3. Criar tabelas e dados iniciais:
 
 python init_db.py
 
 
-Criar apenas o admin:
+4. Criar apenas o admin:
 
 python create_admin.py
 
-4. Executar a aplicação
+5. Executar a aplicação:
+
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
+6. Acessar a aplicação:
 
 Acesse em: http://127.0.0.1:8000
-
+```
 🚀 Rotas Principais
-Caminho	Descrição
-/login	Formulário de login
-/dashboard	Painel principal
-/equipment	Listagem de equipamentos
-/equipment/add	Adicionar novo equipamento
-/equipment/edit/{id}	Editar equipamento
-/equipment/confirm_delete/{id}	Confirmar exclusão
-/users	Gerenciar usuários
-/logs	Listar logs
-/logs/export/pdf	Exportar logs em PDF
-/logs/export/xlsx	Exportar logs em Excel
+| Caminho                          | Descrição                  |
+| -------------------------------- | -------------------------- |
+| `/login`                         | Formulário de login        |
+| `/dashboard`                     | Painel principal           |
+| `/equipment`                     | Listagem de equipamentos   |
+| `/equipment/add`                 | Adicionar novo equipamento |
+| `/equipment/edit/{id}`           | Editar equipamento         |
+| `/equipment/confirm_delete/{id}` | Confirmar exclusão         |
+| `/users`                         | Gerenciar usuários         |
+| `/logs`                          | Listar logs                |
+| `/logs/export/pdf`               | Exportar logs em PDF       |
+| `/logs/export/xlsx`              | Exportar logs em Excel     |
+
 🧩 Observações e Melhorias Sugeridas
 
 ⚠️ Senhas: atualmente armazenadas em texto. Utilize hashing (funções em auth.py).
@@ -125,13 +129,13 @@ Use Redis ou DB para produção.
 
 🤝 Contribuição / Desenvolvimento
 
-Crie uma nova branch
+1. Crie uma nova branch
 
-Faça as alterações
+2. Faça as alterações
 
-Teste localmente acessando as rotas
+3. Teste localmente acessando as rotas
 
-Para recriar tabelas (⚠️ apaga dados):
+4. Para recriar tabelas (⚠️ apaga dados):
 
 python create_tables.py
 
