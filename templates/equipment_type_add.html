@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>
+    {% if action == "edit" %}
+        Editar Tipo de Equipamento
+    {% else %}
+        Cadastrar Novo Tipo de Equipamento
+    {% endif %}
+</h2>
+
+<form method="post" action="{% if action == 'edit' %}/equipment-types/edit/{{ tipo.id }}{% else %}/equipment-types/add{% endif %}">
+    <label for="nome">Nome do Tipo:</label>
+    <input type="text" id="nome" name="nome" 
+           value="{% if action == 'edit' %}{{ tipo.nome }}{% endif %}" required>
+
+    <button type="submit">
+        {% if action == "edit" %}
+            Salvar Alterações
+        {% else %}
+            Cadastrar
+        {% endif %}
+    </button>
+</form>
+
+<a href="/equipment-types">Voltar para a lista</a>
+{% endblock %}

@@ -11,7 +11,14 @@ class User(Base):
     password = Column(String(100), nullable=False)
     role = Column(String(50), nullable=False)
     status = Column(String(20), nullable=False)
-    movements = relationship("Movement", back_populates="user")  # opcional
+    movements = relationship("Movement", back_populates="user")
+
+    def __repr__(self):
+        return f"<User(username='{self.username}')>"
+
+    def __str__(self):
+        return self.username
+
 
 class Unit(Base):
     __tablename__ = "units"
@@ -20,14 +27,18 @@ class Unit(Base):
     manager = Column(String)
 
 class Equipment(Base):
-    __tablename__ = "equipments"  # singular
+    __tablename__ = "equipments"
     id = Column(Integer, primary_key=True, index=True)
-    nome = Column("name", String, nullable=False)
-    tipo = Column(String, nullable=False)
+    # nome = Column(String, nullable=False)
+    tipo_id = Column(Integer, ForeignKey("equipment_types.id"), nullable=False)  # Chave estrangeira
     brand = Column(String)
     status = Column(String)
     state = Column(String)
     location = Column(String)
+    tombo = Column(Integer, default=1)  # 0 = Sim, 1 = Não
+    num_tombo_ou_serie = Column(String, nullable=True)
+    
+    tipo = relationship("EquipmentType")  # Relacionamento com EquipmentType
     movements = relationship("Movement", back_populates="equipment")
 
 class Movement(Base):
@@ -47,3 +58,9 @@ class Log(Base):
     acao = Column(String(255))
     ip = Column(String(50))
     data_hora = Column(DateTime(timezone=True), server_default=func.now())
+
+class EquipmentType(Base):
+    __tablename__ = "equipment_types"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(100), unique=True, nullable=False)

@@ -1,23 +1,60 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - SIGEN{% endblock %}
+{% block title %}Dashboard - SIGEIN{% endblock %}
 
 {% block content %}
-    <h2>Bem-vindo ao Dashboard!</h2>
-    <p>Escolha uma opção no menu lateral para começar.</p>
+<h2>Bem-vindo ao Dashboard!</h2>
+<p>Escolha uma opção no menu lateral ou abaixo para começar.</p>
 
-    <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 20px;">
-        <div style="flex:1; min-width: 150px; background:#0077cc; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
-            Equipamentos
+<div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 20px;">
+
+    <!-- Equipamentos -->
+    <a href="/equipment" style="flex:1; min-width: 150px; text-decoration:none;">
+        <div style="background:#0077cc; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
+            <i class="fa fa-computer" style="font-size: 24px; margin-bottom: 8px;"></i>
+            <div>Equipamentos</div>
         </div>
-        <div style="flex:1; min-width: 150px; background:#00aaff; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
-            Usuários
+    </a>
+
+    <!-- Usuários -->
+    <a href="/users" style="flex:1; min-width: 150px; text-decoration:none;">
+        <div style="background:#00aaff; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
+            <i class="fa fa-users" style="font-size: 24px; margin-bottom: 8px;"></i>
+            <div>Usuários</div>
         </div>
-        <div style="flex:1; min-width: 150px; background:#0077cc; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
-            Unidades
+    </a>
+
+    <!-- Unidades -->
+    <a href="/units" style="flex:1; min-width: 150px; text-decoration:none;">
+        <div style="background:#0077cc; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
+            <i class="fa fa-building" style="font-size: 24px; margin-bottom: 8px;"></i>
+            <div>Unidades</div>
         </div>
-        <div style="flex:1; min-width: 150px; background:#00aaff; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
-            Movimentações
+    </a>
+
+    <!-- Movimentações -->
+    <a href="/movements" style="flex:1; min-width: 150px; text-decoration:none;">
+        <div style="background:#00aaff; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
+            <i class="fa fa-arrows-rotate" style="font-size: 24px; margin-bottom: 8px;"></i>
+            <div>Movimentações</div>
         </div>
-    </div>
+    </a>
+
+    <!-- Tipos de Equipamentos (Administração) -->
+    <a href="/equipment-types" style="flex:1; min-width: 150px; text-decoration:none;">
+        <div style="background:#0077cc; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
+            <i class="fa fa-list" style="font-size: 24px; margin-bottom: 8px;"></i>
+            <div>Tipos de Equipamentos</div>
+        </div>
+    </a>
+
+    <!-- Logs -->
+    <a href="/logs" style="flex:1; min-width: 150px; text-decoration:none;">
+        <div style="background:#00aaff; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
+            <i class="fa fa-list" style="font-size: 24px; margin-bottom: 8px;"></i>
+            <div>Logs</div>
+        </div>
+    </a>
+
+</div>
 {% endblock %}

@@ -4,58 +4,198 @@
 <h1>{% if action == 'add' %}Adicionar Equipamento{% else %}Editar Equipamento{% endif %}</h1>
 
 <form id="equipmentForm" method="POST"
-      action="{% if action == 'add' %}/equipment/add{% else %}/equipment/edit/{{ equipment.id }}{% endif %}">
+      action="{% if action == 'add' %}/equipment/add{% else %}/equipment/edit/{{ equipment.id }}{% endif %}"
+      style="max-width: 900px; margin:auto;">
 
-      
     <div class="form-grid">
 
+        <!-- Tipo -->
         <div class="form-group">
-    <label for="name">Nome:</label>
-    <input type="text" id="name" name="nome" required
-           value="{% if equipment %}{{ equipment.nome }}{% endif %}">
-</div>
+            <label for="type">Tipo:</label>
+            <select id="type" name="tipo_id" required>
+                <option value="">-- Selecione o tipo --</option>
+                {% for tipo in tipos %}
+                    <option value="{{ tipo.id }}"
+                        {% if equipment and equipment.tipo_id == tipo.id %}selected{% endif %}>
+                        {{ tipo.nome }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
 
-<div class="form-group">
-    <label for="type">Tipo:</label>
-    <input type="text" id="type" name="tipo" required
-           value="{% if equipment %}{{ equipment.tipo }}{% endif %}">
-</div>
+        <!-- Marca -->
+        <div class="form-group">
+            <label for="brand">Marca:</label>
+            <input type="text" id="brand" name="marca" required
+                   value="{% if equipment %}{{ equipment.brand }}{% endif %}">
+        </div>
 
-<div class="form-group">
-    <label for="brand">Marca:</label>
-    <input type="text" id="brand" name="marca" required
-           value="{% if equipment %}{{ equipment.marca }}{% endif %}">
-</div>
+        <!-- Status -->
+        <div class="form-group">
+            <label for="status">Status:</label>
+            <select id="status" name="status" required>
+                <option value="Ativo" {% if equipment and equipment.status == "Ativo" %}selected{% endif %}>Ativo</option>
+                <option value="Inativo" {% if equipment and equipment.status == "Inativo" %}selected{% endif %}>Inativo</option>
+            </select>
+        </div>
 
-<div class="form-group">
-    <label for="status">Status:</label>
-    <select id="status" name="status" required>
-        <option value="Ativo" {% if equipment and equipment.status == "Ativo" %}selected{% endif %}>Ativo</option>
-        <option value="Inativo" {% if equipment and equipment.status == "Inativo" %}selected{% endif %}>Inativo</option>
-    </select>
-</div>
+        <!-- Estado -->
+        <div class="form-group">
+            <label for="state">Estado:</label>
+            <input type="text" id="state" name="estado" required
+                   value="{% if equipment %}{{ equipment.state }}{% endif %}">
+        </div>
 
-<div class="form-group">
-    <label for="state">Estado:</label>
-    <input type="text" id="state" name="estado" required
-           value="{% if equipment %}{{ equipment.estado }}{% endif %}">
-</div>
+        <!-- Localização -->
+        <div class="form-group">
+            <label for="location">Localização:</label>
+            <input type="text" id="location" name="localizacao" required
+                   value="{% if equipment %}{{ equipment.location }}{% endif %}">
+        </div>
 
-<div class="form-group">
-    <label for="location">Localização:</label>
-    <input type="text" id="location" name="localizacao" required
-           value="{% if equipment %}{{ equipment.localizacao }}{% endif %}">
-</div>
+        <!-- Tombo -->
+        <div class="form-group">
+            <label>Tombo:</label>
+            <div class="radio-group">
+                <label>
+                    <input type="radio" name="tem_tombo" value="Sim"
+                           {% if equipment and equipment.tombo == 0 %}checked{% endif %}> Sim
+                </label>
+                <label>
+                    <input type="radio" name="tem_tombo" value="Não"
+                           {% if equipment and equipment.tombo == 1 %}checked{% endif %}> Não
+                </label>
+            </div>
+        </div>
 
+        <!-- Número do Tombo -->
+        <div class="form-group" id="campo-tombo" style="display:none;">
+            <label for="num_tombo">N.º Tombo:</label>
+            <input type="text" id="num_tombo" name="num_tombo"
+                   value="{% if equipment and equipment.tombo == 0 %}{{ equipment.num_tombo_ou_serie }}{% endif %}">
+        </div>
+
+        <!-- Número de Série -->
+        <div class="form-group" id="campo-serie" style="display:none;">
+            <label for="num_serie">N.º de Série:</label>
+            <input type="text" id="num_serie" name="num_serie"
+                   value="{% if equipment and equipment.tombo == 1 %}{{ equipment.num_tombo_ou_serie }}{% endif %}">
+        </div>
 
     </div>
 
-    <button type="submit" class="btn-submit">
-        {% if action == 'add' %}Adicionar{% else %}Salvar Alterações{% endif %}
-    </button>
+    <div style="margin-top: 20px; text-align:center;">
+        <button type="submit" class="btn-submit">
+            {% if action == 'add' %}Adicionar{% else %}Salvar Alterações{% endif %}
+        </button>
+        <a href="/equipment" class="btn-cancel">Cancelar</a>
+    </div>
 
 </form>
 
-<br>
-<a href="/equipment">Voltar à lista de equipamentos</a>
+<style>
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        align-items: stretch;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    label {
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+
+    input, select {
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 14px;
+        height: 40px;
+        box-sizing: border-box;
+        width: 100%;
+    }
+
+    /* Radio menor e alinhado */
+    .radio-group {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        margin-top: 3px;
+    }
+
+    .radio-group input[type="radio"] {
+        width: 14px;
+        height: 14px;
+        transform: scale(0.9);
+        cursor: pointer;
+    }
+
+    .btn-submit {
+        background-color: #007bff;
+        color: white;
+        padding: 10px 25px;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+    }
+
+    .btn-submit:hover {
+        background-color: #0056b3;
+    }
+
+    .btn-cancel {
+        background-color: #ccc;
+        color: #333;
+        padding: 10px 25px;
+        border-radius: 5px;
+        text-decoration: none;
+        margin-left: 15px;
+    }
+
+    .btn-cancel:hover {
+        background-color: #999;
+    }
+</style>
+
+<script>
+    const radios = document.getElementsByName('tem_tombo');
+    const campoTombo = document.getElementById('campo-tombo');
+    const campoSerie = document.getElementById('campo-serie');
+    const inputTombo = document.getElementById('num_tombo');
+    const inputSerie = document.getElementById('num_serie');
+
+    function toggleCamposTombo() {
+        const selecionado = document.querySelector('input[name="tem_tombo"]:checked')?.value;
+
+        if (selecionado === 'Sim') {
+            campoTombo.style.display = 'block';
+            campoSerie.style.display = 'none';
+            inputTombo.required = true;
+            inputSerie.required = false;
+            inputSerie.value = "";
+        } else if (selecionado === 'Não') {
+            campoTombo.style.display = 'none';
+            campoSerie.style.display = 'block';
+            inputSerie.required = true;
+            inputTombo.required = false;
+            inputTombo.value = "";
+        } else {
+            campoTombo.style.display = 'none';
+            campoSerie.style.display = 'none';
+            inputTombo.required = false;
+            inputSerie.required = false;
+        }
+    }
+
+    radios.forEach(radio => radio.addEventListener('change', toggleCamposTombo));
+    window.addEventListener('load', toggleCamposTombo);
+</script>
+
 {% endblock %}

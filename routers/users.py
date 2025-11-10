@@ -6,7 +6,7 @@ from dependencies import get_current_user, get_db
 from models import User
 from starlette.status import HTTP_302_FOUND
 from database import get_db
-from dependencies import get_current_user, registrar_log
+from dependencies import get_current_user, registrar_log, inject_current_user, template_context
 import models
 from typing import Optional
 
@@ -68,28 +68,44 @@ def add_user(
     registrar_log(db, usuario=user, acao=f"Cadastrou novo usuário {nome} ({perfil})", ip=ip)
     return RedirectResponse("/users", status_code=HTTP_302_FOUND)
 
+# ============================
 # GET para pegar dados do usuário
-@router.get("/users/edit/{user_id}")
-def get_user(user_id: int, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    return {
-        "id": user.id,
-        "username": user.username,
-        "email": getattr(user, "email", None),  # se existir
-        "role": user.role,
-        "status": getattr(user, "status", None)
-    }
+# ============================
 
+@router.get("/edit/{user_id}")
+def edit_user_form(
+    user_id: int, 
+    context: dict = Depends(template_context), 
+    db: Session = Depends(get_db)
+):
+    """Rota para editar usuário."""
+
+    current_user = context.get("current_user")
+    if not current_user:
+        return RedirectResponse("/login")
+
+    # Busca usuário pelo ID
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return HTMLResponse("Usuário não encontrado", status_code=404)
+
+    # Atualiza contexto com dados do usuário e ação
+    context.update({"user": user, "action": "edit"})
+
+    return templates.TemplateResponse("user_form.html", context)
+
+
+# ============================
 # POST para atualizar usuário
-@router.post("/users/edit/{user_id}")
+# ============================
+
+@router.post("/edit/{user_id}")
 def edit_user(
     request: Request,
     user_id: int,
-    username: str = Form(...),
-    password: str = Form(...),
-    role: str = Form(...),
+    nome: str = Form(...),
+    senha: str = Form(""),  # permite ficar em branco
+    perfil: str = Form(...),
     status: str = Form(...),
     db: Session = Depends(get_db),
     current_user: str = Depends(get_current_user)
@@ -98,43 +114,34 @@ def edit_user(
     if not current_user:
         return RedirectResponse("/login")
 
-    ip = request.client.host
+    # Busca usuário
     user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
-    if user:
-        # Atualizando os campos
-        user.username = username
-        user.password = password  # ideal: usar hash da senha
-        user.role = role
-        if hasattr(user, "status"):
-            user.status = status
+    # Atualiza campos
+    user.username = nome
+    user.role = perfil
+    user.status = status
 
-        db.commit()
-        registrar_log(db, usuario=current_user, acao=f"Editou usuário ID {user_id}", ip=ip)
+    # Atualiza senha somente se o campo não estiver vazio
+    if senha.strip():
+        user.password = senha  # Ideal: hash da senha aqui
 
+    db.commit()
+
+    # Redireciona para lista de usuários
     return RedirectResponse("/users", status_code=HTTP_302_FOUND)
 
 # ============================
 # Formulário para editar usuário
 # ============================
-@router.get("/edit/{user_id}")
-def edit_user_form(user_id: int, request: Request, db: Session = Depends(get_db),
-                   current_user: str = Depends(get_current_user)):
-    if not current_user:
-        return RedirectResponse("/login")
 
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        return HTMLResponse("Usuário não encontrado", status_code=404)
 
-    return templates.TemplateResponse("user_form.html", {
-        "request": request,
-        "user": user,
-        "current_user": current_user,
-        "action": "edit"
-    })
-
+# ============================
 # Excluir usuário
+# ============================
+
 @router.get("/delete/{user_id}")
 def delete_user(request: Request, user_id: int, db: Session = Depends(get_db),
                 current_user: str = Depends(get_current_user)):
