@@ -5,7 +5,7 @@ from database import Base, engine
 from dependencies import sessions
 
 # Routers
-from routers import auth, dashboard, equipment, users, units, movements, logs, root, equipment_types
+from routers import auth, dashboard, equipment, users, units, movements, logs, root, equipment_types, brands, states
 
 # Criação das tabelas
 Base.metadata.create_all(bind=engine)
@@ -42,4 +42,6 @@ app.include_router(users.router)
 app.include_router(units.router)
 app.include_router(movements.router)
 app.include_router(equipment_types.router)
+app.include_router(brands.router)
+app.include_router(states.router)
 app.include_router(logs.router)

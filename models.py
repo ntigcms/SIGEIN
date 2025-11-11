@@ -64,3 +64,13 @@ class EquipmentType(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String(100), unique=True, nullable=False)
+
+class Brand(Base):
+    __tablename__ = "brands"
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String, unique=True, nullable=False)
+
+class EquipmentState(Base):
+    __tablename__ = "equipment_states"  # Nome da tabela no banco
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String, unique=True, nullable=False)  # Nome do estado (Novo, Usado, etc.)

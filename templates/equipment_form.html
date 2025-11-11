@@ -24,11 +24,18 @@
         </div>
 
         <!-- Marca -->
-        <div class="form-group">
-            <label for="brand">Marca:</label>
-            <input type="text" id="brand" name="marca" required
-                   value="{% if equipment %}{{ equipment.brand }}{% endif %}">
-        </div>
+<div class="form-group">
+    <label for="brand">Marca:</label>
+    <select id="brand" name="marca" required>
+        <option value="">-- Selecione a marca --</option>
+        {% for marca in marcas %}
+            <option value="{{ marca.nome }}"
+                {% if equipment and equipment.brand == marca.nome %}selected{% endif %}>
+                {{ marca.nome }}
+            </option>
+        {% endfor %}
+    </select>
+</div>
 
         <!-- Status -->
         <div class="form-group">
@@ -40,11 +47,18 @@
         </div>
 
         <!-- Estado -->
-        <div class="form-group">
-            <label for="state">Estado:</label>
-            <input type="text" id="state" name="estado" required
-                   value="{% if equipment %}{{ equipment.state }}{% endif %}">
-        </div>
+<div class="form-group">
+    <label for="state">Estado:</label>
+    <select id="state" name="estado" required>
+        <option value="">-- Selecione o estado --</option>
+        {% for estado in estados %}
+            <option value="{{ estado.nome }}"
+                {% if equipment and equipment.state == estado.nome %}selected{% endif %}>
+                {{ estado.nome }}
+            </option>
+        {% endfor %}
+    </select>
+</div>
 
         <!-- Localização -->
         <div class="form-group">
@@ -58,11 +72,11 @@
             <label>Tombo:</label>
             <div class="radio-group">
                 <label>
-                    <input type="radio" name="tem_tombo" value="Sim"
+                    <input type="radio" name="tombo" value="Sim"
                            {% if equipment and equipment.tombo == 0 %}checked{% endif %}> Sim
                 </label>
                 <label>
-                    <input type="radio" name="tem_tombo" value="Não"
+                    <input type="radio" name="tombo" value="Não"
                            {% if equipment and equipment.tombo == 1 %}checked{% endif %}> Não
                 </label>
             </div>
@@ -130,8 +144,8 @@
     }
 
     .radio-group input[type="radio"] {
-        width: 14px;
-        height: 14px;
+        width: 30px;
+        height: 30px;
         transform: scale(0.9);
         cursor: pointer;
     }
@@ -165,14 +179,14 @@
 </style>
 
 <script>
-    const radios = document.getElementsByName('tem_tombo');
+    const radios = document.getElementsByName('tombo');
     const campoTombo = document.getElementById('campo-tombo');
     const campoSerie = document.getElementById('campo-serie');
     const inputTombo = document.getElementById('num_tombo');
     const inputSerie = document.getElementById('num_serie');
 
     function toggleCamposTombo() {
-        const selecionado = document.querySelector('input[name="tem_tombo"]:checked')?.value;
+        const selecionado = document.querySelector('input[name="tombo"]:checked')?.value;
 
         if (selecionado === 'Sim') {
             campoTombo.style.display = 'block';

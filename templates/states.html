@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Estado{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 20px;">
+    <h2>Estado</h2>
+    <a href="/states/add">
+        <button class="animated-btn">Cadastrar Novo</button>
+    </a>
+</div>
+
+<table style="width:100%; border-collapse: collapse; text-align:left;">
+    <thead>
+        <tr style="background-color: #004080; color:white;">
+            <th style="width: 10%;">ID</th>
+            <th style="width: 70%;">Nome do Estado</th>
+            <th style="width: 20%;">Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for estado in states %}
+        <tr style="border-bottom:1px solid #ccc;">
+            <td>{{ estado.id }}</td>
+            <td>{{ estado.nome }}</td>
+            <td>
+                <a href="/states/edit/{{ estado.id }}" title="Editar">
+                    <i class="fas fa-pen" style="color:#ffaa00; font-size: 18px; margin-right: 10px; cursor:pointer;"></i>
+                </a>
+                <a href="/states/delete/{{ estado.id }}" title="Excluir"
+                   onclick="return confirm('Tem certeza que deseja excluir este estado?');">
+                    <i class="fas fa-trash" style="color:#cc0000; font-size: 18px; cursor:pointer;"></i>
+                </a>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="3" style="text-align:center; padding:20px; color:#666;">Nenhum estado cadastrado.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

@@ -104,6 +104,7 @@ def edit_user(
     request: Request,
     user_id: int,
     nome: str = Form(...),
+    email: str = Form(...),
     senha: str = Form(""),  # permite ficar em branco
     perfil: str = Form(...),
     status: str = Form(...),
@@ -121,6 +122,7 @@ def edit_user(
 
     # Atualiza campos
     user.username = nome
+    user.email = email 
     user.role = perfil
     user.status = status
 

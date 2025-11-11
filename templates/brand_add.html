@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>
+    {% if action == "edit" %}
+        Editar Marca
+    {% else %}
+        Cadastrar Nova Marca
+    {% endif %}
+</h2>
+
+<form method="post" action="{% if action == 'edit' %}/brands/edit/{{ marca.id }}{% else %}/brands/add{% endif %}">
+    <label for="nome">Nome da Marca:</label>
+    <input type="text" id="nome" name="nome" 
+           value="{% if action == 'edit' %}{{ marca.nome }}{% endif %}" required>
+
+    <button type="submit">
+        {% if action == "edit" %}
+            Salvar Alterações
+        {% else %}
+            Cadastrar
+        {% endif %}
+    </button>
+</form>
+
+<a href="/brands">Voltar para a lista de Marcas</a>
+{% endblock %}
