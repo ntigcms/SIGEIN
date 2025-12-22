@@ -51,13 +51,13 @@
         </div>
     </div>
     <div class="filtro-item">
-        <label>Local</label>
-        <div class="search-container" data-col="6">
-            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
-            <span class="arrow">▼</span>
-            <div class="options" style="display:none;"></div>
-        </div>
+    <label>Unidade Administrativa</label>
+    <div class="search-container" data-col="6">
+        <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+        <span class="arrow">▼</span>
+        <div class="options" style="display:none;"></div>
     </div>
+</div>
 
     <!-- Botão para limpar filtros -->
     <div style="display:flex; align-items:center;">
@@ -67,27 +67,27 @@
 
 <table id="equipmentsTable" style="width:100%; border-collapse: collapse; text-align:left;">
     <thead>
-    <tr style="background-color: #004080; color:white;">
-        <th><input type="checkbox" id="select-all" onclick="toggleAll(this)"></th>
-        <th>ID</th>
-        <th>Tipo</th>
-        <th>Marca</th>
-        <th>Status</th>
-        <th>Estado</th>
-        <th>Local</th>
-        <th>Ações</th>
-    </tr>
-    </thead>
+<tr style="background-color: #004080; color:white;">
+    <th><input type="checkbox" id="select-all" onclick="toggleAll(this)"></th>
+    <th>ID</th>
+    <th>Tipo</th>
+    <th>Marca</th>
+    <th>Status</th>
+    <th>Estado</th>
+    <th>Unidade Administrativa</th> <!-- alterado aqui -->
+    <th>Ações</th>
+</tr>
+</thead>
     <tbody>
     {% for eq in equipments %}
     <tr>
         <td><input type="checkbox" class="select-item"></td>
         <td>{{ eq.id }}</td>
         <td>{{ eq.tipo.nome }}</td>
-        <td>{{ eq.brand }}</td>
+        <td>{{ eq.brand.nome }}</td>
         <td>{{ eq.status }}</td>
-        <td>{{ eq.state }}</td>
-        <td>{{ eq.location }}</td>
+        <td>{{ eq.state.nome }}</td>
+        <td>{{ eq.unit.name }}</td>
         <td>
             <a href="/equipment/edit/{{ eq.id }}" title="Editar">
                 <i class="fas fa-pen" style="color:#ffaa00; font-size: 18px; margin-right: 10px; cursor:pointer;"></i>
@@ -217,7 +217,7 @@ $(document).ready(function() {
             emptyTable: "Nenhum equipamento encontrado",
             info: "Mostrando _START_ a _END_ de _TOTAL_",
             infoEmpty: "Mostrando 0 a 0 de 0",
-            lengthMenu: "Mostrar _MENU_ registros",
+            lengthMenu: "Mostrar registros _MENU_",
             zeroRecords: "Nenhum equipamento encontrado",
             paginate: { first:"Primeiro", last:"Último", next:"Próximo", previous:"Anterior" }
         },

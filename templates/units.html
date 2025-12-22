@@ -1,27 +1,287 @@
 {% extends "base.html" %}
 
-{% block title %}Unidades - SIGEN{% endblock %}
+{% block title %}Unidade Administrativa{% endblock %}
 
 {% block content %}
-<h2>Unidades</h2>
-<a href="/units/add"><button>Adicionar Unidade</button></a>
+<div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 20px;">
+    <h2>Unidades Administrativas</h2>
+    <a href="/units/add"><button class="animated-btn">Cadastrar Novo</button></a>
+</div>
 
-<table style="width:100%; margin-top:20px; border-collapse: collapse;">
+<!-- FILTROS PERSONALIZADOS -->
+<div class="filtros-container">
+    <div class="filtro-item">
+        <label>ID</label>
+        <div class="search-container" data-col="1">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options" style="display:none;"></div>
+        </div>
+    </div>
+    <div class="filtro-item">
+        <label>Setor</label>
+        <div class="search-container" data-col="2">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options" style="display:none;"></div>
+        </div>
+    </div>
+    <div class="filtro-item">
+        <label>Responsável</label>
+        <div class="search-container" data-col="3">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options" style="display:none;"></div>
+        </div>
+    </div>
+
+    <!-- Botão limpar -->
+    <div style="display:flex; align-items:center;">
+        <button id="clear-filters" class="clear-btn">🧹 Limpar Filtros</button>
+    </div>
+</div>
+
+<!-- ======= TABELA ======= -->
+<table id="unitsTable" style="width:100%; border-collapse: collapse; text-align:left;">
     <thead>
-        <tr style="background:#0077cc; color:white;">
-            <th style="padding:10px; border:1px solid #ccc;">ID</th>
-            <th style="padding:10px; border:1px solid #ccc;">Nome</th>
-            <th style="padding:10px; border:1px solid #ccc;">Responsável</th>
+        <tr style="background-color: #004080; color:white;">
+            <th><input type="checkbox" id="select-all" onclick="toggleAll(this)"></th>
+            <th>ID</th>
+            <th>Setor</th>
+            <th>Responsável</th>
+            <th>Ações</th>
         </tr>
     </thead>
     <tbody>
-        {% for unit in units %}
-        <tr>
-            <td style="padding:10px; border:1px solid #ccc;">{{ unit.id }}</td>
-            <td style="padding:10px; border:1px solid #ccc;">{{ unit.name }}</td>
-            <td style="padding:10px; border:1px solid #ccc;">{{ unit.manager }}</td>
-        </tr>
-        {% endfor %}
+    {% for unidade in units %}
+    <tr>
+        <td><input type="checkbox" class="select-item"></td>
+        <td>{{ unidade.id }}</td>
+        <td>{{ unidade.name }}</td>
+        <td>{{ unidade.manager }}</td>
+        <td>
+            <a href="/units/edit/{{ unidade.id }}" title="Editar">
+                <i class="fas fa-pen" style="color:#ffaa00; font-size: 18px; margin-right: 10px; cursor:pointer;"></i>
+            </a>
+            <a href="/units/delete/{{ unidade.id }}" title="Excluir"
+               onclick="return confirm('Tem certeza que deseja excluir esta unidade administrativa?');">
+                <i class="fas fa-trash" style="color:#cc0000; font-size: 18px; cursor:pointer;"></i>
+            </a>
+        </td>
+    </tr>
+    {% else %}
+    <tr>
+        <td colspan="5" style="text-align:center; padding:20px; color:#666;">
+            Nenhuma unidade administrativa cadastrada.
+        </td>
+    </tr>
+    {% endfor %}
     </tbody>
 </table>
+
+<!-- ======= IMPORTS ======= -->
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<style>
+/* ======= LAYOUT DOS FILTROS ======= */
+.filtros-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 25px;
+    margin-bottom: 15px;
+    background-color: transparent;
+    padding: 15px 20px;
+    border-radius: 8px;
+}
+.filtro-item {
+    display: flex;
+    flex-direction: column;
+    min-width: 180px;
+    flex: 1;
+}
+.filtro-item label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #004080;
+    margin-bottom: 5px;
+}
+
+/* ======= CAMPO DE PESQUISA CUSTOM ======= */
+.search-container {
+    position: relative;
+    width: 100%;
+}
+.filter-search {
+    width: 100%;
+    padding: 8px 28px 8px 8px;
+    border: 1px solid #aaa;
+    border-radius: 6px;
+    font-size: 13px;
+}
+.arrow {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    color: #666;
+    pointer-events: none;
+    transition: transform 0.2s;
+}
+.arrow.open { transform: translateY(-50%) rotate(180deg); }
+.options {
+    position: absolute;
+    top: 36px;
+    left: 0;
+    right: 0;
+    border: 1px solid #ccc;
+    background: white;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 10;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    border-radius: 6px;
+}
+.option {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 13px;
+}
+.option:hover { background-color: #f0f0f0; }
+
+/* ======= BOTÃO LIMPAR ======= */
+.clear-btn {
+    background-color: #cc0000;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: bold;
+}
+.clear-btn:hover { background-color: #a00000; }
+
+/* ======= TABELA ======= */
+#unitsTable tbody tr:nth-child(even) { background-color: #f2f2f2; }
+#unitsTable tbody tr:hover { background-color: #d9e6f2; }
+#unitsTable, #unitsTable th, #unitsTable td { border: 1px solid #ccc; }
+#unitsTable th, #unitsTable td { padding: 10px; }
+
+
+</style>
+
+<script>
+function toggleAll(source) {
+    let checkboxes = document.getElementsByClassName('select-item');
+    for (let i = 0; i < checkboxes.length; i++) {
+        checkboxes[i].checked = source.checked;
+    }
+}
+
+$(document).ready(function() {
+    var table = $('#unitsTable').DataTable({
+        order: [[1, "asc"]],
+        columnDefs: [{ orderable: false, targets: [0,4] }],
+        language: {
+            emptyTable: "Nenhuma unidade encontrada",
+            info: "Mostrando _START_ a _END_ de _TOTAL_",
+            infoEmpty: "Mostrando 0 a 0 de 0",
+            lengthMenu: "Mostrar registros _MENU_",
+            zeroRecords: "Nenhuma unidade encontrada",
+            paginate: { first:"Primeiro", last:"Último", next:"Próximo", previous:"Anterior" }
+        },
+        pageLength: 10,
+        dom: 'rt<"bottom"l<"info-wrapper"ip>><"clear">'
+    });
+
+    // === FILTROS CUSTOM ===
+    $('.search-container').each(function() {
+        const container = $(this);
+        const input = container.find('.filter-search');
+        const optionsDiv = container.find('.options');
+        const arrow = container.find('.arrow');
+        const colIndex = container.data('col');
+        const column = table.column(colIndex);
+        let selecionados = [];
+
+        const valores = column.data().unique().sort().toArray();
+
+        function renderOptions(lista) {
+            optionsDiv.empty();
+            lista.forEach(v => {
+                const checked = selecionados.includes(v) ? 'checked' : '';
+                optionsDiv.append(`
+                    <div class="option">
+                        <input type="checkbox" value="${v}" ${checked}>
+                        <label>${v}</label>
+                    </div>
+                `);
+            });
+            optionsDiv.show();
+            arrow.addClass('open');
+        }
+
+        input.on('click', function(e) {
+            e.stopPropagation();
+            if (optionsDiv.is(':visible')) {
+                optionsDiv.hide(); arrow.removeClass('open');
+            } else renderOptions(valores);
+        });
+
+        input.on('input', function() {
+            const query = input.val().toLowerCase();
+            const filtradas = valores.filter(v => v.toLowerCase().includes(query));
+            renderOptions(filtradas);
+        });
+
+        optionsDiv.on('change', 'input[type="checkbox"]', function() {
+            const val = $(this).val();
+            if (this.checked) selecionados.push(val);
+            else selecionados = selecionados.filter(v => v !== val);
+            input.val(selecionados.join(', '));
+            aplicarFiltro();
+        });
+
+        function aplicarFiltro() {
+            if (selecionados.length > 0) {
+                const regex = selecionados.map(v => '^'+$.fn.dataTable.util.escapeRegex(v)+'$').join('|');
+                column.search(regex, true, false).draw();
+            } else {
+                column.search('').draw();
+            }
+        }
+
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest(container).length) {
+                optionsDiv.hide();
+                arrow.removeClass('open');
+            }
+        });
+
+        // Função para resetar
+        container.data('reset', function() {
+            selecionados = [];
+            input.val('');
+            column.search('').draw();
+            optionsDiv.hide();
+            arrow.removeClass('open');
+        });
+    });
+
+    // === LIMPAR FILTROS ===
+    $('#clear-filters').on('click', function() {
+        $('.search-container').each(function() {
+            const resetFn = $(this).data('reset');
+            if (typeof resetFn === 'function') resetFn();
+        });
+    });
+});
+</script>
 {% endblock %}

@@ -1,152 +1,204 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>{% if action == 'add' %}Cadastrar Novo Usuário{% else %}Editar Usuário{% endif %}</h1>
+<h1 style="text-align:center; margin-bottom:25px;">
+  {% if action == 'add' %}Cadastrar Novo Usuário{% else %}Editar Usuário{% endif %}
+</h1>
 
 <form id="userForm" method="POST"
       action="{% if action == 'add' %}/users/add{% else %}/users/edit/{{ user.id }}{% endif %}"
-      style="max-width: 900px; margin:auto;">
+      class="user-form">
 
-    <div class="form-grid">
+  <div class="form-grid">
 
-        <!-- Nome -->
-        <div class="form-group">
-            <label for="nome">Nome:</label>
-            <input type="text" id="nome" name="nome" required
-       value="{{ user.username if user else '' }}">
-        </div>
+      <!-- Nome -->
+      <div class="form-group">
+          <label for="nome">Nome:</label>
+          <input type="text" id="nome" name="nome" required
+                 value="{{ user.username if user else '' }}">
+      </div>
 
-        <!-- E-mail -->
-        <div class="form-group">
-            <label for="email">E-mail:</label>
-            <input type="email" id="email" name="email" required
-                   pattern="^[^@\s]+@[^@\s]+\.[^@\s]+$"
-                   title="Digite um e-mail válido"
-                   value="{{ user.email if user else '' }}">
-        </div>
+      <!-- E-mail -->
+      <div class="form-group" id="email-group">
+    <label for="email">E-mail:</label>
+    <input type="email" id="email" name="email" required
+           pattern="^[^@\s]+@[^@\s]+\.[^@\s]+$"
+           title="Digite um e-mail válido"
+           value="{{ user.email if user else '' }}">
+</div>
 
-        <!-- Senha -->
-        <div class="form-group password-group">
-            <label for="senha">Senha:</label>
-            <div class="senha-wrapper">
-                <input type="password" id="senha" name="senha"
-                       placeholder="{% if action == 'edit' %}Deixe em branco para manter{% endif %}">
-                <span class="toggle-password">&#128065;</span>
-            </div>
-        </div>
 
-        <!-- Perfil -->
-        <div class="form-group">
-            <label for="perfil">Perfil:</label>
-            <select id="perfil" name="perfil" required>
-    <option value="Admin" {% if user and user.role == "Admin" %}selected{% endif %}>Admin</option>
-    <option value="User" {% if user and user.role == "User" %}selected{% endif %}>User</option>
-    <option value="Suporte" {% if user and user.role == "Suporte" %}selected{% endif %}>Suporte</option>
-</select>
-        </div>
+      <!-- Senha -->
+      <div class="form-group password-group">
+          <label for="senha">Senha:</label>
+          <div class="senha-wrapper">
+              <input type="password" id="senha" name="senha"
+                     placeholder="{% if action == 'edit' %}Deixe em branco para manter{% endif %}">
+              <span class="toggle-password">👁️</span>
+          </div>
+      </div>
 
-        <!-- Status -->
-        <div class="form-group">
-            <label for="status">Status:</label>
-            <select id="status" name="status" required>
-    <option value="Ativo" {% if user and user.status == "Ativo" %}selected{% endif %}>Ativo</option>
-    <option value="Inativo" {% if user and user.status == "Inativo" %}selected{% endif %}>Inativo</option>
-</select>
-        </div>
+      <!-- Perfil -->
+      <div class="form-group">
+          <label for="perfil">Perfil:</label>
+          <select id="perfil" name="perfil" required>
+              <option value="Admin" {% if user and user.role == "Admin" %}selected{% endif %}>Admin</option>
+              <option value="User" {% if user and user.role == "User" %}selected{% endif %}>User</option>
+              <option value="Suporte" {% if user and user.role == "Suporte" %}selected{% endif %}>Suporte</option>
+          </select>
+      </div>
 
-    </div>
+      <!-- Status -->
+      <div class="form-group">
+          <label for="status">Status:</label>
+          <select id="status" name="status" required>
+              <option value="Ativo" {% if user and user.status == "Ativo" %}selected{% endif %}>Ativo</option>
+              <option value="Inativo" {% if user and user.status == "Inativo" %}selected{% endif %}>Inativo</option>
+          </select>
+      </div>
 
-    <div style="margin-top: 20px; text-align:center;">
-        <button type="submit" class="btn-submit">Salvar</button>
-        <a href="/users" class="btn-cancel">Cancelar</a>
-    </div>
+  </div>
 
+  <div class="buttons">
+      <button type="submit" class="btn-submit">Salvar</button>
+      <a href="/users" class="btn-cancel">Cancelar</a>
+  </div>
 </form>
 
 <style>
-    .form-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 20px;
-        align-items: stretch;
-    }
+  /* === Layout principal === */
+  .user-form {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 30px;
+      background-color: transparent;
+      border-radius: 0px;
+      box-shadow: 0 0 0px rgba(0,0,0,0.1);
+  }
 
-    .form-group {
-        display: flex;
-        flex-direction: column;
-    }
+  .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 25px 40px;
+      align-items: flex-start;
+  }
 
-    label {
-        font-weight: bold;
-        margin-bottom: 5px;
-    }
+  .form-group {
+      display: flex;
+      flex-direction: column;
+  }
 
-    input, select {
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        font-size: 14px;
-        height: 40px;
-        box-sizing: border-box;
-        width: 100%;
-    }
+  label {
+      font-weight: 600;
+      color: #003366;
+      margin-bottom: 6px;
+  }
 
-    .senha-wrapper {
-        position: relative;
-        display: flex;
-        align-items: center;
-    }
+  input, select {
+      padding: 10px 12px;
+      border: 1px solid #bbb;
+      border-radius: 6px;
+      font-size: 14px;
+      height: 40px;
+      background-color: #fff;
+  }
 
-    .senha-wrapper input {
-        padding-right: 35px;
-    }
+  /* === Campo de e-mail com tamanho personalizado === */
+#email {
+    width: 360px;       /* Largura exata */
+    height: 40px;       /* Altura padrão dos outros inputs */
+    padding: 10px;      /* Mantém o padding consistente */
+    font-size: 14px;    /* Fonte um pouco maior */
+    box-sizing: border-box; /* Garante que padding + border não aumente a altura */
+    margin: 10px
+}
 
-    .toggle-password {
-        position: absolute;
-        right: 10px;
-        cursor: pointer;
-        user-select: none;
-        font-size: 18px;
-        color: #555;
-    }
+/* Define tamanho específico para o form-group do email */
+div.form-group#email-group {
+    width: 360px;        /* Largura do container */
+    height: auto;        /* Ajusta automaticamente à altura do conteúdo */
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px; /* Espaçamento padrão */
+}
 
-    .btn-submit {
-        background-color: #007bff;
-        color: white;
-        padding: 10px 25px;
-        border: none;
-        border-radius: 5px;
-        font-size: 16px;
-        cursor: pointer;
-    }
 
-    .btn-submit:hover {
-        background-color: #0056b3;
-    }
+    /* === Campo de senha com ícone === */
+  .senha-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+  }
 
-    .btn-cancel {
-        background-color: #ccc;
-        color: #333;
-        padding: 10px 25px;
-        border-radius: 5px;
-        text-decoration: none;
-        margin-left: 15px;
-    }
+  .senha-wrapper input {
+      width: 100%;
+      padding-right: 35px;
+  }
 
-    .btn-cancel:hover {
-        background-color: #999;
-    }
+  .toggle-password {
+      position: absolute;
+      right: 10px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 18px;
+      color: #555;
+      transition: 0.2s;
+  }
+
+  .toggle-password:hover {
+      color: #000;
+  }
+
+  /* === Botões === */
+  .buttons {
+      margin-top: 30px;
+      text-align: center;
+  }
+
+  .btn-submit {
+      background-color: #007bff;
+      color: white;
+      padding: 10px 25px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+  }
+
+  .btn-submit:hover {
+      background-color: #0056b3;
+  }
+
+  .btn-cancel {
+      background-color: #ccc;
+      color: #333;
+      padding: 10px 25px;
+      border-radius: 6px;
+      text-decoration: none;
+      margin-left: 15px;
+  }
+
+  .btn-cancel:hover {
+      background-color: #999;
+  }
+
+  /* === Responsividade === */
+  @media (max-width: 768px) {
+      .form-grid {
+          grid-template-columns: 1fr;
+      }
+  }
 </style>
 
 <script>
-    const togglePassword = document.querySelector('.toggle-password');
-    const passwordInput = document.getElementById('senha');
+  const togglePassword = document.querySelector('.toggle-password');
+  const passwordInput = document.getElementById('senha');
 
-    togglePassword.addEventListener('click', () => {
-        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-        passwordInput.setAttribute('type', type);
-        togglePassword.textContent = type === 'password' ? '👁️' : '🙈';
-    });
+  togglePassword.addEventListener('click', () => {
+      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      passwordInput.setAttribute('type', type);
+      togglePassword.textContent = type === 'password' ? '👁️' : '🙈';
+  });
 </script>
 
 {% endblock %}

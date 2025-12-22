@@ -191,6 +191,7 @@
 /* ===== Tabela ===== */
 #usuariosTable tbody tr:nth-child(even) { background-color: #f2f2f2; }
 #usuariosTable tbody tr:hover { background-color: #d9e6f2; }
+#usuariosTable, #usuariosTable th, #usuariosTable td { border: 1px solid #ccc; }
 #usuariosTable th, #usuariosTable td { padding: 10px; }
 </style>
 
@@ -210,7 +211,7 @@ $(document).ready(function() {
             emptyTable: "Nenhum usuário encontrado",
             info: "Mostrando _START_ até _END_ de _TOTAL_ usuários",
             infoEmpty: "Mostrando 0 até 0 de 0 usuários",
-            lengthMenu: "Mostrar _MENU_ usuários",
+            lengthMenu: "Mostrar usuários _MENU_",
             zeroRecords: "Nenhum usuário correspondente encontrado",
             paginate: { first:"Primeira", last:"Última", next:"Próxima", previous:"Anterior" }
         },

@@ -22,29 +22,47 @@ class User(Base):
 
 class Unit(Base):
     __tablename__ = "units"
+
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True)
-    manager = Column(String)
+    name = Column(String(150), unique=True, nullable=False)      # Nome da unidade
+    manager = Column(String(100), nullable=False)               # Responsável pela unidade
+
+    def __repr__(self):
+        return f"<Unit(id={self.id}, name='{self.name}', manager='{self.manager}')>"
+
+    def __str__(self):
+        return self.name
+
 
 class Equipment(Base):
-    __tablename__ = "equipments"
-    id = Column(Integer, primary_key=True, index=True)
-    # nome = Column(String, nullable=False)
-    tipo_id = Column(Integer, ForeignKey("equipment_types.id"), nullable=False)  # Chave estrangeira
-    brand = Column(String)
-    status = Column(String)
-    state = Column(String)
-    location = Column(String)
-    tombo = Column(Integer, default=1)  # 0 = Sim, 1 = Não
-    num_tombo_ou_serie = Column(String, nullable=True)
+    __tablename__ = "equipments"  # <-- nome da tabela atualizado
     
-    tipo = relationship("EquipmentType")  # Relacionamento com EquipmentType
+    id = Column(Integer, primary_key=True, index=True)
+    # Tipo do equipamento
+    tipo_id = Column(Integer, ForeignKey("equipment_types.id"))
+    tipo = relationship("EquipmentType")
+    # Marca
+    brand_id = Column(Integer, ForeignKey("brands.id"))
+    brand = relationship("Brand")
+    # Status (ativo/inativo)
+    status = Column(String)
+    # Estado do equipamento
+    state_id = Column(Integer, ForeignKey("equipment_states.id"))
+    state = relationship("EquipmentState")
+    # Unidade responsável
+    unit_id = Column(Integer, ForeignKey("units.id"))
+    unit = relationship("Unit")
+    # Movimentações
     movements = relationship("Movement", back_populates="equipment")
+    # Controle de tombo
+    tombo = Column(Integer)  # 0 = Sim, 1 = Não
+    num_tombo_ou_serie = Column(String)
+
 
 class Movement(Base):
     __tablename__ = "movements"
     id = Column(Integer, primary_key=True, index=True)
-    equipment_id = Column(Integer, ForeignKey("equipments.id"))  # ✅ corrigido
+    equipment_id = Column(Integer, ForeignKey("equipments.id"))  # <-- corrigido
     user_id = Column(Integer, ForeignKey("users.id"))
     date = Column(DateTime, default=datetime.utcnow)
     type = Column(String)

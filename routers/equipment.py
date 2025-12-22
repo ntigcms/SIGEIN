@@ -4,7 +4,7 @@ from starlette.status import HTTP_302_FOUND
 from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import get_current_user, registrar_log
-from models import Equipment, EquipmentType, Brand, EquipmentState
+from models import Equipment, EquipmentType, Brand, EquipmentState, Unit
 from fastapi.templating import Jinja2Templates
 
 router = APIRouter(prefix="/equipment", tags=["Equipment"])
@@ -33,10 +33,20 @@ def add_equipment_form(request: Request, db: Session = Depends(get_db), user: st
     tipos = db.query(EquipmentType).all()
     marcas = db.query(Brand).all()
     estados = db.query(EquipmentState).all()
-    
+    units = db.query(Unit).all()  # <-- listar unidades
+
     return templates.TemplateResponse(
         "equipment_form.html",
-        {"request": request, "action": "add", "tipos": tipos, "marcas": marcas, "estados": estados, "equipment": None, "user": user}
+        {
+            "request": request,
+            "action": "add",
+            "tipos": tipos,
+            "marcas": marcas,
+            "estados": estados,
+            "units": units,  # <-- passar para o template
+            "equipment": None,
+            "user": user
+        }
     )
 
 # ============================
@@ -46,11 +56,11 @@ def add_equipment_form(request: Request, db: Session = Depends(get_db), user: st
 def add_equipment(
     request: Request,
     tipo_id: int = Form(...),
-    marca: str = Form(...),
+    brand_id: int = Form(...),
     status: str = Form(...),
-    estado: str = Form(...),
-    localizacao: str = Form(...),
-    tombo: str = Form(...),  # "Sim" ou "Não"
+    state_id: int = Form(...),
+    unit_id: int = Form(...),
+    tombo: str = Form(...),
     num_tombo: str = Form(None),
     num_serie: str = Form(None),
     db: Session = Depends(get_db),
@@ -60,17 +70,15 @@ def add_equipment(
         return RedirectResponse("/login")
 
     ip = request.client.host
-
-    # Determina o valor com base no radio selecionado
     tombo_valor = 0 if tombo == "Sim" else 1
     numero = num_tombo if tombo == "Sim" else num_serie
 
     equipment = Equipment(
         tipo_id=tipo_id,
-        brand=marca,
+        brand_id=brand_id,
         status=status,
-        state=estado,
-        location=localizacao,
+        state_id=state_id,
+        unit_id=unit_id,
         tombo=tombo_valor,
         num_tombo_ou_serie=numero
     )
@@ -79,7 +87,7 @@ def add_equipment(
     db.commit()
     db.refresh(equipment)
 
-    registrar_log(db, usuario=user, acao=f"Adicionou equipamento ({marca})", ip=ip)
+    registrar_log(db, usuario=user, acao=f"Adicionou equipamento ID {equipment.id}", ip=ip)
     return RedirectResponse("/equipment", status_code=HTTP_302_FOUND)
 
 # ============================
@@ -90,11 +98,11 @@ def edit_equipment(
     request: Request,
     equipment_id: int,
     tipo_id: int = Form(...),
-    marca: str = Form(...),
+    brand_id: int = Form(...),
     status: str = Form(...),
-    estado: str = Form(...),
-    localizacao: str = Form(...),
-    tombo: str = Form(...),          # "Sim" ou "Não"
+    state_id: int = Form(...),
+    unit_id: int = Form(...),
+    tombo: str = Form(...),
     num_tombo: str = Form(None),
     num_serie: str = Form(None),
     db: Session = Depends(get_db),
@@ -103,21 +111,18 @@ def edit_equipment(
     if not user:
         return RedirectResponse("/login")
 
-    equipamento = db.query(Equipment).filter(Equipment.id == equipment_id).first()
-    if equipamento:
-        # Atualiza campos gerais
-        equipamento.tipo_id = tipo_id
-        equipamento.brand = marca
-        equipamento.status = status
-        equipamento.state = estado
-        equipamento.location = localizacao
-
-        # Atualiza tombo e num_tombo_ou_serie
-        equipamento.tombo = 0 if tombo == "Sim" else 1
-        equipamento.num_tombo_ou_serie = num_tombo if tombo == "Sim" else num_serie
+    equipment = db.query(Equipment).filter(Equipment.id == equipment_id).first()
+    if equipment:
+        equipment.tipo_id = tipo_id
+        equipment.brand_id = brand_id
+        equipment.status = status
+        equipment.state_id = state_id
+        equipment.unit_id = unit_id
+        equipment.tombo = 0 if tombo == "Sim" else 1
+        equipment.num_tombo_ou_serie = num_tombo if tombo == "Sim" else num_serie
 
         db.commit()
-        registrar_log(db, usuario=user, acao=f"Editou equipamento ({marca})", ip=request.client.host)
+        registrar_log(db, usuario=user, acao=f"Editou equipamento ID {equipment.id}", ip=request.client.host)
 
     return RedirectResponse("/equipment", status_code=HTTP_302_FOUND)
 
@@ -155,11 +160,22 @@ def edit_equipment_form(equipment_id: int, request: Request, db: Session = Depen
     tipos = db.query(EquipmentType).all()
     marcas = db.query(Brand).all()
     estados = db.query(EquipmentState).all()
-    
+    units = db.query(Unit).all()  # <-- listar unidades
+
     return templates.TemplateResponse(
         "equipment_form.html",
-        {"request": request, "action": "edit", "tipos": tipos, "marcas": marcas, "estados": estados, "equipment": equipment, "user": user}
+        {
+            "request": request,
+            "action": "edit",
+            "tipos": tipos,
+            "marcas": marcas,
+            "estados": estados,
+            "units": units,  # <-- passar para o template
+            "equipment": equipment,
+            "user": user
+        }
     )
+
 
 # ============================
 # Confirmar exclusão de equipamento
