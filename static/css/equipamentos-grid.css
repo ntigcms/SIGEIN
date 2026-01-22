@@ -1,0 +1,189 @@
+/* =====================================================
+   FILTROS – VISUAL PADRÃO (igual Atendimentos)
+   ===================================================== */
+
+.filtros-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 25px;
+    margin-bottom: 15px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+    position: relative;
+    z-index: 5000;
+}
+
+.filtro-item {
+    display: flex;
+    flex-direction: column;
+    min-width: 180px;
+    flex: 1;
+}
+
+.filtro-item label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #004080;
+    margin-bottom: 5px;
+}
+
+/* Campo custom */
+.search-container {
+    position: relative;
+    width: 100%;
+    z-index: 5001;
+}
+
+.search-container .options {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    display: none;
+    z-index: 9999;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+
+.filter-search {
+    width: 100%;
+    padding: 8px 28px 8px 8px;
+    border: 1px solid #aaa;
+    border-radius: 6px;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+/* SETA */
+.search-container .arrow {
+    position: absolute;
+    z-index: 6001;
+}
+
+.search-container .arrow.open {
+    z-index: 6001;
+}
+
+.arrow {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 13px;
+    color: #666;
+    pointer-events: none;
+}
+
+
+.option {
+    padding: 6px 10px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.option:hover {
+    background-color: #f0f0f0;
+}
+
+/* Botão limpar */
+.clear-btn {
+    background-color: #cc0000;
+    color: #ffffff;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+.clear-btn:hover {
+    background-color: #a00000;
+}
+
+
+/* =====================================================
+   BLOCO DA TABELA (CARD)
+   ===================================================== */
+
+.table-section {
+    background-color: #f8f9fa;
+    padding: 20px 25px;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    position: relative;
+    z-index: 1;
+}
+
+.table-section h4 {
+    margin-bottom: 15px;
+    font-weight: 700;
+    color: #0d6efd;
+}
+
+
+/* =====================================================
+   TABELA DE EQUIPAMENTOS
+   ⚠ NÃO ALTERA GRID / LARGURA / DISPLAY
+   ===================================================== */
+
+.data-grid {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 14px;
+}
+
+/* Células */
+.data-grid th,
+.data-grid td {
+    border: 1px solid #dee2e6;
+    padding: 8px 12px;
+    vertical-align: middle;
+}
+
+/* Cabeçalho */
+.data-grid thead tr {
+    background-color: #0d6efd;
+    color: #ffffff;
+}
+
+.data-grid th {
+    font-weight: bold;
+    text-align: center;
+    white-space: nowrap; /* garante alinhamento do grid */
+}
+
+/* Zebra */
+.data-grid tbody tr:nth-child(odd) {
+    background-color: #f8f9fa;
+}
+
+.data-grid tbody tr:nth-child(even) {
+    background-color: #e9ecef;
+}
+
+/* Hover */
+.data-grid tbody tr:hover {
+    background-color: #d0ebff;
+}
+
+/* Ações – não quebra layout */
+.data-grid td:last-child {
+    white-space: nowrap;
+    text-align: center;
+}
+
+.dataTables_wrapper,
+.dataTables_scroll,
+.dataTables_scrollBody {
+    overflow: visible !important;
+}

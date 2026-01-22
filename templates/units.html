@@ -42,6 +42,8 @@
 </div>
 
 <!-- ======= TABELA ======= -->
+ <div class="table-section">
+    <h4>Lista de Unidades Administrativas</h4>
 <table id="unitsTable" style="width:100%; border-collapse: collapse; text-align:left;">
     <thead>
         <tr style="background-color: #004080; color:white;">
@@ -78,25 +80,18 @@
     {% endfor %}
     </tbody>
 </table>
-
+</div>
 <!-- ======= IMPORTS ======= -->
 <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<!-- CSS VISUAL (SEM DUPLICAÇÃO) -->
+<link rel="stylesheet" href="{{ request.url_for('static', path='css/equipamentos-grid.css') }}">
 
 <style>
 /* ======= LAYOUT DOS FILTROS ======= */
-.filtros-container {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 25px;
-    margin-bottom: 15px;
-    background-color: transparent;
-    padding: 15px 20px;
-    border-radius: 8px;
-}
+
 .filtro-item {
     display: flex;
     flex-direction: column;
@@ -228,12 +223,21 @@ $(document).ready(function() {
             arrow.addClass('open');
         }
 
-        input.on('click', function(e) {
-            e.stopPropagation();
-            if (optionsDiv.is(':visible')) {
-                optionsDiv.hide(); arrow.removeClass('open');
-            } else renderOptions(valores);
-        });
+    // Abrir filtro e fechar os outros
+    input.on("click", function(e){
+    e.stopPropagation();
+
+    // Fecha todos os outros filtros
+    $('.search-container').not(container).find('.options').hide();
+
+    // Alterna o filtro atual
+    if (optionsDiv.is(":visible")) {
+        optionsDiv.hide();
+        arrow.removeClass('open');
+    } else {
+        renderOptions(valores);
+    }
+});
 
         input.on('input', function() {
             const query = input.val().toLowerCase();

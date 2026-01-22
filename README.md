@@ -69,7 +69,7 @@ Aplicação web em FastAPI + Jinja2 para gerenciar equipamentos, unidades, usuá
 ```powershell
 python -m venv .venv
 # PowerShell (Windows)
-.\.venv\Scripts\Activate.ps1
+.\venv\Scripts\Activate.ps1
 # CMD (Windows)
 .\.venv\Scripts\activate.bat
 # macOS / Linux

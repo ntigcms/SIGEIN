@@ -1,39 +1,34 @@
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from database import Base, engine
 from dependencies import sessions
 
-# Routers
-from routers import auth, dashboard, equipment, users, units, movements, logs, root, equipment_types, brands, states
+# Criação do app (somente uma vez)
+app = FastAPI()
+
+# Montagem do diretório static
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Configuração de templates
+templates = Jinja2Templates(directory="templates")
+
+# Função global para templates
+def get_logged_user(request: Request):
+    session_id = request.cookies.get("session_id")
+    if session_id and session_id in sessions:
+        return sessions[session_id]
+    return None
+
+templates.env.globals["get_logged_user"] = get_logged_user
+app.state.templates = templates
 
 # Criação das tabelas
 Base.metadata.create_all(bind=engine)
 
-# Inicializa o app FastAPI
-app = FastAPI()
+# Routers
+from routers import auth, dashboard, equipment, users, units, movements, logs, root, equipment_types, brands, states
 
-# Configuração de templates e arquivos estáticos
-templates = Jinja2Templates(directory="templates")
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Função global que pega o usuário logado do cookie + dicionário sessions
-def get_logged_user(request: Request):
-    session_id = request.cookies.get("session_id")
-    if session_id and session_id in sessions:
-        return sessions[session_id]  # retorna o username
-    return None
-
-def get_user_for_template(request: Request):
-    return get_logged_user(request)
-
-# Torna acessível a função em todos os templates Jinja2
-templates.env.globals["get_logged_user"] = get_logged_user
-
-# 🔹 Exporte o templates para outros módulos
-app.state.templates = templates
-
-# Incluindo routers
 app.include_router(root.router)
 app.include_router(auth.router)
 app.include_router(dashboard.router)

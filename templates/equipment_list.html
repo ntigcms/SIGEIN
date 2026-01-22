@@ -3,208 +3,136 @@
 {% block title %}Equipamentos{% endblock %}
 
 {% block content %}
+
 <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 20px;">
     <h2>Equipamentos</h2>
-    <a href="/equipment/add"><button class="animated-btn">Cadastrar Novo</button></a>
+    <a href="/equipment/add">
+        <button class="animated-btn">Cadastrar Novo</button>
+    </a>
 </div>
 
-<!-- FILTROS PERSONALIZADOS -->
+<!-- FILTROS -->
 <div class="filtros-container">
+
     <div class="filtro-item">
         <label>ID</label>
         <div class="search-container" data-col="1">
             <input type="text" placeholder="Clique para selecionar..." class="filter-search">
             <span class="arrow">▼</span>
-            <div class="options" style="display:none;"></div>
+            <div class="options"></div>
         </div>
     </div>
+
     <div class="filtro-item">
         <label>Tipo</label>
         <div class="search-container" data-col="2">
             <input type="text" placeholder="Clique para selecionar..." class="filter-search">
             <span class="arrow">▼</span>
-            <div class="options" style="display:none;"></div>
+            <div class="options"></div>
         </div>
     </div>
+
     <div class="filtro-item">
         <label>Marca</label>
         <div class="search-container" data-col="3">
             <input type="text" placeholder="Clique para selecionar..." class="filter-search">
             <span class="arrow">▼</span>
-            <div class="options" style="display:none;"></div>
+            <div class="options"></div>
         </div>
     </div>
+
     <div class="filtro-item">
         <label>Status</label>
         <div class="search-container" data-col="4">
             <input type="text" placeholder="Clique para selecionar..." class="filter-search">
             <span class="arrow">▼</span>
-            <div class="options" style="display:none;"></div>
+            <div class="options"></div>
         </div>
     </div>
+
     <div class="filtro-item">
         <label>Estado</label>
         <div class="search-container" data-col="5">
             <input type="text" placeholder="Clique para selecionar..." class="filter-search">
             <span class="arrow">▼</span>
-            <div class="options" style="display:none;"></div>
+            <div class="options"></div>
         </div>
     </div>
-    <div class="filtro-item">
-    <label>Unidade Administrativa</label>
-    <div class="search-container" data-col="6">
-        <input type="text" placeholder="Clique para selecionar..." class="filter-search">
-        <span class="arrow">▼</span>
-        <div class="options" style="display:none;"></div>
-    </div>
-</div>
 
-    <!-- Botão para limpar filtros -->
-    <div style="display:flex; align-items:center;">
+    <div class="filtro-item">
+        <label>Unidade Administrativa</label>
+        <div class="search-container" data-col="6">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options"></div>
+        </div>
+    </div>
+
+    <div style="display:flex; align-items:center; margin-top:18px;">
         <button id="clear-filters" class="clear-btn">🧹 Limpar Filtros</button>
     </div>
+
 </div>
 
-<table id="equipmentsTable" style="width:100%; border-collapse: collapse; text-align:left;">
-    <thead>
-<tr style="background-color: #004080; color:white;">
-    <th><input type="checkbox" id="select-all" onclick="toggleAll(this)"></th>
-    <th>ID</th>
-    <th>Tipo</th>
-    <th>Marca</th>
-    <th>Status</th>
-    <th>Estado</th>
-    <th>Unidade Administrativa</th> <!-- alterado aqui -->
-    <th>Ações</th>
-</tr>
-</thead>
-    <tbody>
-    {% for eq in equipments %}
-    <tr>
-        <td><input type="checkbox" class="select-item"></td>
-        <td>{{ eq.id }}</td>
-        <td>{{ eq.tipo.nome }}</td>
-        <td>{{ eq.brand.nome }}</td>
-        <td>{{ eq.status }}</td>
-        <td>{{ eq.state.nome }}</td>
-        <td>{{ eq.unit.name }}</td>
-        <td>
-            <a href="/equipment/edit/{{ eq.id }}" title="Editar">
-                <i class="fas fa-pen" style="color:#ffaa00; font-size: 18px; margin-right: 10px; cursor:pointer;"></i>
-            </a>
-            <a href="/equipment/delete/{{ eq.id }}" title="Excluir"
-               onclick="return confirm('Tem certeza que deseja excluir este equipamento?');">
-               <i class="fas fa-trash" style="color:#cc0000; font-size: 18px; cursor:pointer;"></i>
-            </a>
-        </td>
-    </tr>
-    {% endfor %}
-    </tbody>
-</table>
+<!-- TABELA (ENVOLVIDA EM CARD VISUAL) -->
+<div class="table-section">
+    <h4>Lista de Equipamentos</h4>
 
+    <table id="equipmentsTable" class="data-grid display">
+        <thead>
+            <tr>
+                <th><input type="checkbox" id="select-all" onclick="toggleAll(this)"></th>
+                <th>ID</th>
+                <th>Tipo</th>
+                <th>Marca</th>
+                <th>Status</th>
+                <th>Estado</th>
+                <th>Unidade Administrativa</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+
+        <tbody>
+        {% for eq in equipments %}
+            <tr>
+                <td><input type="checkbox" class="select-item"></td>
+                <td>{{ eq.id }}</td>
+                <td>{{ eq.tipo.nome }}</td>
+                <td>{{ eq.brand.nome }}</td>
+                <td>{{ eq.status }}</td>
+                <td>{{ eq.state.nome }}</td>
+                <td>{{ eq.unit.name }}</td>
+                <td>
+                    <a href="/equipment/edit/{{ eq.id }}" title="Editar">
+                        <i class="fas fa-pen" style="color:#ffaa00; font-size:18px;"></i>
+                    </a>
+                    <a href="/equipment/delete/{{ eq.id }}"
+                       title="Excluir"
+                       onclick="return confirm('Tem certeza que deseja excluir este equipamento?');">
+                        <i class="fas fa-trash" style="color:#cc0000; font-size:18px;"></i>
+                    </a>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- LIBS (INALTERADAS) -->
 <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 
-<style>
-/* ======= LAYOUT DOS FILTROS ======= */
-.filtros-container {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 25px;
-    margin-bottom: 15px;
-    background-color: transparent;
-    padding: 15px 20px;
-    border-radius: 8px;
-    border: 0px solid #ddd;
-}
-.filtro-item {
-    display: flex;
-    flex-direction: column;
-    min-width: 180px;
-    flex: 1;
-}
-.filtro-item label {
-    font-size: 13px;
-    font-weight: 600;
-    color: #004080;
-    margin-bottom: 5px;
-}
+<!-- CSS VISUAL (SEM DUPLICAÇÃO) -->
+<link rel="stylesheet" href="{{ request.url_for('static', path='css/equipamentos-grid.css') }}">
 
-/* ======= CAMPO DE PESQUISA CUSTOM ======= */
-.search-container {
-    position: relative;
-    width: 100%;
-}
-.filter-search {
-    width: 100%;
-    padding: 8px 28px 8px 8px;
-    box-sizing: border-box;
-    border: 1px solid #aaa;
-    border-radius: 6px;
-    cursor: text;
-    font-size: 13px;
-}
-.arrow {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 14px;
-    color: #666;
-    pointer-events: none;
-    transition: transform 0.2s;
-}
-.arrow.open { transform: translateY(-50%) rotate(180deg); }
-.options {
-    position: absolute;
-    top: 36px;
-    left: 0;
-    right: 0;
-    border: 1px solid #ccc;
-    background: white;
-    max-height: 200px;
-    overflow-y: auto;
-    z-index: 10;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-    border-radius: 6px;
-}
-.option {
-    display: flex;
-    align-items: center;
-    padding: 6px 10px;
-    cursor: pointer;
-    font-size: 13px;
-}
-.option:hover { background-color: #f0f0f0; }
 
-/* ======= BOTÃO LIMPAR ======= */
-.clear-btn {
-    background-color: #cc0000;
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: bold;
-    transition: background-color 0.3s;
-}
-.clear-btn:hover { background-color: #a00000; }
-
-/* ======= TABELA ======= */
-#equipmentsTable tbody tr:nth-child(even) { background-color: #f2f2f2; }
-#equipmentsTable tbody tr:hover { background-color: #d9e6f2; }
-#equipmentsTable, #equipmentsTable th, #equipmentsTable td { border: 1px solid #ccc; }
-#equipmentsTable th, #equipmentsTable td { padding: 10px; }
-</style>
-
+<!-- JS ORIGINAL — NÃO ALTERADO -->
 <script>
 function toggleAll(source) {
     let checkboxes = document.getElementsByClassName('select-item');
-    for(let i=0; i<checkboxes.length; i++) {
+    for (let i = 0; i < checkboxes.length; i++) {
         checkboxes[i].checked = source.checked;
     }
 }
@@ -219,13 +147,16 @@ $(document).ready(function() {
             infoEmpty: "Mostrando 0 a 0 de 0",
             lengthMenu: "Mostrar registros _MENU_",
             zeroRecords: "Nenhum equipamento encontrado",
-            paginate: { first:"Primeiro", last:"Último", next:"Próximo", previous:"Anterior" }
+            paginate: {
+                first:"Primeiro", last:"Último",
+                next:"Próximo", previous:"Anterior"
+            }
         },
         pageLength: 10,
         dom: 'rt<"bottom"l<"info-wrapper"ip>><"clear">'
     });
 
-    // === FILTROS CUSTOM ===
+    // FILTROS (INALTERADOS)
     $('.search-container').each(function() {
         const container = $(this);
         const input = container.find('.filter-search');
@@ -234,7 +165,6 @@ $(document).ready(function() {
         const colIndex = container.data('col');
         const column = table.column(colIndex);
         let selecionados = [];
-
         const valores = column.data().unique().sort().toArray();
 
         function renderOptions(lista) {
@@ -252,35 +182,32 @@ $(document).ready(function() {
             arrow.addClass('open');
         }
 
-        input.on('click', function(e) {
+         // Abrir filtro e fechar os outros
+        input.on("click", function(e){
             e.stopPropagation();
-            if (optionsDiv.is(':visible')) {
-                optionsDiv.hide(); arrow.removeClass('open');
-            } else renderOptions(valores);
+
+            // Fecha todos os outros filtros
+            $('.search-container').not(container).find('.options').hide();
+
+            // Alterna o filtro atual
+            optionsDiv.is(":visible") ? optionsDiv.hide() : renderOptions(valores);
         });
+
 
         input.on('input', function() {
             const query = input.val().toLowerCase();
-            const filtradas = valores.filter(v => v.toLowerCase().includes(query));
-            renderOptions(filtradas);
+            renderOptions(valores.filter(v => v.toLowerCase().includes(query)));
         });
 
         optionsDiv.on('change', 'input[type="checkbox"]', function() {
             const val = $(this).val();
-            if (this.checked) selecionados.push(val);
-            else selecionados = selecionados.filter(v => v !== val);
+            this.checked ? selecionados.push(val) :
+                selecionados = selecionados.filter(v => v !== val);
             input.val(selecionados.join(', '));
-            aplicarFiltro();
+            selecionados.length
+                ? column.search(selecionados.map(v => '^'+$.fn.dataTable.util.escapeRegex(v)+'$').join('|'), true, false).draw()
+                : column.search('').draw();
         });
-
-        function aplicarFiltro() {
-            if (selecionados.length > 0) {
-                const regex = selecionados.map(v => '^'+$.fn.dataTable.util.escapeRegex(v)+'$').join('|');
-                column.search(regex, true, false).draw();
-            } else {
-                column.search('').draw();
-            }
-        }
 
         $(document).on('click', function(e) {
             if (!$(e.target).closest(container).length) {
@@ -289,7 +216,6 @@ $(document).ready(function() {
             }
         });
 
-        // Função para resetar
         container.data('reset', function() {
             selecionados = [];
             input.val('');
@@ -299,7 +225,6 @@ $(document).ready(function() {
         });
     });
 
-    // === LIMPAR FILTROS ===
     $('#clear-filters').on('click', function() {
         $('.search-container').each(function() {
             const resetFn = $(this).data('reset');
@@ -308,4 +233,5 @@ $(document).ready(function() {
     });
 });
 </script>
+
 {% endblock %}

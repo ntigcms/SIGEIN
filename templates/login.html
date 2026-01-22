@@ -3,34 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <title>SIGEIN – Sistema Integrado de Gestão de Estoque e Inventário</title>
+
     <style>
-        /* Estilo do corpo */
+        /* FUNDO COM BLUR (visual copiado) */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url('https://i.postimg.cc/TY5QgvqQ/dreamina_2026_01_19_2995_Plano_de_fundo_abstrato_e_futurista_em_t.jpg');
+            background-size: cover;
+            background-position: center;
+            filter: blur(12px);
+            transform: scale(1.1);
+            z-index: -2;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url('https://i.postimg.cc/TY5QgvqQ/dreamina_2026_01_19_2995_Plano_de_fundo_abstrato_e_futurista_em_t.jpg');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            z-index: -1;
+        }
+
+        /* Corpo */
         body {
             margin: 0;
             padding: 0;
             font-family: Arial, sans-serif;
-            background: #d0e7ff; /* Azul leve */
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
+            background: #d0e7ff; /* fallback */
         }
 
-        /* Título da aplicação */
+        /* Título */
         .app-title {
-    text-align: center;
-    color: #0400ff; /* branco */
-    font-family: monospace;
-    margin-bottom: 30px;
-    font-size: 1.5rem; /* aumentei o tamanho da fonte */
-    text-shadow: 
-        2px 2px 0 #ffffff, 
-        4px 4px 2px rgb(255, 255, 255), 
-        4px 4px 2px rgb(255, 255, 255); /* efeito 3D mais profundo */
-}
-
-
+            text-align: center;
+            color: #0033cc;
+            font-family: monospace;
+            margin-bottom: 30px;
+            font-size: 1.6rem;
+            text-shadow:
+                2px 2px 0 #ffffff,
+                4px 4px 2px rgba(255, 255, 255, 0.9),
+                6px 6px 4px rgba(255, 255, 255, 0.7);
+        }
 
         .app-title h1,
         .app-title h3,
@@ -38,23 +61,29 @@
             margin: 5px 0;
         }
 
-        /* Container do login */
+        /* Card de login */
         .login-container {
-            background: #ffffff;
-            padding: 40px 60px;
-            border-radius: 10px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-            text-align: center;
-        }
+    background: #ffffff;
+    padding: 40px 55px;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    text-align: center;
+    width: 350px;
+
+    margin-top: 480px; /* ↓ BAIXA O FORM */
+}
+
 
         /* Inputs */
-        input[type="text"], input[type="password"] {
+        input[type="text"],
+        input[type="password"] {
             width: 100%;
             padding: 12px 15px;
             margin: 10px 0 20px 0;
             border: 1px solid #ccc;
             border-radius: 5px;
             font-size: 1rem;
+            box-sizing: border-box;
         }
 
         /* Botão */
@@ -67,16 +96,15 @@
             color: white;
             background: linear-gradient(90deg, #0077cc, #00aaff);
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: 0.3s;
         }
 
-        /* Animação do botão */
         button:hover {
             background: linear-gradient(90deg, #00aaff, #0077cc);
             transform: scale(1.05);
         }
 
-        /* Mensagem de erro */
+        /* Erro */
         .error {
             color: red;
             margin-bottom: 20px;
@@ -86,27 +114,23 @@
 </head>
 <body>
 
-<!-- Título da aplicação -->
+<!-- Título -->
 <div class="app-title">
-    <h1>SIGEIN – Sistema Integrado de Gestão de Estoque e Inventário</h1>
-    <h3>Núcleo de Tecnologia da Informação</h3>
-    <h4>Guarda Civil Municipal de Salvador</h4>
-</div>
+   </div>
 
-<!-- Container do login -->
+<!-- Login -->
 <div class="login-container">
 
-    <!-- Mensagem de erro -->
     {% if error %}
         <div class="error">{{ error }}</div>
     {% endif %}
 
-    <!-- Formulário de login -->
     <form action="/login" method="post">
         <input type="text" name="username" placeholder="Usuário" required>
         <input type="password" name="password" placeholder="Senha" required>
         <button type="submit">Entrar</button>
     </form>
+
 </div>
 
 </body>

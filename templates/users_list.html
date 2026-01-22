@@ -11,6 +11,7 @@
 
 <!-- Filtros com estilo de campo de pesquisa -->
 <div class="filtros-container">
+
     <div class="filtro-item">
         <label>ID</label>
         <div class="search-container" data-col="1">
@@ -58,9 +59,12 @@
     </div>
 </div>
 
-<table id="usuariosTable" class="display" style="width:100%; border-collapse: collapse; text-align:left;">
+<!-- TABELA (ENVOLVIDA EM CARD VISUAL) -->
+<div class="table-section">
+    <h4>Lista de Usuários</h4>
+<table id="usuariosTable" class="data-grid display" style="width:100%; border-collapse: collapse; text-align:left;">
     <thead>
-        <tr style="background-color: #004080; color:white;">
+        <tr style="background-color: #0d6efd; color:white;">
             <th><input type="checkbox" id="select-all" onclick="toggleAll(this)"></th>
             <th>ID</th>
             <th>Nome</th>
@@ -89,9 +93,10 @@
                 </a>
             </td>
         </tr>
-        {% endfor %}
-    </tbody>
-</table>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
 <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 
@@ -99,101 +104,10 @@
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"/>
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<!-- CSS VISUAL (SEM DUPLICAÇÃO) -->
+<link rel="stylesheet" href="{{ request.url_for('static', path='css/equipamentos-grid.css') }}">
 
-<style>
-.filtros-container {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 25px;
-    margin-bottom: 15px;
-    background-color: transparent;
-    padding: 15px 20px;
-    border-radius: 8px;
-    border: 0px solid #ddd;
-}
-.filtro-item {
-    display: flex;
-    flex-direction: column;
-    min-width: 200px;
-    flex: 1;
-}
-.filtro-item label {
-    font-size: 13px;
-    font-weight: 600;
-    color: #004080;
-    margin-bottom: 5px;
-}
 
-/* ===== Campo de pesquisa customizado ===== */
-.search-container {
-    position: relative;
-    width: 100%;
-}
-.filter-search {
-    width: 100%;
-    padding: 8px 28px 8px 8px;
-    box-sizing: border-box;
-    border: 1px solid #aaa;
-    border-radius: 6px;
-    cursor: text;
-    font-size: 13px;
-}
-.arrow {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 14px;
-    color: #666;
-    pointer-events: none;
-    transition: transform 0.2s;
-}
-.arrow.open { transform: translateY(-50%) rotate(180deg); }
-.options {
-    position: absolute;
-    top: 36px;
-    left: 0;
-    right: 0;
-    border: 1px solid #ccc;
-    background: white;
-    max-height: 200px;
-    overflow-y: auto;
-    z-index: 10;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-    border-radius: 6px;
-}
-.option {
-    display: flex;
-    align-items: center;
-    padding: 6px 10px;
-    cursor: pointer;
-    font-size: 13px;
-}
-.option:hover { background-color: #f0f0f0; }
-
-/* ===== Botão "Limpar filtros" ===== */
-.clear-btn {
-    background-color: #cc0000;
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: bold;
-    transition: background-color 0.3s;
-}
-.clear-btn:hover {
-    background-color: #a00000;
-}
-
-/* ===== Tabela ===== */
-#usuariosTable tbody tr:nth-child(even) { background-color: #f2f2f2; }
-#usuariosTable tbody tr:hover { background-color: #d9e6f2; }
-#usuariosTable, #usuariosTable th, #usuariosTable td { border: 1px solid #ccc; }
-#usuariosTable th, #usuariosTable td { padding: 10px; }
-</style>
 
 <script>
 function toggleAll(source) {
@@ -245,16 +159,21 @@ $(document).ready(function() {
             optionsDiv.show();
             arrow.addClass('open');
         }
+    // Abrir filtro e fechar os outros
+    input.on("click", function(e){
+    e.stopPropagation();
 
-        input.on('click', function(e) {
-            e.stopPropagation();
-            if (optionsDiv.is(':visible')) {
-                optionsDiv.hide();
-                arrow.removeClass('open');
-            } else {
-                renderOptions(valores);
-            }
-        });
+    // Fecha todos os outros filtros
+    $('.search-container').not(container).find('.options').hide();
+
+    // Alterna o filtro atual
+    if (optionsDiv.is(":visible")) {
+        optionsDiv.hide();
+        arrow.removeClass('open');
+    } else {
+        renderOptions(valores);
+    }
+});
 
         input.on('input', function() {
             const query = input.val().toLowerCase();
