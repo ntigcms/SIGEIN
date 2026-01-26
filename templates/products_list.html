@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Produtos - SIGEN{% endblock %}
+
+{% block content %}
+
+<div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 20px;">
+    <h2>Produtos</h2>
+    <a href="/products/add">
+        <button class="animated-btn">Cadastrar Novo</button>
+    </a>
+</div>
+
+<!-- FILTROS -->
+<div class="filtros-container">
+
+    <div class="filtro-item">
+        <label>ID</label>
+        <div class="search-container" data-col="1">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options"></div>
+        </div>
+    </div>
+
+    <div class="filtro-item">
+        <label>Nome</label>
+        <div class="search-container" data-col="2">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options"></div>
+        </div>
+    </div>
+
+    <div class="filtro-item">
+        <label>Tipo</label>
+        <div class="search-container" data-col="3">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options"></div>
+        </div>
+    </div>
+
+    <div class="filtro-item">
+        <label>Marca</label>
+        <div class="search-container" data-col="4">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options"></div>
+        </div>
+    </div>
+
+    <div class="filtro-item">
+        <label>Controla por Série</label>
+        <div class="search-container" data-col="5">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options"></div>
+        </div>
+    </div>
+
+    <div style="display:flex; align-items:center; margin-top:18px;">
+        <button id="clear-filters" class="clear-btn">🧹 Limpar Filtros</button>
+    </div>
+
+</div>
+
+<!-- TABELA -->
+<div class="table-section">
+    <h4>Lista de Produtos</h4>
+
+    <table id="productsTable" class="data-grid display">
+        <thead>
+            <tr>
+                <th><input type="checkbox" id="select-all" onclick="toggleAll(this)"></th>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Tipo</th>
+                <th>Marca</th>
+                <th>Controla por Série</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+
+        <tbody>
+        {% for p in products %}
+            <tr>
+                <td><input type="checkbox" class="select-item"></td>
+                <td>{{ p.id }}</td>
+                <td>{{ p.name }}</td>
+                <td>{{ p.type.nome }}</td>
+                <td>{{ p.brand.nome }}</td>
+                <td>{{ "Sim" if p.controla_por_serie else "Não" }}</td>
+                <td>
+                    <a href="/products/edit/{{ p.id }}" title="Editar">
+                        <i class="fas fa-pen" style="color:#ffaa00; font-size:18px;"></i>
+                    </a>
+                    <a href="/products/delete/{{ p.id }}" title="Excluir"
+                       onclick="return confirm('Tem certeza que deseja excluir este produto?');">
+                        <i class="fas fa-trash" style="color:#cc0000; font-size:18px;"></i>
+                    </a>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- LIBS -->
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<!-- CSS -->
+<link rel="stylesheet" href="{{ request.url_for('static', path='css/equipamentos-grid.css') }}">
+
+<script>
+function toggleAll(source) {
+    let checkboxes = document.getElementsByClassName('select-item');
+    for (let i = 0; i < checkboxes.length; i++) {
+        checkboxes[i].checked = source.checked;
+    }
+}
+
+$(document).ready(function() {
+    var table = $('#productsTable').DataTable({
+        order: [[1, "asc"]],
+        columnDefs: [{ orderable: false, targets: [0,6] }],
+        language: {
+            emptyTable: "Nenhum produto encontrado",
+            info: "Mostrando _START_ a _END_ de _TOTAL_",
+            infoEmpty: "Mostrando 0 a 0 de 0",
+            lengthMenu: "Mostrar registros _MENU_",
+            zeroRecords: "Nenhum produto encontrado",
+            paginate: {
+                first:"Primeiro", last:"Último",
+                next:"Próximo", previous:"Anterior"
+            }
+        },
+        pageLength: 10,
+        dom: 'rt<"bottom"l<"info-wrapper"ip>><"clear">'
+    });
+
+    // FILTROS
+    $('.search-container').each(function() {
+        const container = $(this);
+        const input = container.find('.filter-search');
+        const optionsDiv = container.find('.options');
+        const arrow = container.find('.arrow');
+        const colIndex = container.data('col');
+        const column = table.column(colIndex);
+        let selecionados = [];
+        const valores = column.data().unique().sort().toArray();
+
+        function renderOptions(lista) {
+            optionsDiv.empty();
+            lista.forEach(v => {
+                const checked = selecionados.includes(v) ? 'checked' : '';
+                optionsDiv.append(`
+                    <div class="option">
+                        <input type="checkbox" value="${v}" ${checked}>
+                        <label>${v}</label>
+                    </div>
+                `);
+            });
+            optionsDiv.show();
+            arrow.addClass('open');
+        }
+
+        input.on("click", function(e){
+            e.stopPropagation();
+            $('.search-container').not(container).find('.options').hide();
+            optionsDiv.is(":visible") ? optionsDiv.hide() : renderOptions(valores);
+        });
+
+        input.on('input', function() {
+            const query = input.val().toLowerCase();
+            renderOptions(valores.filter(v => v.toLowerCase().includes(query)));
+        });
+
+        optionsDiv.on('change', 'input[type="checkbox"]', function() {
+            const val = $(this).val();
+            this.checked ? selecionados.push(val) :
+                selecionados = selecionados.filter(v => v !== val);
+            input.val(selecionados.join(', '));
+            selecionados.length
+                ? column.search(selecionados.map(v => '^'+$.fn.dataTable.util.escapeRegex(v)+'$').join('|'), true, false).draw()
+                : column.search('').draw();
+        });
+
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest(container).length) {
+                optionsDiv.hide();
+                arrow.removeClass('open');
+            }
+        });
+
+        container.data('reset', function() {
+            selecionados = [];
+            input.val('');
+            column.search('').draw();
+            optionsDiv.hide();
+            arrow.removeClass('open');
+        });
+    });
+
+    $('#clear-filters').on('click', function() {
+        $('.search-container').each(function() {
+            const resetFn = $(this).data('reset');
+            if (typeof resetFn === 'function') resetFn();
+        });
+    });
+});
+</script>
+
+{% endblock %}

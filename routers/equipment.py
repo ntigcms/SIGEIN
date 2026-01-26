@@ -4,7 +4,7 @@ from starlette.status import HTTP_302_FOUND
 from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import get_current_user, registrar_log
-from models import Equipment, EquipmentType, Brand, EquipmentState, Unit
+from models import Equipment, EquipmentType, Brand, EquipmentState, Unit, Product
 from fastapi.templating import Jinja2Templates
 
 router = APIRouter(prefix="/equipment", tags=["Equipment"])
@@ -34,6 +34,7 @@ def add_equipment_form(request: Request, db: Session = Depends(get_db), user: st
     marcas = db.query(Brand).all()
     estados = db.query(EquipmentState).all()
     units = db.query(Unit).all()  # <-- listar unidades
+    products = db.query(Product).filter(Product.ativo == True).all()
 
     return templates.TemplateResponse(
         "equipment_form.html",
@@ -45,6 +46,7 @@ def add_equipment_form(request: Request, db: Session = Depends(get_db), user: st
             "estados": estados,
             "units": units,  # <-- passar para o template
             "equipment": None,
+            "products": products,
             "user": user
         }
     )
@@ -60,6 +62,7 @@ def add_equipment(
     status: str = Form(...),
     state_id: int = Form(...),
     unit_id: int = Form(...),
+    product_id: int = Form(...),
     tombo: str = Form(...),
     num_tombo: str = Form(None),
     num_serie: str = Form(None),
@@ -79,6 +82,7 @@ def add_equipment(
         status=status,
         state_id=state_id,
         unit_id=unit_id,
+        product_id=product_id,
         tombo=tombo_valor,
         num_tombo_ou_serie=numero
     )
@@ -102,6 +106,7 @@ def edit_equipment(
     status: str = Form(...),
     state_id: int = Form(...),
     unit_id: int = Form(...),
+    product_id: int = Form(...),
     tombo: str = Form(...),
     num_tombo: str = Form(None),
     num_serie: str = Form(None),
@@ -118,6 +123,7 @@ def edit_equipment(
         equipment.status = status
         equipment.state_id = state_id
         equipment.unit_id = unit_id
+        equipment.product_id = product_id
         equipment.tombo = 0 if tombo == "Sim" else 1
         equipment.num_tombo_ou_serie = num_tombo if tombo == "Sim" else num_serie
 
@@ -161,6 +167,7 @@ def edit_equipment_form(equipment_id: int, request: Request, db: Session = Depen
     marcas = db.query(Brand).all()
     estados = db.query(EquipmentState).all()
     units = db.query(Unit).all()  # <-- listar unidades
+    products = db.query(Product).filter(Product.ativo == True).all()
 
     return templates.TemplateResponse(
         "equipment_form.html",
@@ -172,6 +179,7 @@ def edit_equipment_form(equipment_id: int, request: Request, db: Session = Depen
             "estados": estados,
             "units": units,  # <-- passar para o template
             "equipment": equipment,
+            "products": products,
             "user": user
         }
     )

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Movimentação{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Movimentação de Estoque</h2>
+
+    <form method="post">
+
+        <div class="form-group">
+            <label>Produto</label>
+            <select name="product_id" required>
+                {% for p in products %}
+                    <option value="{{ p.id }}">{{ p.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Unidade</label>
+            <select name="unit_id" required>
+                {% for u in units %}
+                    <option value="{{ u.id }}">{{ u.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Tipo</label>
+            <select name="tipo" required>
+                <option value="ENTRADA">Entrada</option>
+                <option value="SAIDA">Saída</option>
+                <option value="AJUSTE">Ajuste</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Quantidade</label>
+            <input type="number" name="quantidade" min="1" required>
+        </div>
+
+        <div class="form-group">
+            <label>Observação</label>
+            <textarea name="observacao"></textarea>
+        </div>
+
+        <button type="submit">Confirmar</button>
+
+    </form>
+</div>
+{% endblock %}

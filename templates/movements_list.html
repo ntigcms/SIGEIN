@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Estoque{% endblock %}
+
+{% block content %}
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Movimentações</title>
+    <link rel="stylesheet" href="/static/styles.css"> <!-- Se tiver CSS -->
+</head>
+<body>
+    <h1>Movimentações</h1>
+
+    <a href="/movements/add">
+        <button type="button">Nova Movimentação</button>
+    </a>
+
+    <table border="1" cellpadding="5" cellspacing="0">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Equipamento</th>
+                <th>Usuário</th>
+                <th>Data</th>
+                <th>Tipo</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in movements %}
+            <tr>
+                <td>{{ m.id }}</td>
+                <td>{{ m.equipment.num_tombo_ou_serie if m.equipment else 'N/A' }}</td>
+                <td>{{ m.user.username if m.user else 'N/A' }}</td>
+                <td>{{ m.date.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td>{{ m.type }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
+{% endblock %}

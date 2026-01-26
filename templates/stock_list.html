@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Estoque{% endblock %}
+
+{% block content %}
+<div class="container">
+
+    <h2>Estoque</h2>
+
+    <a href="/stock/add" style="display:inline-block; margin-bottom:20px;">
+        ➕ Entrada de Estoque
+    </a>
+
+    <div class="table-grid">
+        <div class="table-group"><strong>Produto</strong></div>
+        <div class="table-group"><strong>Unidade</strong></div>
+        <div class="table-group"><strong>Quantidade</strong></div>
+        <div class="table-group"><strong>Mínimo</strong></div>
+        <div class="table-group"><strong>Localização</strong></div>
+        <div class="table-group"><strong>Status</strong></div>
+
+        {% for s in stock %}
+            <div class="table-group wide">
+                {{ s.product.name }}
+            </div>
+
+            <div class="table-group">
+                {{ s.unit.name }}
+            </div>
+
+            <div class="table-group">
+                {{ s.quantidade }}
+            </div>
+
+            <div class="table-group">
+                {{ s.quantidade_minima }}
+            </div>
+
+            <div class="table-group">
+                {{ s.localizacao or "-" }}
+            </div>
+
+            <div class="table-group">
+                {% if s.quantidade <= s.quantidade_minima %}
+                    <span style="color:red;font-weight:bold;">⚠ Baixo</span>
+                {% else %}
+                    <span style="color:green;">✔ OK</span>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}

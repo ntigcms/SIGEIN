@@ -4,28 +4,29 @@ from starlette.status import HTTP_302_FOUND
 from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import get_current_user, registrar_log
-from models import Movement, Product, Unit
-from services.stock_service import atualizar_estoque
+from models import Stock, Product, Unit
 from fastapi.templating import Jinja2Templates
 
-router = APIRouter(prefix="/movements", tags=["Movements"])
+router = APIRouter(prefix="/stock", tags=["Stock"])
 templates = Jinja2Templates(directory="templates")
 
+
 @router.get("/")
-def movements_list(request: Request, db: Session = Depends(get_db)):
-    # Pega todas as movimentações do banco
-    movements = db.query(Movement).order_by(Movement.data.desc()).all()
-    return templates.TemplateResponse("movements_list.html", {
-        "request": request,
-        "movements": movements
-    })
+def list_stock(request: Request, db: Session = Depends(get_db),
+               user: str = Depends(get_current_user)):
+    if not user:
+        return RedirectResponse("/login")
+
+    stock = db.query(Stock).all()
+    return templates.TemplateResponse(
+        "stock_list.html",
+        {"request": request, "stock": stock, "user": user}
+    )
+
 
 @router.get("/add")
-def movement_form(
-    request: Request,
-    db: Session = Depends(get_db),
-    user: str = Depends(get_current_user)
-):
+def add_stock_form(request: Request, db: Session = Depends(get_db),
+                   user: str = Depends(get_current_user)):
     if not user:
         return RedirectResponse("/login")
 
@@ -33,7 +34,7 @@ def movement_form(
     units = db.query(Unit).all()
 
     return templates.TemplateResponse(
-        "movement_form.html",
+        "stock_form.html",
         {
             "request": request,
             "products": products,
@@ -44,43 +45,34 @@ def movement_form(
 
 
 @router.post("/add")
-def add_movement(
+def add_stock(
     request: Request,
     product_id: int = Form(...),
     unit_id: int = Form(...),
     quantidade: int = Form(...),
-    tipo: str = Form(...),
-    observacao: str = Form(None),
+    quantidade_minima: int = Form(0),
+    localizacao: str = Form(None),
     db: Session = Depends(get_db),
     user: str = Depends(get_current_user)
 ):
     if not user:
         return RedirectResponse("/login")
 
-    movement = Movement(
-        product_id=product_id,
-        unit_origem_id=unit_id if tipo == "SAIDA" else None,
-        unit_destino_id=unit_id if tipo == "ENTRADA" else None,
-        quantidade=quantidade,
-        tipo=tipo,
-        observacao=observacao,
-        user_id=user.id
-    )
-
-    db.add(movement)
-
-    atualizar_estoque(
-        db=db,
+    stock = Stock(
         product_id=product_id,
         unit_id=unit_id,
         quantidade=quantidade,
-        tipo=tipo
+        quantidade_minima=quantidade_minima,
+        localizacao=localizacao
     )
+
+    db.add(stock)
+    db.commit()
 
     registrar_log(
         db,
-        usuario=user.username,
-        acao=f"{tipo} de estoque - Produto {product_id} ({quantidade})",
+        usuario=user,
+        acao=f"Entrada de estoque do produto ID {product_id}",
         ip=request.client.host
     )
 

@@ -11,6 +11,21 @@
 
   <div class="form-grid">
 
+        <!-- Produto -->
+      <div class="form-group">
+          <label for="product_id">Produto</label>
+          <select name="product_id" required>
+            <option value="">-- Selecione o tipo --</option>
+                {% for p in products %}
+                  <option value="{{ p.id }}"
+                    {% if equipment and equipment.product_id == p.id %}selected{% endif %}>
+                    {{ p.name }}
+                </option>
+                {% endfor %}
+        </select>
+      </div>
+
+
       <!-- Tipo -->
       <div class="form-group">
           <label for="type">Tipo:</label>
