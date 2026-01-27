@@ -7,24 +7,43 @@
 
     <form method="post">
 
+        <!-- Categoria -->
         <div class="form-group">
-            <label>Produto</label>
-            <select name="product_id" required>
-                {% for p in products %}
-                    <option value="{{ p.id }}">{{ p.name }}</option>
+            <label for="category">Categoria</label>
+            <select id="category" required>
+                <option value="">-- Selecione a categoria --</option>
+                {% for cat in categories %}
+                    <option value="{{ cat.id }}">{{ cat.nome }}</option>
                 {% endfor %}
             </select>
         </div>
 
+        <!-- Produto -->
         <div class="form-group">
-            <label>Unidade</label>
-            <select name="unit_id" required>
+            <label for="product">Produto</label>
+            <select id="product" name="product_id" required>
+                <option value="">-- Selecione o produto --</option>
+            </select>
+        </div>
+
+        <!-- Unidade Atual (read-only) -->
+        <div class="form-group">
+            <label for="unit_current">Unidade Atual</label>
+            <input type="text" id="unit_current" readonly>
+        </div>
+
+        <!-- Unidade de Destino -->
+        <div class="form-group">
+            <label for="unit_destino">Unidade de Destino</label>
+            <select id="unit_destino" name="unit_id" required>
+                <option value="">-- Selecione a unidade --</option>
                 {% for u in units %}
                     <option value="{{ u.id }}">{{ u.name }}</option>
                 {% endfor %}
             </select>
         </div>
 
+        <!-- Tipo -->
         <div class="form-group">
             <label>Tipo</label>
             <select name="tipo" required>
@@ -34,18 +53,56 @@
             </select>
         </div>
 
+        <!-- Quantidade -->
         <div class="form-group">
             <label>Quantidade</label>
             <input type="number" name="quantidade" min="1" required>
         </div>
 
+        <!-- Observação -->
         <div class="form-group">
             <label>Observação</label>
             <textarea name="observacao"></textarea>
         </div>
 
         <button type="submit">Confirmar</button>
-
     </form>
 </div>
+
+<script>
+const productsData = {{ products | tojson }};
+
+const categorySelect = document.getElementById('category');
+const productSelect = document.getElementById('product');
+const unitCurrent = document.getElementById('unit_current');
+
+function filterProducts() {
+    const cat = categorySelect.value;
+    productSelect.innerHTML = '<option value="">-- Selecione o produto --</option>';
+
+    const filtered = productsData.filter(p => p.category_id == cat);
+
+    filtered.forEach(p => {
+        const option = document.createElement('option');
+        option.value = p.id;
+        option.text = `${p.name} (Unidade atual: ${p.unit_name})`;
+        productSelect.appendChild(option);
+    });
+}
+
+function updateUnitCurrent() {
+    const prodId = productSelect.value;
+    const prod = productsData.find(p => p.id == prodId);
+    unitCurrent.value = prod ? prod.unit_name : '';
+}
+
+categorySelect.addEventListener('change', () => {
+    filterProducts();
+    unitCurrent.value = '';
+});
+
+productSelect.addEventListener('change', updateUnitCurrent);
+
+filterProducts();
+</script>
 {% endblock %}

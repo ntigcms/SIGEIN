@@ -15,7 +15,6 @@
         <!-- === PRODUTO === -->
         <fieldset class="fieldset-section">
             <legend>Informações do Produto</legend>
-
             <div class="form-grid">
 
                 <!-- Nome do Produto -->
@@ -190,7 +189,7 @@
         <div class="form-group">
             <label for="valor_aquisicao">Valor de Aquisição</label>
             <input type="number" id="valor_aquisicao" name="valor_aquisicao" step="0.01" min="0"
-                   value="{{ item.valor_aquisicao if item else '' }}">
+                   value="{{ item.valor_aquisicao if item else 0 }}">
         </div>
 
         <!-- Garantia Até -->
@@ -220,45 +219,34 @@
     </form>
 </div>
 
-<!-- === JS para controlar Tombo/Série e Quantidade === -->
 <script>
-function toggleCamposTombo() {
-    const selecionado = document.querySelector('input[name="tombo"]:checked')?.value;
-    const campoTombo = document.getElementById('campo-tombo');
-    const campoSerie = document.getElementById('campo-serie');
-    const inputTombo = document.getElementById('num_tombo');
-    const inputSerie = document.getElementById('num_serie');
-
-    if (selecionado === 'Sim') {
-        campoTombo.style.display = 'block';
-        campoSerie.style.display = 'none';
-        inputTombo.required = true;
-        inputSerie.required = false;
-    } else if (selecionado === 'Não') {
-        campoTombo.style.display = 'none';
-        campoSerie.style.display = 'block';
-        inputSerie.required = true;
-        inputTombo.required = false;
-    } else {
-        campoTombo.style.display = 'none';
-        campoSerie.style.display = 'none';
-        inputTombo.required = false;
-        inputSerie.required = false;
-    }
-}
-
 window.addEventListener('load', function () {
     const controlaSerie = document.getElementById('controla_por_serie');
     const itemFisico = document.getElementById('item-fisico-section');
     const qtdContainer = document.getElementById('quantidade-container');
 
+    const state = document.getElementById('state');
+    const unit = document.getElementById('unit');
+    const valor = document.getElementById('valor_aquisicao');
+
     function toggleModoProduto() {
         if (controlaSerie.checked) {
             itemFisico.style.display = 'block';
             qtdContainer.style.display = 'none';
+            // Tornar campos obrigatórios
+            state.required = true;
+            unit.required = true;
+            valor.required = true;
         } else {
             itemFisico.style.display = 'none';
             qtdContainer.style.display = 'block';
+            // Campos não obrigatórios → envia default para evitar parsing error
+            state.required = false;
+            unit.required = false;
+            valor.required = false;
+            state.value = 0;
+            unit.value = 0;
+            valor.value = 0;
         }
     }
 
@@ -270,12 +258,18 @@ window.addEventListener('load', function () {
         if (selecionado === 'Sim') {
             campoTombo.style.display = 'block';
             campoSerie.style.display = 'none';
+            document.getElementById('num_tombo').required = true;
+            document.getElementById('num_serie').required = false;
         } else if (selecionado === 'Não') {
             campoTombo.style.display = 'none';
             campoSerie.style.display = 'block';
+            document.getElementById('num_tombo').required = false;
+            document.getElementById('num_serie').required = true;
         } else {
             campoTombo.style.display = 'none';
             campoSerie.style.display = 'none';
+            document.getElementById('num_tombo').required = false;
+            document.getElementById('num_serie').required = false;
         }
     }
 
@@ -284,14 +278,11 @@ window.addEventListener('load', function () {
     );
     controlaSerie.addEventListener('change', toggleModoProduto);
 
-    // Inicializa corretamente com base no produto
     toggleModoProduto();
     toggleCamposTombo();
 });
-
 </script>
 
-<!-- === JS para filtrar Tipos por Categoria === -->
 <script>
 window.addEventListener('load', function () {
     const categorySelect = document.getElementById('category');
@@ -299,13 +290,10 @@ window.addEventListener('load', function () {
 
     function filtrarTiposPorCategoria() {
         const selectedCategory = categorySelect.value;
-
         Array.from(typeSelect.options).forEach(option => {
             if (!option.value) return;
-            const tipoCategory = option.getAttribute('data-category');
-            option.style.display = (tipoCategory === selectedCategory) ? 'block' : 'none';
+            option.style.display = (option.getAttribute('data-category') === selectedCategory) ? 'block' : 'none';
         });
-
         if (typeSelect.selectedOptions[0] && typeSelect.selectedOptions[0].style.display === 'none') {
             typeSelect.value = '';
         }

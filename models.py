@@ -50,6 +50,8 @@ class Product(Base):
     description = Column(Text)
 
     controla_por_serie = Column(Boolean, default=True)
+    quantidade = Column(Integer, default=0)         # Quantidade para produtos sem série
+    quantidade_minima = Column(Integer, default=0)
     ativo = Column(Boolean, default=True)
 
     # Relacionamentos (opcional agora, mas recomendado)
@@ -86,29 +88,30 @@ class Item(Base):
 class Movement(Base):
     __tablename__ = "movements"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
 
     product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
-    equipment_id = Column(Integer, ForeignKey("equipments.id"), nullable=True)
+    item_id = Column(Integer, ForeignKey("items.id"), nullable=True)
 
     unit_origem_id = Column(Integer, ForeignKey("units.id"), nullable=True)
     unit_destino_id = Column(Integer, ForeignKey("units.id"), nullable=True)
 
     quantidade = Column(Integer, default=1)
-    tipo = Column(String(30), nullable=False)  # ENTRADA, SAIDA, TRANSFERENCIA
+    tipo = Column(String(30), nullable=False)
 
     data = Column(DateTime, default=datetime.utcnow)
     observacao = Column(Text)
 
-    user_id = Column(Integer, ForeignKey("users.id"))
+    # ✅ ESSENCIAL
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
+    # Relationships
     product = relationship("Product")
-    equipment = relationship("Equipment")
-    user = relationship("User")
+    item = relationship("Item")
+    user = relationship("User", back_populates="movements")
 
     unit_origem = relationship("Unit", foreign_keys=[unit_origem_id])
     unit_destino = relationship("Unit", foreign_keys=[unit_destino_id])
-
 
 class Log(Base):
     __tablename__ = "logs"

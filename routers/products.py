@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Request, Form, Depends
+from itertools import product
+from os import name
+from fastapi import APIRouter, Request, Form, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from starlette.status import HTTP_302_FOUND
 from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import get_current_user, registrar_log
-from models import Product, EquipmentType, Brand, Category, EquipmentState, Unit, Item
+from models import Product, EquipmentType, Brand, Category, EquipmentState, Unit, Item, Movement
 from fastapi.templating import Jinja2Templates
 
 router = APIRouter(prefix="/products", tags=["Products"])
@@ -51,8 +53,9 @@ def add_product_form(request: Request, db: Session = Depends(get_db), user: str 
     )
 
 
+# ----------------- ADD PRODUCT -----------------
 @router.post("/add")
-def add_product(
+async def add_product(
     request: Request,
     name: str = Form(...),
     category_id: int = Form(None),
@@ -61,23 +64,30 @@ def add_product(
     model: str = Form(...),
     description: str = Form(...),
     controla_por_serie: bool = Form(False),
-
-    tombo: str = Form(None),
-    num_tombo: str = Form(None),
-    num_serie: str = Form(None),
-    state_id: int = Form(None),
-    status: str = Form(None),
-    unit_id: int = Form(None),
-    data_aquisicao: str = Form(None),
-    valor_aquisicao: float = Form(None),
-    garantia_ate: str = Form(None),
-    observacao: str = Form(None),
-
     db: Session = Depends(get_db),
     user: str = Depends(get_current_user)
 ):
     if not user:
         return RedirectResponse("/login")
+
+    # Leitura do formulário completo para campos extras
+    form = await request.form()
+
+    # Campos de item físico
+    tombo = form.get("tombo")
+    num_tombo = form.get("num_tombo")
+    num_serie = form.get("num_serie")
+    state_id = form.get("state_id")
+    status = form.get("status")
+    unit_id = form.get("unit_id")
+    data_aquisicao = form.get("data_aquisicao")
+    valor_aquisicao = form.get("valor_aquisicao")
+    garantia_ate = form.get("garantia_ate")
+    observacao = form.get("observacao")
+
+    # Campos para produtos sem série
+    quantidade = int(form.get("quantidade", 0))
+    quantidade_minima = int(form.get("quantidade_minima", 0))
 
     # ✅ PRODUTO
     product = Product(
@@ -87,35 +97,36 @@ def add_product(
         brand_id=brand_id,
         model=model,
         description=description,
-        controla_por_serie=controla_por_serie
+        controla_por_serie=controla_por_serie,
+        quantidade=quantidade if not controla_por_serie else 0,
+        quantidade_minima=quantidade_minima if not controla_por_serie else 0
     )
 
     db.add(product)
     db.commit()
     db.refresh(product)
 
-    # ✅ ITEM FÍSICO
+    # ✅ ITEM FÍSICO (apenas se controla_por_serie=True)
     if controla_por_serie:
         is_tombo = (tombo == "Sim")
-
         item = Item(
             product_id=product.id,
             tombo=is_tombo,
             num_tombo_ou_serie=num_tombo if is_tombo else num_serie,
-            estado_id=state_id,
+            estado_id=state_id if state_id else None,
             status=status,
-            unit_id=unit_id,
-            data_aquisicao=data_aquisicao,
-            valor_aquisicao=valor_aquisicao,
-            garantia_ate=garantia_ate,
+            unit_id=unit_id if unit_id else None,
+            data_aquisicao=data_aquisicao or None,
+            valor_aquisicao=float(valor_aquisicao) if valor_aquisicao else None,
+            garantia_ate=garantia_ate or None,
             observacao=observacao
         )
-
         db.add(item)
         db.commit()
 
     registrar_log(db, usuario=user, acao=f"Cadastrou produto: {name}", ip=request.client.host)
     return RedirectResponse("/products", status_code=HTTP_302_FOUND)
+
 
 
 @router.get("/edit/{product_id}")
@@ -152,6 +163,7 @@ def edit_product_form(product_id: int, request: Request, db: Session = Depends(g
         }
     )
 
+# ----------------- EDIT PRODUCT -----------------
 @router.post("/edit/{product_id}")
 def edit_product(
     product_id: int,
@@ -168,13 +180,16 @@ def edit_product(
     tombo: str = Form(None),
     num_tombo: str = Form(None),
     num_serie: str = Form(None),
-    state_id: int = Form(None),
+    state_id: str = Form(None),
     status: str = Form(None),
-    unit_id: int = Form(None),
+    unit_id: str = Form(None),
     data_aquisicao: str = Form(None),
-    valor_aquisicao: float = Form(None),
+    valor_aquisicao: str = Form(None),
     garantia_ate: str = Form(None),
     observacao: str = Form(None),
+
+    quantidade: str = Form("0"),
+    quantidade_minima: str = Form("0"),
 
     db: Session = Depends(get_db),
     user: str = Depends(get_current_user)
@@ -188,39 +203,95 @@ def edit_product(
 
     # 🔹 PRODUTO
     product.name = name
-    product.category_id = category_id
-    product.type_id = type_id
-    product.brand_id = brand_id
+    product.category_id = int(category_id) if category_id else None
+    product.type_id = int(type_id)
+    product.brand_id = int(brand_id)
     product.model = model
     product.description = description
     product.controla_por_serie = controla_por_serie
 
-    # 🔹 ITEM
+    # 🔹 SALVA QUANTIDADES PARA PRODUTOS SEM SÉRIE
+    if not controla_por_serie:
+        product.quantidade = int(quantidade or 0)
+        product.quantidade_minima = int(quantidade_minima or 0)
+
+    # 🔹 ITEM FÍSICO
     item = db.query(Item).filter(Item.product_id == product.id).first()
 
     if controla_por_serie:
         if not item:
             item = Item(product_id=product.id)
 
-        is_tombo = (tombo == "Sim")
+        # Checkbox de tombo pode enviar "on" ou "Sim"
+        is_tombo = tombo in ["on", "Sim", True]
+
         item.tombo = is_tombo
         item.num_tombo_ou_serie = num_tombo if is_tombo else num_serie
-        item.estado_id = state_id
+        item.estado_id = int(state_id) if state_id else None
         item.status = status
-        item.unit_id = unit_id
-        item.data_aquisicao = data_aquisicao
-        item.valor_aquisicao = valor_aquisicao
-        item.garantia_ate = garantia_ate
+        item.unit_id = int(unit_id) if unit_id else None
+        item.data_aquisicao = data_aquisicao or None
+        item.valor_aquisicao = float(valor_aquisicao) if valor_aquisicao else None
+        item.garantia_ate = garantia_ate or None
         item.observacao = observacao
 
         db.add(item)
     else:
-        # se desmarcar "controla por série", remove item físico
+        # Remove item físico existente se não controla por série
         if item:
             db.delete(item)
 
     db.commit()
 
-    registrar_log(db, usuario=user, acao=f"Editou produto: {name}", ip=request.client.host)
+    registrar_log(
+        db,
+        usuario=user,
+        acao=f"Editou produto: {name}",
+        ip=request.client.host
+    )
+
     return RedirectResponse("/products", status_code=HTTP_302_FOUND)
 
+# ----------------- DELETE PRODUCT -----------------
+@router.post("/delete/{product_id}")
+def delete_product(
+    product_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user)
+):
+    if not user:
+        return RedirectResponse("/login")
+
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        return RedirectResponse("/products")
+
+    # 🔒 BLOQUEAR SE EXISTIR MOVIMENTAÇÃO
+    movimentacoes = db.query(Movement).filter(
+        Movement.product_id == product.id
+    ).first()
+
+    if movimentacoes:
+        raise HTTPException(
+            status_code=400,
+            detail="Produto possui movimentações e não pode ser excluído."
+        )
+
+    # 🔹 ITEM FÍSICO
+    item = db.query(Item).filter(Item.product_id == product.id).first()
+    if item:
+        db.delete(item)
+
+    # 🔹 PRODUTO
+    db.delete(product)
+    db.commit()
+
+    registrar_log(
+        db,
+        usuario=user,
+        acao=f"Excluiu produto: {product.name}",
+        ip=request.client.host
+    )
+
+    return RedirectResponse("/products", status_code=HTTP_302_FOUND)
