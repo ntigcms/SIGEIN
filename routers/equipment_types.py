@@ -35,15 +35,26 @@ def list_equipment_types(request: Request, db: Session = Depends(get_db), user: 
 # ------------------------------------------------------------
 # Exibe o formulário para criação de um novo tipo de equipamento.
 # ============================================================
+from models import Category
+
 @router.get("/add")
-def add_equipment_type_form(request: Request, user: str = Depends(get_current_user)):
+def add_equipment_type_form(request: Request, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
     if not user:
         return RedirectResponse("/login")
 
+    categories = db.query(Category).order_by(Category.nome).all()
+
     return templates.TemplateResponse(
         "equipment_type_add.html",
-        {"request": request, "user": user, "action": "add"}
+        {
+            "request": request,
+            "user": user,
+            "action": "add",
+            "categories": categories,
+            "tipo": None
+        }
     )
+
 
 
 # ============================================================
@@ -56,6 +67,7 @@ def add_equipment_type_form(request: Request, user: str = Depends(get_current_us
 def add_equipment_type(
     request: Request,
     nome: str = Form(...),
+    category_id: int = Form(...),
     db: Session = Depends(get_db),
     user: str = Depends(get_current_user)
 ):
@@ -63,7 +75,7 @@ def add_equipment_type(
         return RedirectResponse("/login")
 
     ip = request.client.host
-    novo_tipo = EquipmentType(nome=nome)
+    novo_tipo = EquipmentType(nome=nome, category_id=category_id)
 
     db.add(novo_tipo)
     db.commit()
@@ -90,13 +102,13 @@ def edit_equipment_type_form(
         return RedirectResponse("/login")
 
     tipo = db.query(EquipmentType).filter(EquipmentType.id == type_id).first()
-    if not tipo:
-        return RedirectResponse("/equipment-types")
+    categories = db.query(Category).order_by(Category.nome).all()
 
     return templates.TemplateResponse(
         "equipment_type_add.html",
-        {"request": request, "user": user, "tipo": tipo, "action": "edit"}
+        {"request": request, "user": user, "tipo": tipo, "action": "edit", "categories": categories}
     )
+
 
 
 # ============================================================
@@ -109,6 +121,7 @@ def edit_equipment_type(
     request: Request,
     type_id: int,
     nome: str = Form(...),
+    category_id: int = Form(...),
     db: Session = Depends(get_db),
     user: str = Depends(get_current_user)
 ):
@@ -119,6 +132,7 @@ def edit_equipment_type(
     tipo = db.query(EquipmentType).filter(EquipmentType.id == type_id).first()
     if tipo:
         tipo.nome = nome
+        tipo.category_id = category_id
         db.commit()
         registrar_log(db, usuario=user, acao=f"Editou tipo de equipamento ID {type_id}", ip=ip)
 

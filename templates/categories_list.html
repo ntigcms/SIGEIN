@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Categorias{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:20px;">
+    <h2>Categorias</h2>
+    <a href="/categories/add">
+        <button class="animated-btn">Nova Categoria</button>
+    </a>
+</div>
+
+<table class="data-grid">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Nome</th>
+            <th>Descrição</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for c in categories %}
+        <tr>
+            <td>{{ c.id }}</td>
+            <td>{{ c.nome }}</td>
+            <td>{{ c.descricao or '-' }}</td>
+            <td>{{ "Ativo" if c.ativo else "Inativo" }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

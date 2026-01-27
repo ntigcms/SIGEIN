@@ -18,43 +18,15 @@
 
             <div class="form-grid">
 
+                <!-- Nome do Produto -->
                 <div class="form-group">
                     <label for="product_name">Nome do Produto *</label>
-                    <input type="text" id="product_name" name="name" value="{{ product.name if product else '' }}" required
+                    <input type="text" id="product_name" name="name"
+                           value="{{ product.name if product else '' }}" required
                            title="Ex: Notebook Dell Latitude 5420">
                 </div>
 
-                <div class="form-group">
-                    <label for="type">Tipo *</label>
-                    <select id="type" name="type_id" required>
-                        <option value="">-- Selecione o tipo --</option>
-                        {% for tipo in tipos %}
-                            <option value="{{ tipo.id }}"
-                                {% if product and product.type_id == tipo.id %}selected{% endif %}>
-                                {{ tipo.nome }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="brand">Marca *</label>
-                    <select id="brand" name="brand_id" required>
-                        <option value="">-- Selecione a marca --</option>
-                        {% for marca in marcas %}
-                            <option value="{{ marca.id }}"
-                                {% if product and product.brand_id == marca.id %}selected{% endif %}>
-                                {{ marca.nome }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="model">Modelo</label>
-                    <input type="text" id="model" name="model" value="{{ product.model if product else '' }}">
-                </div>
-
+                <!-- Categoria -->
                 <div class="form-group">
                     <label for="category">Categoria</label>
                     <select id="category" name="category_id">
@@ -68,117 +40,176 @@
                     </select>
                 </div>
 
+                <!-- Tipo -->
                 <div class="form-group">
-                    <label for="description">Descrição</label>
-                    <textarea id="description" name="description">{{ product.description if product else '' }}</textarea>
+                    <label for="type">Tipo *</label>
+                    <select id="type" name="type_id" required>
+                        <option value="">-- Selecione o tipo --</option>
+                        {% for tipo in tipos %}
+                            <option value="{{ tipo.id }}" data-category="{{ tipo.category_id }}"
+                                {% if product and product.type_id == tipo.id %}selected{% endif %}>
+                                {{ tipo.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
                 </div>
 
+                <!-- Marca -->
                 <div class="form-group">
-                    <label for="vida_util">Vida Útil (meses)</label>
-                    <input type="number" id="vida_util" name="vida_util" min="0"
-                           value="{{ product.vida_util if product else '' }}">
+                    <label for="brand">Marca *</label>
+                    <select id="brand" name="brand_id" required>
+                        <option value="">-- Selecione a marca --</option>
+                        {% for marca in marcas %}
+                            <option value="{{ marca.id }}"
+                                {% if product and product.brand_id == marca.id %}selected{% endif %}>
+                                {{ marca.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
                 </div>
 
+                <!-- Modelo -->
                 <div class="form-group">
-                    <label for="controla_por_serie">
+                    <label for="model">Modelo *</label>
+                    <input type="text" id="model" name="model"
+                           value="{{ product.model if product else '' }}" required>
+                </div>
+
+                <!-- Descrição -->
+                <div class="form-group">
+                    <label for="description">Descrição *</label>
+                    <textarea id="description" name="description" required>{{ product.description if product else '' }}</textarea>
+                </div>
+
+                <!-- Controla por Série -->
+                <div class="form-group checkbox-group">
+                    <label>
                         <input type="checkbox" id="controla_por_serie" name="controla_por_serie"
-                               {% if product and product.controla_por_serie %}checked{% endif %}>
+                            {% if product and product.controla_por_serie %}checked{% endif %}>
                         Controla por Série/Tombo
                     </label>
                 </div>
 
+                <!-- Quantidade -->
                 <div class="form-group" id="quantidade-container">
                     <label for="quantidade">Quantidade (para produtos sem série)</label>
-                    <input type="number" id="quantidade" name="quantidade" min="1" value="1">
+                    <input type="number" id="quantidade" name="quantidade" min="1"
+                           value="{{ product.quantidade if product else 1 }}">
                 </div>
 
+                <!-- Quantidade mínima -->
                 <div class="form-group">
                     <label for="quantidade_minima">Quantidade mínima em estoque</label>
                     <input type="number" id="quantidade_minima" name="quantidade_minima" min="0"
-                           value="{{ product.quantidade_minima if product else '0' }}">
+                           value="{{ product.quantidade_minima if product else 0 }}">
                 </div>
 
             </div>
         </fieldset>
 
         <!-- === ITEM FÍSICO === -->
-        <fieldset class="fieldset-section">
-            <legend>Informações do Item Físico</legend>
+<fieldset class="fieldset-section" id="item-fisico-section">
+    <legend>Informações do Item Físico</legend>
 
-            <div class="form-grid">
+    <div class="form-grid">
 
-                <div class="form-group">
-                    <label>Tombo ou Série *</label>
-                    <div class="radio-group">
-                        <label><input type="radio" name="tombo" value="Sim"> Tombo</label>
-                        <label><input type="radio" name="tombo" value="Não"> Série</label>
-                    </div>
-                </div>
-
-                <div class="form-group" id="campo-tombo" style="display:none;">
-                    <label for="num_tombo">Número do Tombo</label>
-                    <input type="text" id="num_tombo" name="num_tombo">
-                </div>
-
-                <div class="form-group" id="campo-serie" style="display:none;">
-                    <label for="num_serie">Número de Série</label>
-                    <input type="text" id="num_serie" name="num_serie">
-                </div>
-
-                <div class="form-group">
-                    <label for="state">Estado *</label>
-                    <select id="state" name="state_id" required>
-                        <option value="">-- Selecione o estado --</option>
-                        {% for estado in estados %}
-                            <option value="{{ estado.id }}">{{ estado.nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="status">Status *</label>
-                    <select id="status" name="status" required>
-                        <option value="Disponível">Disponível</option>
-                        <option value="Reservado">Reservado</option>
-                        <option value="Alocado">Alocado</option>
-                        <option value="Bloqueado">Bloqueado</option>
-                        <option value="Devolvido">Devolvido</option>
-                        <option value="Emprestado">Emprestado</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="unit">Unidade Administrativa *</label>
-                    <select id="unit" name="unit_id" required>
-                        {% for unidade in units %}
-                            <option value="{{ unidade.id }}">{{ unidade.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="data_aquisicao">Data de Aquisição</label>
-                    <input type="date" id="data_aquisicao" name="data_aquisicao">
-                </div>
-
-                <div class="form-group">
-                    <label for="valor_aquisicao">Valor de Aquisição</label>
-                    <input type="number" id="valor_aquisicao" name="valor_aquisicao" step="0.01" min="0">
-                </div>
-
-                <div class="form-group">
-                    <label for="garantia_ate">Garantia Até</label>
-                    <input type="date" id="garantia_ate" name="garantia_ate">
-                </div>
-
-                <div class="form-group">
-                    <label for="observacao">Observações</label>
-                    <textarea id="observacao" name="observacao"></textarea>
-                </div>
-
+        <!-- Tombo ou Série -->
+        <div class="form-group checkbox-group">
+            <label>Tombo ou Série *</label>
+            <div class="radio-group">
+                <label>
+                    <input type="radio" name="tombo" value="Sim" {% if item and item.tombo %}checked{% endif %}>
+                    Tombo
+                </label>
+                <label>
+                    <input type="radio" name="tombo" value="Não" {% if item and not item.tombo %}checked{% endif %}>
+                    Série
+                </label>
             </div>
-        </fieldset>
+        </div>
 
+        <!-- Número do Tombo -->
+        <div class="form-group" id="campo-tombo">
+            <label for="num_tombo">Número do Tombo</label>
+            <input type="text" id="num_tombo" name="num_tombo" value="{{ item.num_tombo_ou_serie if item and item.tombo else '' }}">
+        </div>
+
+        <!-- Número de Série -->
+        <div class="form-group" id="campo-serie">
+            <label for="num_serie">Número de Série</label>
+            <input type="text" id="num_serie" name="num_serie" value="{{ item.num_tombo_ou_serie if item and not item.tombo else '' }}">
+        </div>
+
+        <!-- Estado -->
+        <div class="form-group">
+            <label for="state">Estado *</label>
+            <select id="state" name="state_id" required>
+                <option value="">-- Selecione o estado --</option>
+                {% for estado in estados %}
+                    <option value="{{ estado.id }}" {% if item and item.estado_id == estado.id %}selected{% endif %}>
+                        {{ estado.nome }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Status -->
+        <div class="form-group">
+            <label for="status">Status *</label>
+            <select id="status" name="status" required>
+                {% set statuses = ['Disponível','Reservado','Alocado','Bloqueado','Devolvido','Emprestado'] %}
+                {% for st in statuses %}
+                    <option value="{{ st }}" {% if item and item.status == st %}selected{% endif %}>
+                        {{ st }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Unidade Administrativa -->
+        <div class="form-group">
+            <label for="unit">Unidade Administrativa *</label>
+            <select id="unit" name="unit_id" required>
+                <option value="">-- Selecione a unidade --</option>
+                {% for unidade in units %}
+                    <option value="{{ unidade.id }}" {% if item and item.unit_id == unidade.id %}selected{% endif %}>
+                        {{ unidade.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Data de Aquisição -->
+        <div class="form-group">
+            <label for="data_aquisicao">Data de Aquisição</label>
+            <input type="date" id="data_aquisicao" name="data_aquisicao"
+                   value="{{ item.data_aquisicao if item else '' }}">
+        </div>
+
+        <!-- Valor de Aquisição -->
+        <div class="form-group">
+            <label for="valor_aquisicao">Valor de Aquisição</label>
+            <input type="number" id="valor_aquisicao" name="valor_aquisicao" step="0.01" min="0"
+                   value="{{ item.valor_aquisicao if item else '' }}">
+        </div>
+
+        <!-- Garantia Até -->
+        <div class="form-group">
+            <label for="garantia_ate">Garantia Até</label>
+            <input type="date" id="garantia_ate" name="garantia_ate"
+                   value="{{ item.garantia_ate if item else '' }}">
+        </div>
+
+        <!-- Observações -->
+        <div class="form-group">
+            <label for="observacao">Observações</label>
+            <textarea id="observacao" name="observacao">{{ item.observacao if item else '' }}</textarea>
+        </div>
+
+    </div>
+</fieldset>
+
+        <!-- Botões -->
         <div class="buttons">
             <button type="submit" class="btn-submit">
                 {% if action == 'add' %}Adicionar{% else %}Salvar Alterações{% endif %}
@@ -189,24 +220,7 @@
     </form>
 </div>
 
-<style>
-.inventory-form { max-width: 1200px; margin: 0 auto; padding: 30px; background: #fff; border-radius: 8px; box-shadow: 0 0 8px rgba(0,0,0,0.1);}
-.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px 40px;}
-.form-group { display:flex; flex-direction: column; margin-bottom:10px; }
-label { font-weight:600; margin-bottom:6px; color:#003366;}
-input, select, textarea { padding:10px; font-size:14px; border:1px solid #bbb; border-radius:6px; height:40px; background:#fff; }
-textarea { resize:vertical; min-height:60px; }
-.radio-group { display:flex; gap:20px; margin-top:5px;}
-.buttons { margin-top:30px; text-align:center; }
-.btn-submit { background:#007bff; color:#fff; padding:10px 25px; border:none; border-radius:6px; cursor:pointer; font-size:16px; }
-.btn-submit:hover { background:#0056b3; }
-.btn-cancel { background:#ccc; color:#333; padding:10px 25px; border-radius:6px; text-decoration:none; margin-left:15px; }
-.btn-cancel:hover { background:#999; }
-fieldset.fieldset-section { border:1px solid #bbb; padding:20px; margin-bottom:25px; border-radius:6px; }
-legend { font-weight:bold; color:#003366; padding:0 10px; }
-@media(max-width:768px){.form-grid{grid-template-columns:1fr;}}
-</style>
-
+<!-- === JS para controlar Tombo/Série e Quantidade === -->
 <script>
 function toggleCamposTombo() {
     const selecionado = document.querySelector('input[name="tombo"]:checked')?.value;
@@ -215,28 +229,90 @@ function toggleCamposTombo() {
     const inputTombo = document.getElementById('num_tombo');
     const inputSerie = document.getElementById('num_serie');
 
-    if(selecionado === 'Sim'){
-        campoTombo.style.display='block';
-        campoSerie.style.display='none';
-        inputTombo.required=true; inputSerie.required=false; inputSerie.value='';
-    } else if(selecionado==='Não'){
-        campoTombo.style.display='none';
-        campoSerie.style.display='block';
-        inputSerie.required=true; inputTombo.required=false; inputTombo.value='';
-    } else{
-        campoTombo.style.display='none';
-        campoSerie.style.display='none';
-        inputTombo.required=false; inputSerie.required=false;
+    if (selecionado === 'Sim') {
+        campoTombo.style.display = 'block';
+        campoSerie.style.display = 'none';
+        inputTombo.required = true;
+        inputSerie.required = false;
+    } else if (selecionado === 'Não') {
+        campoTombo.style.display = 'none';
+        campoSerie.style.display = 'block';
+        inputSerie.required = true;
+        inputTombo.required = false;
+    } else {
+        campoTombo.style.display = 'none';
+        campoSerie.style.display = 'none';
+        inputTombo.required = false;
+        inputSerie.required = false;
     }
 }
-document.querySelectorAll('input[name="tombo"]').forEach(r=>r.addEventListener('change', toggleCamposTombo));
-window.addEventListener('load', function(){
-    toggleCamposTombo();
-    const controla = document.getElementById('controla_por_serie');
+
+window.addEventListener('load', function () {
+    const controlaSerie = document.getElementById('controla_por_serie');
+    const itemFisico = document.getElementById('item-fisico-section');
     const qtdContainer = document.getElementById('quantidade-container');
-    function toggleQtd() { qtdContainer.style.display = controla.checked ? 'none':'block'; }
-    controla.addEventListener('change', toggleQtd);
-    toggleQtd();
+
+    function toggleModoProduto() {
+        if (controlaSerie.checked) {
+            itemFisico.style.display = 'block';
+            qtdContainer.style.display = 'none';
+        } else {
+            itemFisico.style.display = 'none';
+            qtdContainer.style.display = 'block';
+        }
+    }
+
+    function toggleCamposTombo() {
+        const selecionado = document.querySelector('input[name="tombo"]:checked')?.value;
+        const campoTombo = document.getElementById('campo-tombo');
+        const campoSerie = document.getElementById('campo-serie');
+
+        if (selecionado === 'Sim') {
+            campoTombo.style.display = 'block';
+            campoSerie.style.display = 'none';
+        } else if (selecionado === 'Não') {
+            campoTombo.style.display = 'none';
+            campoSerie.style.display = 'block';
+        } else {
+            campoTombo.style.display = 'none';
+            campoSerie.style.display = 'none';
+        }
+    }
+
+    document.querySelectorAll('input[name="tombo"]').forEach(radio =>
+        radio.addEventListener('change', toggleCamposTombo)
+    );
+    controlaSerie.addEventListener('change', toggleModoProduto);
+
+    // Inicializa corretamente com base no produto
+    toggleModoProduto();
+    toggleCamposTombo();
+});
+
+</script>
+
+<!-- === JS para filtrar Tipos por Categoria === -->
+<script>
+window.addEventListener('load', function () {
+    const categorySelect = document.getElementById('category');
+    const typeSelect = document.getElementById('type');
+
+    function filtrarTiposPorCategoria() {
+        const selectedCategory = categorySelect.value;
+
+        Array.from(typeSelect.options).forEach(option => {
+            if (!option.value) return;
+            const tipoCategory = option.getAttribute('data-category');
+            option.style.display = (tipoCategory === selectedCategory) ? 'block' : 'none';
+        });
+
+        if (typeSelect.selectedOptions[0] && typeSelect.selectedOptions[0].style.display === 'none') {
+            typeSelect.value = '';
+        }
+    }
+
+    categorySelect.addEventListener('change', filtrarTiposPorCategoria);
+    filtrarTiposPorCategoria();
 });
 </script>
 

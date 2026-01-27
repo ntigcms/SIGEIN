@@ -14,14 +14,23 @@
     <input type="text" id="nome" name="nome" 
            value="{% if action == 'edit' %}{{ tipo.nome }}{% endif %}" required>
 
+    <label for="category_id">Categoria:</label>
+<select id="category_id" name="category_id" required>
+    <option value="">-- Selecione a Categoria --</option>
+    {% for cat in categories %}
+        <option value="{{ cat.id }}"
+            {% if action == 'edit' and tipo.category_id == cat.id %}selected{% endif %}>
+            {{ cat.nome }}
+        </option>
+    {% endfor %}
+</select>
+
+
     <button type="submit">
-        {% if action == "edit" %}
-            Salvar Alterações
-        {% else %}
-            Cadastrar
-        {% endif %}
+        {% if action == "edit" %}Salvar Alterações{% else %}Cadastrar{% endif %}
     </button>
 </form>
+
 
 <a href="/equipment-types">Voltar para a lista</a>
 {% endblock %}

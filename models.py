@@ -34,38 +34,14 @@ class Unit(Base):
         return self.name
 
 
-class Equipment(Base):
-    __tablename__ = "equipments"  # <-- nome da tabela atualizado
-    
-    id = Column(Integer, primary_key=True, index=True)
-    # Tipo do equipamento
-    tipo_id = Column(Integer, ForeignKey("equipment_types.id"))
-    tipo = relationship("EquipmentType")
-    # Marca
-    brand_id = Column(Integer, ForeignKey("brands.id"))
-    brand = relationship("Brand")
-    # Status (ativo/inativo)
-    status = Column(String)
-    # Estado do equipamento
-    state_id = Column(Integer, ForeignKey("equipment_states.id"))
-    state = relationship("EquipmentState")
-    # Unidade responsável
-    unit_id = Column(Integer, ForeignKey("units.id"))
-    unit = relationship("Unit")
-    # Movimentações
-    movements = relationship("Movement", back_populates="equipment")
-    # Controle de tombo
-    tombo = Column(Integer)  # 0 = Sim, 1 = Não
-    num_tombo_ou_serie = Column(String)
-     # NOVO (é isso que liga ao Produto)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
-    product = relationship("Product", back_populates="equipments")
-
 class Product(Base):
     __tablename__ = "products"
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
+
+    category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
+    category = relationship("Category", back_populates="products")
 
     type_id = Column(Integer, ForeignKey("equipment_types.id"), nullable=False)
     brand_id = Column(Integer, ForeignKey("brands.id"), nullable=False)
@@ -81,7 +57,30 @@ class Product(Base):
     brand = relationship("Brand")
     
      # ✅ UM produto → VÁRIOS equipamentos
-    equipments = relationship("Equipment", back_populates="product")
+    items = relationship("Item", back_populates="product", cascade="all, delete-orphan")
+
+class Item(Base):
+    __tablename__ = "items"
+
+    id = Column(Integer, primary_key=True)
+    product_id = Column(Integer, ForeignKey("products.id"))
+
+    tombo = Column(Boolean)
+    num_tombo_ou_serie = Column(String, unique=True)
+
+    estado_id = Column(Integer, ForeignKey("equipment_states.id"))
+    status = Column(String)
+    unit_id = Column(Integer, ForeignKey("units.id"))
+
+    data_aquisicao = Column(Date)
+    valor_aquisicao = Column(Float)
+    garantia_ate = Column(Date)
+    observacao = Column(Text)
+
+    product = relationship("Product", back_populates="items")
+    estado = relationship("EquipmentState")
+    unit = relationship("Unit")
+
 
 
 class Movement(Base):
@@ -136,32 +135,29 @@ class Stock(Base):
     unit = relationship("Unit")
 
 
-class Item(Base):
-    __tablename__ = "items"
-
-    id = Column(Integer, primary_key=True)
-    product_id = Column(Integer, ForeignKey("products.id"))
-    tombo = Column(Boolean)
-    num_tombo_ou_serie = Column(String, unique=True)
-    estado_id = Column(Integer, ForeignKey("equipment_states.id"))
-    status = Column(String)
-    unit_id = Column(Integer, ForeignKey("units.id"))
-    data_aquisicao = Column(Date)
-    valor_aquisicao = Column(Float)
-    garantia_ate = Column(Date)
-    observacao = Column(Text)
-
-    # Relationships
-    product = relationship("Product")
-    estado = relationship("EquipmentState")
-    unit = relationship("Unit")
-
-
 class EquipmentType(Base):
     __tablename__ = "equipment_types"
 
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String(100), unique=True, nullable=False)
+
+    # Nova coluna de categoria
+    category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
+    category = relationship("Category", backref="equipment_types")
+
+class Category(Base):
+    __tablename__ = "categories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(100), unique=True, nullable=False)
+    descricao = Column(Text)
+    ativo = Column(Boolean, default=True)
+
+    # Relacionamento
+    products = relationship("Product", back_populates="category")
+
+    def __str__(self):
+        return self.nome
 
 class Brand(Base):
     __tablename__ = "brands"
