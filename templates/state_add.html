@@ -1,27 +1,57 @@
 {% extends "base.html" %}
 
+{% block title %}Estado{% endblock %}
+
 {% block content %}
-<h2>
-    {% if action == "edit" %}
-        Editar Estado
-    {% else %}
-        Cadastrar Novo Estado
-    {% endif %}
-</h2>
+<div class="form-container">
 
-<form method="post" action="{% if action == 'edit' %}/states/edit/{{ estado.id }}{% else %}/states/add{% endif %}">
-    <label for="nome">Nome do Estado:</label>
-    <input type="text" id="nome" name="nome" 
-           value="{% if action == 'edit' %}{{ estado.nome }}{% endif %}" required>
-
-    <button type="submit">
+    <h2 class="form-title">
         {% if action == "edit" %}
-            Salvar Alterações
+            Editar Estado
         {% else %}
-            Cadastrar
+            Cadastrar Novo Estado
         {% endif %}
-    </button>
-</form>
+    </h2>
 
-<a href="/states">Voltar para a lista de Estados</a>
+    <form method="post"
+          action="{% if action == 'edit' %}/states/edit/{{ estado.id }}{% else %}/states/add{% endif %}"
+          class="form-card">
+
+        <fieldset class="form-section">
+            <legend>Informações do Estado</legend>
+
+            <div class="form-grid">
+
+                <!-- Nome do Estado -->
+                <div class="form-group full">
+                    <label for="nome">Nome do Estado *</label>
+                    <input type="text"
+                           id="nome"
+                           name="nome"
+                           placeholder="Ex: Disponível, Em Manutenção, Inutilizado"
+                           value="{% if action == 'edit' %}{{ estado.nome }}{% endif %}"
+                           required>
+                </div>
+
+            </div>
+        </fieldset>
+
+        <!-- Ações -->
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">
+                {% if action == "edit" %}
+                    Salvar Alterações
+                {% else %}
+                    Cadastrar
+                {% endif %}
+            </button>
+
+            <a href="/states" class="btn-secondary">
+                Cancelar
+            </a>
+        </div>
+
+    </form>
+
+</div>
 {% endblock %}

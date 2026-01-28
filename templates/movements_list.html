@@ -1,45 +1,42 @@
 {% extends "base.html" %}
 
-{% block title %}Estoque{% endblock %}
+{% block title %}Movimentações{% endblock %}
 
 {% block content %}
 
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Movimentações</title>
-    <link rel="stylesheet" href="/static/styles.css"> <!-- Se tiver CSS -->
-</head>
-<body>
-    <h1>Movimentações</h1>
+<h1>Movimentações</h1>
 
-    <a href="/movements/add">
-        <button type="button">Nova Movimentação</button>
-    </a>
+<a href="/movements/nova">
+    <button>Nova Movimentação</button>
+</a>
 
-    <table border="1" cellpadding="5" cellspacing="0">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Equipamento</th>
-                <th>Usuário</th>
-                <th>Data</th>
-                <th>Tipo</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for m in movements %}
-            <tr>
-                <td>{{ m.id }}</td>
-                <td>{{ m.equipment.num_tombo_ou_serie if m.equipment else 'N/A' }}</td>
-                <td>{{ m.user.username if m.user else 'N/A' }}</td>
-                <td>{{ m.date.strftime('%d/%m/%Y %H:%M') }}</td>
-                <td>{{ m.type }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</body>
-</html>
+<table border="1" cellpadding="5" cellspacing="0">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Produto</th>
+            <th>Origem</th>
+            <th>Destino</th>
+            <th>Quantidade</th>
+            <th>Tipo</th>
+            <th>Usuário</th>
+            <th>Data</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for m in movements %}
+        <tr>
+            <td>{{ m.id }}</td>
+            <td>{{ m.product.name }}</td>
+            <td>{{ m.unit_origem.name if m.unit_origem else '-' }}</td>
+            <td>{{ m.unit_destino.name if m.unit_destino else '-' }}</td>
+            <td>{{ m.quantidade }}</td>
+            <td>{{ m.tipo }}</td>
+            <td>{{ m.user.username }}</td>
+            <td>{{ m.data.strftime('%d/%m/%Y %H:%M') }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
 {% endblock %}

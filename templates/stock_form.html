@@ -3,54 +3,75 @@
 {% block title %}Entrada de Estoque{% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="form-container">
 
-    <h2>Entrada de Estoque</h2>
+    <h2 class="form-title">Entrada de Estoque</h2>
 
-    <form method="post">
+    <form method="post" class="form-card">
 
-        <div class="form-grid">
+        <fieldset class="form-section">
+            <legend>Dados da Entrada</legend>
 
-            <div class="form-group full">
-                <label>Produto</label>
-                <select name="product_id" required>
-                    {% for p in products %}
-                        <option value="{{ p.id }}">
-                            {{ p.name }}
-                        </option>
-                    {% endfor %}
-                </select>
+            <div class="form-grid">
+
+                <!-- Produto -->
+                <div class="form-group full">
+                    <label for="product_id">Produto *</label>
+                    <select id="product_id" name="product_id" required>
+                        {% for p in products %}
+                            <option value="{{ p.id }}">
+                                {{ p.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Unidade -->
+                <div class="form-group">
+                    <label for="unit_id">Unidade *</label>
+                    <select id="unit_id" name="unit_id" required>
+                        {% for u in units %}
+                            <option value="{{ u.id }}">
+                                {{ u.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Quantidade -->
+                <div class="form-group">
+                    <label for="quantidade">Quantidade *</label>
+                    <input type="number" id="quantidade" name="quantidade" min="0" required>
+                </div>
+
+                <!-- Quantidade mínima -->
+                <div class="form-group">
+                    <label for="quantidade_minima">Quantidade mínima</label>
+                    <input type="number" id="quantidade_minima" name="quantidade_minima" min="0">
+                </div>
+
+                <!-- Localização -->
+                <div class="form-group full">
+                    <label for="localizacao">Localização física</label>
+                    <input type="text"
+                           id="localizacao"
+                           name="localizacao"
+                           placeholder="Ex: Prateleira A3">
+                </div>
+
             </div>
+        </fieldset>
 
-            <div class="form-group">
-                <label>Unidade</label>
-                <select name="unit_id" required>
-                    {% for u in units %}
-                        <option value="{{ u.id }}">
-                            {{ u.name }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
+        <!-- Ações -->
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">
+                Salvar
+            </button>
 
-            <div class="form-group">
-                <label>Quantidade</label>
-                <input type="number" name="quantidade" min="0" required>
-            </div>
-
-            <div class="form-group">
-                <label>Quantidade mínima</label>
-                <input type="number" name="quantidade_minima" min="0">
-            </div>
-
-            <div class="form-group full">
-                <label>Localização física</label>
-                <input type="text" name="localizacao" placeholder="Ex: Prateleira A3">
-            </div>
-
+            <a href="/stock" class="btn-secondary">
+                Cancelar
+            </a>
         </div>
-
-        <button type="submit">Salvar</button>
 
     </form>
 

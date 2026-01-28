@@ -1,28 +1,63 @@
 {% extends "base.html" %}
-{% block title %}Nova Categoria{% endblock %}
+
+{% block title %}Categoria{% endblock %}
 
 {% block content %}
-<div class="container">
-    <h2>Nova Categoria</h2>
+<div class="form-container">
 
-    <form method="post" class="inventory-form">
+    <h2 class="form-title">
+        {% if action == "edit" %}
+            Editar Categoria
+        {% else %}
+            Cadastrar Nova Categoria
+        {% endif %}
+    </h2>
 
-        <div class="form-group">
-            <label for="nome">Nome da Categoria *</label>
-            <input type="text" id="nome" name="nome" required
-                   placeholder="Ex: Informática, Periféricos">
+    <form method="post"
+          action="{% if action == 'edit' %}/categories/edit/{{ category.id }}{% else %}/categories/add{% endif %}"
+          class="form-card">
+
+        <fieldset class="form-section">
+            <legend>Informações da Categoria</legend>
+
+            <div class="form-grid">
+
+                <!-- Nome da Categoria -->
+                <div class="form-group full">
+                    <label for="nome">Nome da Categoria *</label>
+                    <input type="text"
+                           id="nome"
+                           name="nome"
+                           placeholder="Ex: Informática, Periféricos"
+                           value="{% if action == 'edit' %}{{ category.nome }}{% endif %}"
+                           required>
+                </div>
+
+                <!-- Descrição -->
+                <div class="form-group full">
+                    <label for="descricao">Descrição</label>
+                    <textarea id="descricao"
+                              name="descricao"
+                              placeholder="Descrição opcional">{% if action == 'edit' %}{{ category.descricao }}{% endif %}</textarea>
+                </div>
+
+            </div>
+        </fieldset>
+
+        <!-- Ações -->
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">
+                {% if action == "edit" %}
+                    Salvar Alterações
+                {% else %}
+                    Cadastrar
+                {% endif %}
+            </button>
+
+            <a href="/categories" class="btn-secondary">Cancelar</a>
         </div>
 
-        <div class="form-group">
-            <label for="descricao">Descrição</label>
-            <textarea id="descricao" name="descricao"
-                      placeholder="Descrição opcional"></textarea>
-        </div>
-
-        <div class="buttons">
-            <button type="submit" class="btn-submit">Salvar</button>
-            <a href="/categories" class="btn-cancel">Cancelar</a>
-        </div>
     </form>
+
 </div>
 {% endblock %}

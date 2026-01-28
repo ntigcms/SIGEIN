@@ -77,3 +77,23 @@ def add_stock(
     )
 
     return RedirectResponse("/stock", status_code=HTTP_302_FOUND)
+
+@router.get("/stock/{product_id}")
+def get_stock_by_product(
+    product_id: int,
+    db: Session = Depends(get_db)
+):
+    stocks = (
+        db.query(Stock)
+        .filter(Stock.product_id == product_id)
+        .all()
+    )
+
+    return [
+        {
+            "unit_id": s.unit_id,
+            "unit_name": s.unit.name,
+            "quantidade": s.quantidade
+        }
+        for s in stocks
+    ]

@@ -1,27 +1,54 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>
-    {% if action == "edit" %}
-        Editar Marca
-    {% else %}
-        Cadastrar Nova Marca
-    {% endif %}
-</h2>
+<div class="form-container">
 
-<form method="post" action="{% if action == 'edit' %}/brands/edit/{{ marca.id }}{% else %}/brands/add{% endif %}">
-    <label for="nome">Nome da Marca:</label>
-    <input type="text" id="nome" name="nome" 
-           value="{% if action == 'edit' %}{{ marca.nome }}{% endif %}" required>
-
-    <button type="submit">
+    <h2 class="form-title">
         {% if action == "edit" %}
-            Salvar Alterações
+            Editar Marca
         {% else %}
-            Cadastrar
+            Cadastrar Nova Marca
         {% endif %}
-    </button>
-</form>
+    </h2>
 
-<a href="/brands">Voltar para a lista de Marcas</a>
+    <form method="post"
+          action="{% if action == 'edit' %}/brands/edit/{{ marca.id }}{% else %}/brands/add{% endif %}"
+          class="form-card">
+
+        <fieldset class="form-section">
+            <legend>Informações da Marca</legend>
+
+            <div class="form-grid">
+
+                <!-- Nome da Marca -->
+                <div class="form-group">
+                    <label for="nome">Nome da Marca *</label>
+                    <input type="text"
+                           id="nome"
+                           name="nome"
+                           value="{% if action == 'edit' %}{{ marca.nome }}{% endif %}"
+                           required>
+                </div>
+
+            </div>
+        </fieldset>
+
+        <!-- Ações -->
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">
+                {% if action == "edit" %}
+                    Salvar Alterações
+                {% else %}
+                    Cadastrar
+                {% endif %}
+            </button>
+
+            <a href="/brands" class="btn-secondary">
+                Cancelar
+            </a>
+        </div>
+
+    </form>
+
+</div>
 {% endblock %}

@@ -5,7 +5,7 @@
 <div class="container">
     <h2>Movimentação de Estoque</h2>
 
-    <form method="post">
+    <form method="post" action="/movements">
 
         <!-- Categoria -->
         <div class="form-group">
@@ -21,22 +21,24 @@
         <!-- Produto -->
         <div class="form-group">
             <label for="product">Produto</label>
-            <select id="product" name="product_id" required>
+            <select id="product" name="product_id" required disabled>
                 <option value="">-- Selecione o produto --</option>
             </select>
         </div>
 
-        <!-- Unidade Atual (read-only) -->
+        <!-- Unidade de Origem -->
         <div class="form-group">
-            <label for="unit_current">Unidade Atual</label>
-            <input type="text" id="unit_current" readonly>
+            <label for="unit_origem">Unidade de Origem</label>
+            <select id="unit_origem" name="unit_origem_id" required>
+                <option value="">-- Selecione --</option>
+            </select>
         </div>
 
         <!-- Unidade de Destino -->
         <div class="form-group">
             <label for="unit_destino">Unidade de Destino</label>
-            <select id="unit_destino" name="unit_id" required>
-                <option value="">-- Selecione a unidade --</option>
+            <select id="unit_destino" name="unit_destino_id" required>
+                <option value="">-- Selecione --</option>
                 {% for u in units %}
                     <option value="{{ u.id }}">{{ u.name }}</option>
                 {% endfor %}
@@ -45,23 +47,25 @@
 
         <!-- Tipo -->
         <div class="form-group">
-            <label>Tipo</label>
-            <select name="tipo" required>
+            <label for="tipo">Tipo de Movimentação</label>
+            <select id="tipo" name="tipo" required>
+                <option value="">-- Selecione --</option>
                 <option value="ENTRADA">Entrada</option>
                 <option value="SAIDA">Saída</option>
+                <option value="TRANSFERENCIA">Transferência</option>
                 <option value="AJUSTE">Ajuste</option>
             </select>
         </div>
 
         <!-- Quantidade -->
         <div class="form-group">
-            <label>Quantidade</label>
-            <input type="number" name="quantidade" min="1" required>
+            <label for="quantidade">Quantidade</label>
+            <input type="number" name="quantidade" id="quantidade" min="1" required>
         </div>
 
         <!-- Observação -->
         <div class="form-group">
-            <label>Observação</label>
+            <label for="observacao">Observação</label>
             <textarea name="observacao"></textarea>
         </div>
 
@@ -70,39 +74,69 @@
 </div>
 
 <script>
-const productsData = {{ products | tojson }};
-
+const productsData = {{ products | tojson | safe }};
 const categorySelect = document.getElementById('category');
 const productSelect = document.getElementById('product');
-const unitCurrent = document.getElementById('unit_current');
+const unitOrigemSelect = document.getElementById("unit_origem");
+const quantidadeInput = document.getElementById("quantidade");
 
-function filterProducts() {
+// Filtra produtos por categoria e exibe pelo tipo
+categorySelect.addEventListener('change', () => {
     const cat = categorySelect.value;
     productSelect.innerHTML = '<option value="">-- Selecione o produto --</option>';
+    productSelect.disabled = !cat;
+    unitOrigemSelect.innerHTML = '<option value="">-- Selecione --</option>';
+    quantidadeInput.value = '';
+    quantidadeInput.max = '';
 
-    const filtered = productsData.filter(p => p.category_id == cat);
+    if (!cat) return;
 
-    filtered.forEach(p => {
-        const option = document.createElement('option');
-        option.value = p.id;
-        option.text = `${p.name} (Unidade atual: ${p.unit_name})`;
-        productSelect.appendChild(option);
-    });
-}
-
-function updateUnitCurrent() {
-    const prodId = productSelect.value;
-    const prod = productsData.find(p => p.id == prodId);
-    unitCurrent.value = prod ? prod.unit_name : '';
-}
-
-categorySelect.addEventListener('change', () => {
-    filterProducts();
-    unitCurrent.value = '';
+    productsData
+        .filter(p => p.category_id == cat)
+        .forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.text = p.type_name; // Mostra o tipo do produto
+            productSelect.appendChild(opt);
+        });
 });
 
-productSelect.addEventListener('change', updateUnitCurrent);
+// Carrega automaticamente unidades de origem e limita quantidade
+async function carregarUnidadeOrigem(productId) {
+    unitOrigemSelect.innerHTML = '<option value="">-- Selecione --</option>';
+    quantidadeInput.value = '';
+    quantidadeInput.max = '';
 
-filterProducts();
+    if (!productId) return;
+
+    const response = await fetch(`/movements/stock/${productId}`);
+    const data = await response.json();
+
+    data.forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s.unit_id;
+        opt.text = `${s.unit_name} (Disponível: ${s.quantidade})`;
+        opt.dataset.max = s.quantidade; // guarda a quantidade máxima
+        unitOrigemSelect.appendChild(opt);
+    });
+
+    // Se só tiver uma unidade, seleciona automaticamente
+    if (data.length === 1) {
+        unitOrigemSelect.selectedIndex = 1;
+        quantidadeInput.max = data[0].quantidade;
+    }
+}
+
+// Atualiza quantidade máxima quando muda unidade de origem
+unitOrigemSelect.addEventListener("change", () => {
+    const selected = unitOrigemSelect.options[unitOrigemSelect.selectedIndex];
+    quantidadeInput.max = selected?.dataset.max || '';
+    quantidadeInput.value = ''; // reseta para evitar ultrapassar o limite
+});
+
+// Ao mudar o produto, carrega unidades de origem
+productSelect.addEventListener("change", () => {
+    carregarUnidadeOrigem(productSelect.value);
+});
 </script>
 {% endblock %}

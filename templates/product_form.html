@@ -3,221 +3,294 @@
 {% block title %}Cadastro de Produto / Item{% endblock %}
 
 {% block content %}
+<style>
+.container {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.inventory-form {
+    background: #ffffff;
+    padding: 35px 45px;
+    border-radius: 14px;
+    box-shadow: 0 12px 35px rgba(0,0,0,0.08);
+}
+
+.fieldset-section {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 25px 30px;
+    margin-bottom: 35px;
+}
+
+.fieldset-section legend {
+    padding: 0 12px;
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 1rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px 26px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group.full {
+    grid-column: span 3;
+}
+
+.form-group label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 6px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 11px 13px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.9rem;
+}
+
+.form-group textarea {
+    min-height: 90px;
+    resize: vertical;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+}
+
+.checkbox-group {
+    justify-content: center;
+}
+
+.radio-group {
+    display: flex;
+    gap: 20px;
+    margin-top: 5px;
+}
+
+.buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 30px;
+}
+
+.btn-submit {
+    background: #2563eb;
+    color: #fff;
+    padding: 11px 24px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-submit:hover {
+    background: #1d4ed8;
+}
+
+.btn-cancel {
+    padding: 11px 24px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    text-decoration: none;
+}
+
+.btn-cancel:hover {
+    background: #f1f5f9;
+}
+
+@media (max-width: 1024px) {
+    .form-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .form-group.full {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 640px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
 <div class="container">
-    <h2 style="text-align:center; margin-bottom:25px;">
+    <h2 style="text-align:center; margin-bottom:30px;">
         {% if action == 'add' %}Adicionar Produto / Item{% else %}Editar Produto / Item{% endif %}
     </h2>
 
-    <form id="inventoryForm" method="POST"
+    <form method="POST"
           action="{% if action == 'add' %}/products/add{% else %}/products/edit/{{ product.id }}{% endif %}"
           class="inventory-form">
 
-        <!-- === PRODUTO === -->
+        <!-- PRODUTO -->
         <fieldset class="fieldset-section">
             <legend>Informações do Produto</legend>
+
             <div class="form-grid">
 
-                <!-- Nome do Produto -->
                 <div class="form-group">
-                    <label for="product_name">Nome do Produto *</label>
-                    <input type="text" id="product_name" name="name"
-                           value="{{ product.name if product else '' }}" required
-                           title="Ex: Notebook Dell Latitude 5420">
+                    <label>Nome do Produto *</label>
+                    <input type="text" name="name" value="{{ product.name if product else '' }}" required>
                 </div>
 
-                <!-- Categoria -->
                 <div class="form-group">
-                    <label for="category">Categoria</label>
-                    <select id="category" name="category_id">
-                        <option value="">-- Selecione a categoria --</option>
+                    <label>Categoria</label>
+                    <select name="category_id" id="category">
+                        <option value="">-- Selecione --</option>
                         {% for cat in categories %}
-                            <option value="{{ cat.id }}"
-                                {% if product and product.category_id == cat.id %}selected{% endif %}>
-                                {{ cat.nome }}
-                            </option>
+                        <option value="{{ cat.id }}" {% if product and product.category_id == cat.id %}selected{% endif %}>
+                            {{ cat.nome }}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
 
-                <!-- Tipo -->
                 <div class="form-group">
-                    <label for="type">Tipo *</label>
-                    <select id="type" name="type_id" required>
-                        <option value="">-- Selecione o tipo --</option>
+                    <label>Tipo *</label>
+                    <select name="type_id" id="type" required>
+                        <option value="">-- Selecione --</option>
                         {% for tipo in tipos %}
-                            <option value="{{ tipo.id }}" data-category="{{ tipo.category_id }}"
-                                {% if product and product.type_id == tipo.id %}selected{% endif %}>
-                                {{ tipo.nome }}
-                            </option>
+                        <option value="{{ tipo.id }}" data-category="{{ tipo.category_id }}"
+                            {% if product and product.type_id == tipo.id %}selected{% endif %}>
+                            {{ tipo.nome }}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
 
-                <!-- Marca -->
                 <div class="form-group">
-                    <label for="brand">Marca *</label>
-                    <select id="brand" name="brand_id" required>
-                        <option value="">-- Selecione a marca --</option>
+                    <label>Marca *</label>
+                    <select name="brand_id" required>
                         {% for marca in marcas %}
-                            <option value="{{ marca.id }}"
-                                {% if product and product.brand_id == marca.id %}selected{% endif %}>
-                                {{ marca.nome }}
-                            </option>
+                        <option value="{{ marca.id }}" {% if product and product.brand_id == marca.id %}selected{% endif %}>
+                            {{ marca.nome }}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
 
-                <!-- Modelo -->
                 <div class="form-group">
-                    <label for="model">Modelo *</label>
-                    <input type="text" id="model" name="model"
-                           value="{{ product.model if product else '' }}" required>
+                    <label>Modelo *</label>
+                    <input type="text" name="model" value="{{ product.model if product else '' }}" required>
                 </div>
 
-                <!-- Descrição -->
-                <div class="form-group">
-                    <label for="description">Descrição *</label>
-                    <textarea id="description" name="description" required>{{ product.description if product else '' }}</textarea>
+                <div class="form-group full">
+                    <label>Descrição *</label>
+                    <textarea name="description" required>{{ product.description if product else '' }}</textarea>
                 </div>
 
-                <!-- Controla por Série -->
                 <div class="form-group checkbox-group">
                     <label>
                         <input type="checkbox" id="controla_por_serie" name="controla_por_serie"
-                            {% if product and product.controla_por_serie %}checked{% endif %}>
+                        {% if product and product.controla_por_serie %}checked{% endif %}>
                         Controla por Série/Tombo
                     </label>
                 </div>
 
-                <!-- Quantidade -->
                 <div class="form-group" id="quantidade-container">
-                    <label for="quantidade">Quantidade (para produtos sem série)</label>
-                    <input type="number" id="quantidade" name="quantidade" min="1"
-                           value="{{ product.quantidade if product else 1 }}">
+                    <label>Quantidade</label>
+                    <input type="number" name="quantidade" value="{{ product.quantidade if product else 1 }}">
                 </div>
 
-                <!-- Quantidade mínima -->
                 <div class="form-group">
-                    <label for="quantidade_minima">Quantidade mínima em estoque</label>
-                    <input type="number" id="quantidade_minima" name="quantidade_minima" min="0"
-                           value="{{ product.quantidade_minima if product else 0 }}">
+                    <label>Quantidade mínima</label>
+                    <input type="number" name="quantidade_minima" value="{{ product.quantidade_minima if product else 0 }}">
                 </div>
 
             </div>
         </fieldset>
 
-        <!-- === ITEM FÍSICO === -->
-<fieldset class="fieldset-section" id="item-fisico-section">
-    <legend>Informações do Item Físico</legend>
+        <!-- ITEM FÍSICO -->
+        <fieldset class="fieldset-section" id="item-fisico-section">
+            <legend>Informações do Item Físico</legend>
 
-    <div class="form-grid">
+            <div class="form-grid">
 
-        <!-- Tombo ou Série -->
-        <div class="form-group checkbox-group">
-            <label>Tombo ou Série *</label>
-            <div class="radio-group">
-                <label>
-                    <input type="radio" name="tombo" value="Sim" {% if item and item.tombo %}checked{% endif %}>
-                    Tombo
-                </label>
-                <label>
-                    <input type="radio" name="tombo" value="Não" {% if item and not item.tombo %}checked{% endif %}>
-                    Série
-                </label>
+                <div class="form-group">
+                    <label>Tombo ou Série</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="tombo" value="Sim"> Tombo</label>
+                        <label><input type="radio" name="tombo" value="Não"> Série</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Estado</label>
+                    <select name="state_id">
+                        {% for estado in estados %}
+                        <option value="{{ estado.id }}">{{ estado.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Status</label>
+                    <select name="status">
+                        <option>Disponível</option>
+                        <option>Reservado</option>
+                        <option>Alocado</option>
+                        <option>Bloqueado</option>
+                        <option>Devolvido</option>
+                        <option>Emprestado</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Unidade</label>
+                    <select name="unit_id">
+                        {% for u in units %}
+                        <option value="{{ u.id }}">{{ u.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Data de Aquisição</label>
+                    <input type="date" name="data_aquisicao">
+                </div>
+
+                <div class="form-group">
+                    <label>Valor</label>
+                    <input type="number" step="0.01" name="valor_aquisicao">
+                </div>
+
+                <div class="form-group full">
+                    <label>Observações</label>
+                    <textarea name="observacao"></textarea>
+                </div>
+
             </div>
-        </div>
+        </fieldset>
 
-        <!-- Número do Tombo -->
-        <div class="form-group" id="campo-tombo">
-            <label for="num_tombo">Número do Tombo</label>
-            <input type="text" id="num_tombo" name="num_tombo" value="{{ item.num_tombo_ou_serie if item and item.tombo else '' }}">
-        </div>
-
-        <!-- Número de Série -->
-        <div class="form-group" id="campo-serie">
-            <label for="num_serie">Número de Série</label>
-            <input type="text" id="num_serie" name="num_serie" value="{{ item.num_tombo_ou_serie if item and not item.tombo else '' }}">
-        </div>
-
-        <!-- Estado -->
-        <div class="form-group">
-            <label for="state">Estado *</label>
-            <select id="state" name="state_id" required>
-                <option value="">-- Selecione o estado --</option>
-                {% for estado in estados %}
-                    <option value="{{ estado.id }}" {% if item and item.estado_id == estado.id %}selected{% endif %}>
-                        {{ estado.nome }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <!-- Status -->
-        <div class="form-group">
-            <label for="status">Status *</label>
-            <select id="status" name="status" required>
-                {% set statuses = ['Disponível','Reservado','Alocado','Bloqueado','Devolvido','Emprestado'] %}
-                {% for st in statuses %}
-                    <option value="{{ st }}" {% if item and item.status == st %}selected{% endif %}>
-                        {{ st }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <!-- Unidade Administrativa -->
-        <div class="form-group">
-            <label for="unit">Unidade Administrativa *</label>
-            <select id="unit" name="unit_id" required>
-                <option value="">-- Selecione a unidade --</option>
-                {% for unidade in units %}
-                    <option value="{{ unidade.id }}" {% if item and item.unit_id == unidade.id %}selected{% endif %}>
-                        {{ unidade.name }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <!-- Data de Aquisição -->
-        <div class="form-group">
-            <label for="data_aquisicao">Data de Aquisição</label>
-            <input type="date" id="data_aquisicao" name="data_aquisicao"
-                   value="{{ item.data_aquisicao if item else '' }}">
-        </div>
-
-        <!-- Valor de Aquisição -->
-        <div class="form-group">
-            <label for="valor_aquisicao">Valor de Aquisição</label>
-            <input type="number" id="valor_aquisicao" name="valor_aquisicao" step="0.01" min="0"
-                   value="{{ item.valor_aquisicao if item else 0 }}">
-        </div>
-
-        <!-- Garantia Até -->
-        <div class="form-group">
-            <label for="garantia_ate">Garantia Até</label>
-            <input type="date" id="garantia_ate" name="garantia_ate"
-                   value="{{ item.garantia_ate if item else '' }}">
-        </div>
-
-        <!-- Observações -->
-        <div class="form-group">
-            <label for="observacao">Observações</label>
-            <textarea id="observacao" name="observacao">{{ item.observacao if item else '' }}</textarea>
-        </div>
-
-    </div>
-</fieldset>
-
-        <!-- Botões -->
         <div class="buttons">
-            <button type="submit" class="btn-submit">
-                {% if action == 'add' %}Adicionar{% else %}Salvar Alterações{% endif %}
-            </button>
+            <button type="submit" class="btn-submit">Salvar</button>
             <a href="/products" class="btn-cancel">Cancelar</a>
         </div>
 
     </form>
 </div>
+
 
 <script>
 window.addEventListener('load', function () {
