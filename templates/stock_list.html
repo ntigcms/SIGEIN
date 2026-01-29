@@ -3,43 +3,32 @@
 {% block title %}Estoque{% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container" style="max-width:1200px; margin:30px auto;">
 
-    <h2>Estoque</h2>
+    <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:25px;">
+        <h2>Estoque</h2>
+        <a href="/stock/add">
+            <button class="btn-submit">➕ Entrada de Estoque</button>
+        </a>
+    </div>
 
-    <a href="/stock/add" style="display:inline-block; margin-bottom:20px;">
-        ➕ Entrada de Estoque
-    </a>
-
-    <div class="table-grid">
-        <div class="table-group"><strong>Produto</strong></div>
-        <div class="table-group"><strong>Unidade</strong></div>
-        <div class="table-group"><strong>Quantidade</strong></div>
-        <div class="table-group"><strong>Mínimo</strong></div>
-        <div class="table-group"><strong>Localização</strong></div>
-        <div class="table-group"><strong>Status</strong></div>
+    <div class="table-section">
+        <div class="table-grid header">
+            <div class="table-group"><strong>Produto</strong></div>
+            <div class="table-group"><strong>Unidade</strong></div>
+            <div class="table-group"><strong>Quantidade</strong></div>
+            <div class="table-group"><strong>Mínimo</strong></div>
+            <div class="table-group"><strong>Localização</strong></div>
+            <div class="table-group"><strong>Status</strong></div>
+        </div>
 
         {% for s in stock %}
-            <div class="table-group wide">
-                {{ s.product.name }}
-            </div>
-
-            <div class="table-group">
-                {{ s.unit.name }}
-            </div>
-
-            <div class="table-group">
-                {{ s.quantidade }}
-            </div>
-
-            <div class="table-group">
-                {{ s.quantidade_minima }}
-            </div>
-
-            <div class="table-group">
-                {{ s.localizacao or "-" }}
-            </div>
-
+        <div class="table-grid row">
+            <div class="table-group wide">{{ s.product.name }}</div>
+            <div class="table-group">{{ s.unit.name }}</div>
+            <div class="table-group">{{ s.quantidade }}</div>
+            <div class="table-group">{{ s.quantidade_minima }}</div>
+            <div class="table-group">{{ s.localizacao or "-" }}</div>
             <div class="table-group">
                 {% if s.quantidade <= s.quantidade_minima %}
                     <span style="color:red;font-weight:bold;">⚠ Baixo</span>
@@ -47,8 +36,95 @@
                     <span style="color:green;">✔ OK</span>
                 {% endif %}
             </div>
+        </div>
         {% endfor %}
     </div>
 
 </div>
+
+<style>
+/* === Layout Padronizado === */
+.container {
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+h2 {
+    color: #003366;
+    font-weight: 600;
+}
+
+.btn-submit {
+    background: linear-gradient(90deg, #0077cc, #00aaff);
+    color: #fff;
+    padding: 10px 25px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.btn-submit:hover {
+    background: linear-gradient(90deg, #005fa3, #008fcc);
+}
+
+/* === Tabela estilo grid padronizado === */
+.table-section {
+    margin-top: 20px;
+}
+
+.table-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    padding: 12px 10px;
+    border-bottom: 1px solid #eee;
+    align-items: center;
+}
+
+.table-grid.header {
+    background-color: #f0f4f8;
+    font-weight: bold;
+    border-radius: 6px 6px 0 0;
+}
+
+.table-grid.row:hover {
+    background-color: #f9faff;
+}
+
+.table-group {
+    padding: 5px 10px;
+}
+
+.table-group.wide {
+    grid-column: span 1;
+}
+
+@media (max-width: 768px) {
+    .table-grid {
+        grid-template-columns: 1fr 1fr;
+        grid-gap: 10px;
+    }
+    .table-grid.header {
+        display: none;
+    }
+    .table-grid.row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-gap: 10px;
+        border: 1px solid #eee;
+        margin-bottom: 10px;
+        border-radius: 6px;
+        padding: 10px;
+    }
+    .table-group:before {
+        content: attr(data-label);
+        font-weight: bold;
+        display: block;
+        margin-bottom: 3px;
+        color: #003366;
+    }
+}
+</style>
 {% endblock %}

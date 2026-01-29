@@ -74,7 +74,7 @@
 </div>
 
 <script>
-const productsData = {{ products | tojson | safe }};
+const productsData = "{{ products | tojson | safe }}";
 const categorySelect = document.getElementById('category');
 const productSelect = document.getElementById('product');
 const unitOrigemSelect = document.getElementById("unit_origem");
