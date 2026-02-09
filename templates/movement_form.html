@@ -21,8 +21,24 @@
         <!-- Produto -->
         <div class="form-group">
             <label for="product">Produto</label>
-            <select id="product" name="product_id" required disabled>
+            <select id="product" name="type_id" required disabled>
                 <option value="">-- Selecione o produto --</option>
+            </select>
+        </div>
+
+        <!-- Número de Série -->
+        <div class="form-group" id="serie-container" style="display:none;">
+            <label for="serie-select">Número de Série</label>
+            <select id="serie-select">
+                <option value="">-- Selecione --</option>
+            </select>
+        </div>
+
+        <!-- Número do Tombo -->
+        <div class="form-group" id="tombo-container" style="display:none;">
+            <label for="tombo-select">Número do Tombo</label>
+            <select id="tombo-select">
+                <option value="">-- Selecione --</option>
             </select>
         </div>
 
@@ -45,7 +61,7 @@
             </select>
         </div>
 
-        <!-- Tipo -->
+        <!-- Tipo de Movimentação -->
         <div class="form-group">
             <label for="tipo">Tipo de Movimentação</label>
             <select id="tipo" name="tipo" required>
@@ -60,7 +76,7 @@
         <!-- Quantidade -->
         <div class="form-group">
             <label for="quantidade">Quantidade</label>
-            <input type="number" name="quantidade" id="quantidade" min="1" required>
+            <input type="number" name="quantidade" id="quantidade" min="1" disabled>
         </div>
 
         <!-- Observação -->
@@ -69,74 +85,174 @@
             <textarea name="observacao"></textarea>
         </div>
 
+        <!-- Campo oculto para item_id -->
+        <input type="hidden" name="item_id" id="item_id">
+
         <button type="submit">Confirmar</button>
     </form>
 </div>
 
 <script>
-const productsData = "{{ products | tojson | safe }}";
-const categorySelect = document.getElementById('category');
-const productSelect = document.getElementById('product');
+const productsData = JSON.parse('{{ products | tojson | safe }}');
+
+const categorySelect = document.getElementById("category");
+const productSelect = document.getElementById("product");
+
+const serieContainer = document.getElementById("serie-container");
+const serieSelect = document.getElementById("serie-select");
+
+const tomboContainer = document.getElementById("tombo-container");
+const tomboSelect = document.getElementById("tombo-select");
+
 const unitOrigemSelect = document.getElementById("unit_origem");
 const quantidadeInput = document.getElementById("quantidade");
+const itemIdInput = document.getElementById("item_id");
 
-// Filtra produtos por categoria e exibe pelo tipo
+/* ---------------- CATEGORIA → PRODUTO ---------------- */
 categorySelect.addEventListener('change', () => {
-    const cat = categorySelect.value;
+    const cat = parseInt(categorySelect.value);
+
     productSelect.innerHTML = '<option value="">-- Selecione o produto --</option>';
     productSelect.disabled = !cat;
-    unitOrigemSelect.innerHTML = '<option value="">-- Selecione --</option>';
+
+    resetItems();
+    resetUnidade();
     quantidadeInput.value = '';
-    quantidadeInput.max = '';
+    quantidadeInput.disabled = true;
+    itemIdInput.value = '';
 
     if (!cat) return;
 
-    productsData
-        .filter(p => p.category_id == cat)
-        .forEach(p => {
-            const opt = document.createElement('option');
-            opt.value = p.id;
-            opt.text = p.type_name; // Mostra o tipo do produto
-            productSelect.appendChild(opt);
-        });
-});
+    const filtered = productsData.filter(p => p.category_id === cat);
 
-// Carrega automaticamente unidades de origem e limita quantidade
-async function carregarUnidadeOrigem(productId) {
-    unitOrigemSelect.innerHTML = '<option value="">-- Selecione --</option>';
-    quantidadeInput.value = '';
-    quantidadeInput.max = '';
-
-    if (!productId) return;
-
-    const response = await fetch(`/movements/stock/${productId}`);
-    const data = await response.json();
-
-    data.forEach(s => {
-        const opt = document.createElement("option");
-        opt.value = s.unit_id;
-        opt.text = `${s.unit_name} (Disponível: ${s.quantidade})`;
-        opt.dataset.max = s.quantidade; // guarda a quantidade máxima
-        unitOrigemSelect.appendChild(opt);
+    const grouped = {};
+    filtered.forEach(p => {
+        if (!grouped[p.type_id]) {
+            grouped[p.type_id] = {
+                type_id: p.type_id,
+                type_name: p.type_name,
+                controla_por_serie: p.controla_por_serie
+            };
+        }
     });
 
-    // Se só tiver uma unidade, seleciona automaticamente
-    if (data.length === 1) {
-        unitOrigemSelect.selectedIndex = 1;
-        quantidadeInput.max = data[0].quantidade;
+    Object.values(grouped).forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.type_id;
+        opt.text = p.type_name;
+        opt.dataset.controlaPorSerie = p.controla_por_serie;
+        productSelect.appendChild(opt);
+    });
+});
+
+/* ---------------- PRODUTO ---------------- */
+productSelect.addEventListener("change", async () => {
+    resetItems();
+    resetUnidade();
+    quantidadeInput.value = '';
+    quantidadeInput.disabled = true;
+    itemIdInput.value = '';
+
+    const opt = productSelect.selectedOptions[0];
+    if (!opt) return;
+
+    const controlaSerie = opt.dataset.controlaPorSerie === "true";
+
+    if (controlaSerie) {
+        quantidadeInput.disabled = true;
+        await carregarItensFisicos(opt.value);
+    } else {
+        quantidadeInput.disabled = false;
+    }
+});
+
+/* ---------------- TOMBO / SÉRIE ---------------- */
+async function carregarItensFisicos(type_id) {
+    serieSelect.innerHTML = '<option value="">-- Selecione --</option>';
+    tomboSelect.innerHTML = '<option value="">-- Selecione --</option>';
+    serieContainer.style.display = 'none';
+    tomboContainer.style.display = 'none';
+    itemIdInput.value = '';
+
+    const res = await fetch(`/movements/items/${type_id}`);
+    const itens = await res.json();
+    if (!itens.length) return;
+
+    const series = itens.filter(i => !i.tombo);
+    const tombos = itens.filter(i => i.tombo);
+
+    if (series.length) {
+        serieContainer.style.display = "block";
+        series.forEach(i => {
+            const opt = document.createElement("option");
+            opt.value = i.id;
+            opt.text = i.num;
+            opt.dataset.unitId = i.unit_id;
+            opt.dataset.unitName = i.unit_name;
+            serieSelect.appendChild(opt);
+        });
+    }
+
+    if (tombos.length) {
+        tomboContainer.style.display = "block";
+        tombos.forEach(i => {
+            const opt = document.createElement("option");
+            opt.value = i.id;
+            opt.text = i.num;
+            opt.dataset.unitId = i.unit_id;
+            opt.dataset.unitName = i.unit_name;
+            tomboSelect.appendChild(opt);
+        });
     }
 }
 
-// Atualiza quantidade máxima quando muda unidade de origem
-unitOrigemSelect.addEventListener("change", () => {
-    const selected = unitOrigemSelect.options[unitOrigemSelect.selectedIndex];
-    quantidadeInput.max = selected?.dataset.max || '';
-    quantidadeInput.value = ''; // reseta para evitar ultrapassar o limite
+/* ---------------- ITEM → UNIDADE AUTOMÁTICA ---------------- */
+serieSelect.addEventListener("change", () => {
+    tomboSelect.value = "";
+    resetUnidade();
+
+    const opt = serieSelect.selectedOptions[0];
+    if (!opt) return;
+
+    itemIdInput.value = opt.value;
+
+    const unitOpt = document.createElement("option");
+    unitOpt.value = opt.dataset.unitId;
+    unitOpt.text = opt.dataset.unitName;
+    unitOrigemSelect.innerHTML = '';
+    unitOrigemSelect.appendChild(unitOpt);
+    unitOrigemSelect.value = unitOpt.value;
 });
 
-// Ao mudar o produto, carrega unidades de origem
-productSelect.addEventListener("change", () => {
-    carregarUnidadeOrigem(productSelect.value);
+tomboSelect.addEventListener("change", () => {
+    serieSelect.value = "";
+    resetUnidade();
+
+    const opt = tomboSelect.selectedOptions[0];
+    if (!opt) return;
+
+    itemIdInput.value = opt.value;
+
+    const unitOpt = document.createElement("option");
+    unitOpt.value = opt.dataset.unitId;
+    unitOpt.text = opt.dataset.unitName;
+    unitOrigemSelect.innerHTML = '';
+    unitOrigemSelect.appendChild(unitOpt);
+    unitOrigemSelect.value = unitOpt.value;
 });
+
+/* ---------------- HELPERS ---------------- */
+function resetItems() {
+    serieContainer.style.display = 'none';
+    tomboContainer.style.display = 'none';
+    serieSelect.innerHTML = '<option value="">-- Selecione --</option>';
+    tomboSelect.innerHTML = '<option value="">-- Selecione --</option>';
+    itemIdInput.value = '';
+}
+
+function resetUnidade() {
+    unitOrigemSelect.innerHTML = '<option value="">-- Selecione --</option>';
+}
 </script>
+
 {% endblock %}

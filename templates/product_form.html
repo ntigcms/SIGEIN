@@ -230,14 +230,26 @@
                 <div class="form-group">
                     <label>Tombo ou Série</label>
                     <div class="radio-group">
-                        <label><input type="radio" name="tombo" value="Sim"> Tombo</label>
-                        <label><input type="radio" name="tombo" value="Não"> Série</label>
+                        <label><input type="radio" name="tombo" value="Sim" {% if item and item.tombo %}checked{% endif %}>Tombo</label>
+                        <label><input type="radio" name="tombo" value="Não" {% if item and not item.tombo %}checked{% endif %}>Série</label>
                     </div>
                 </div>
 
+            <div class="form-group" id="campo-tombo" style="display:none;">
+                    <label>Número do Tombo</label>
+                    <input type="text" name="num_tombo" id="num_tombo"
+                        value="{{ item.num_tombo_ou_serie if item and item.tombo }}">
+            </div>
+
+            <div class="form-group" id="campo-serie" style="display:none;">
+                    <label>Número de Série</label>
+                    <input type="text" name="num_serie" id="num_serie"
+                        value="{{ item.num_tombo_ou_serie if item and not item.tombo }}">
+            </div>
+
                 <div class="form-group">
                     <label>Estado</label>
-                    <select name="state_id">
+                    <select name="state_id" id="state">
                         {% for estado in estados %}
                         <option value="{{ estado.id }}">{{ estado.nome }}</option>
                         {% endfor %}
@@ -258,7 +270,7 @@
 
                 <div class="form-group">
                     <label>Unidade</label>
-                    <select name="unit_id">
+                    <select name="unit_id" id="unit">
                         {% for u in units %}
                         <option value="{{ u.id }}">{{ u.name }}</option>
                         {% endfor %}
@@ -267,17 +279,17 @@
 
                 <div class="form-group">
                     <label>Data de Aquisição</label>
-                    <input type="date" name="data_aquisicao">
+                    <input type="date" name="data_aquisicao" value="{{ item.data_aquisicao.strftime('%Y-%m-%d') if item and item.data_aquisicao }}">
                 </div>
 
                 <div class="form-group">
                     <label>Valor</label>
-                    <input type="number" step="0.01" name="valor_aquisicao">
+                    <input type="text" name="valor_aquisicao" id="valor_aquisicao" placeholder="R$ 0,00" value="{{ 'R$ {:,.2f}'.format(item.valor_aquisicao).replace(',', 'X').replace('.', ',').replace('X', '.') if item and item.valor_aquisicao }}">
                 </div>
 
                 <div class="form-group full">
                     <label>Observações</label>
-                    <textarea name="observacao"></textarea>
+                    <textarea name="observacao">{{ item.observacao if item }}</textarea>
                 </div>
 
             </div>
@@ -376,5 +388,41 @@ window.addEventListener('load', function () {
     filtrarTiposPorCategoria();
 });
 </script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const input = document.getElementById("valor_aquisicao");
+    if (!input) return;
+
+    const formatter = new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL"
+    });
+
+    function formatarDireitaParaEsquerda(valor) {
+        // mantém apenas números
+        const numeros = valor.replace(/\D/g, "");
+
+        // converte centavos
+        const numero = (Number(numeros) / 100).toFixed(2);
+
+        return formatter.format(numero);
+    }
+
+    input.addEventListener("input", function () {
+        input.value = formatarDireitaParaEsquerda(input.value);
+    });
+
+    // Remove máscara antes de enviar
+    input.form.addEventListener("submit", function () {
+        input.value = input.value
+            .replace(/\./g, "")
+            .replace(",", ".")
+            .replace("R$", "")
+            .trim();
+    });
+});
+</script>
+
 
 {% endblock %}
