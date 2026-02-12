@@ -5,7 +5,7 @@
 <div class="container">
     <h2>Movimentação de Estoque</h2>
 
-    <form method="post" action="/movements">
+    <form method="post" action="{% if movimento %}/movements/edit/{{ movimento.id }}{% else %}/movements{% endif %}">
 
         <!-- Categoria -->
         <div class="form-group">
@@ -88,9 +88,34 @@
         <!-- Campo oculto para item_id -->
         <input type="hidden" name="item_id" id="item_id">
 
-        <button type="submit">Confirmar</button>
+        <div class="buttons">
+    <button type="submit" class="btn-submit">
+        {% if movimento %}Atualizar{% else %}Salvar{% endif %}
+    </button>
+
+    {% if movimento %}
+        <a href="/movements" class="btn-cancel">Voltar</a>
+    {% else %}
+        <a href="/movements" class="btn-cancel">Cancelar</a>
+    {% endif %}
+</div>
+
     </form>
 </div>
+
+<style>
+    .btn-cancel {
+    padding: 11px 24px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    text-decoration: none;
+}
+
+    .btn-cancel:hover {
+    background: #f1f5f9;
+}
+</style>
 
 <script>
 const productsData = JSON.parse('{{ products | tojson | safe }}');
@@ -107,6 +132,7 @@ const tomboSelect = document.getElementById("tombo-select");
 const unitOrigemSelect = document.getElementById("unit_origem");
 const quantidadeInput = document.getElementById("quantidade");
 const itemIdInput = document.getElementById("item_id");
+
 
 /* ---------------- CATEGORIA → PRODUTO ---------------- */
 categorySelect.addEventListener('change', () => {
@@ -170,6 +196,7 @@ productSelect.addEventListener("change", async () => {
 async function carregarItensFisicos(type_id) {
     serieSelect.innerHTML = '<option value="">-- Selecione --</option>';
     tomboSelect.innerHTML = '<option value="">-- Selecione --</option>';
+
     serieContainer.style.display = 'none';
     tomboContainer.style.display = 'none';
     itemIdInput.value = '';
@@ -178,33 +205,51 @@ async function carregarItensFisicos(type_id) {
     const itens = await res.json();
     if (!itens.length) return;
 
-    const series = itens.filter(i => !i.tombo);
-    const tombos = itens.filter(i => i.tombo);
+    // 🔥 Normaliza tipo boolean
+    const itensNormalizados = itens.map(i => ({
+        ...i,
+        isTombo:
+            i.tombo === true ||
+            i.tombo === "true" ||
+            i.tombo === 1 ||
+            i.tombo === "1"
+    }));
 
-    if (series.length) {
+    const temSerie = itensNormalizados.some(i => !i.isTombo);
+    const temTombo = itensNormalizados.some(i => i.isTombo);
+
+    // 🔹 Se tiver série, prioriza série
+    if (temSerie) {
         serieContainer.style.display = "block";
-        series.forEach(i => {
-            const opt = document.createElement("option");
-            opt.value = i.id;
-            opt.text = i.num;
-            opt.dataset.unitId = i.unit_id;
-            opt.dataset.unitName = i.unit_name;
-            serieSelect.appendChild(opt);
-        });
-    }
 
-    if (tombos.length) {
+        itensNormalizados
+            .filter(i => !i.isTombo)
+            .forEach(i => {
+                const opt = document.createElement("option");
+                opt.value = i.id;
+                opt.text = i.num;
+                opt.dataset.unitId = i.unit_id;
+                opt.dataset.unitName = i.unit_name;
+                serieSelect.appendChild(opt);
+            });
+    }
+    // 🔹 Senão, mostra tombo
+    else if (temTombo) {
         tomboContainer.style.display = "block";
-        tombos.forEach(i => {
-            const opt = document.createElement("option");
-            opt.value = i.id;
-            opt.text = i.num;
-            opt.dataset.unitId = i.unit_id;
-            opt.dataset.unitName = i.unit_name;
-            tomboSelect.appendChild(opt);
-        });
+
+        itensNormalizados
+            .filter(i => i.isTombo)
+            .forEach(i => {
+                const opt = document.createElement("option");
+                opt.value = i.id;
+                opt.text = i.num;
+                opt.dataset.unitId = i.unit_id;
+                opt.dataset.unitName = i.unit_name;
+                tomboSelect.appendChild(opt);
+            });
     }
 }
+
 
 /* ---------------- ITEM → UNIDADE AUTOMÁTICA ---------------- */
 serieSelect.addEventListener("change", () => {
@@ -253,6 +298,64 @@ function resetItems() {
 function resetUnidade() {
     unitOrigemSelect.innerHTML = '<option value="">-- Selecione --</option>';
 }
+</script>
+
+<script>
+// ❌ Corrigido: atribuição segura de movimento
+window.movimento = {{ movimento | tojson }};
+
+async function carregarModoEdicao() {
+    if (!window.movimento || !window.movimento.id) return;
+
+    const m = window.movimento;
+
+    // 1️⃣ Seleciona categoria
+    categorySelect.value = m.product.category_id;
+    categorySelect.dispatchEvent(new Event('change'));
+
+    // Pequeno delay para popular produtos
+    await new Promise(r => setTimeout(r, 50));
+
+    // 2️⃣ Seleciona produto
+    productSelect.value = m.product.type_id;
+    productSelect.dispatchEvent(new Event('change'));
+
+    // 3️⃣ Espera carregar itens físicos (se houver)
+    await new Promise(r => setTimeout(r, 300));
+
+    if (m.item) {
+        if (m.item.tombo) {
+            tomboSelect.value = m.item.id;
+            tomboSelect.dispatchEvent(new Event('change'));
+        } else {
+            serieSelect.value = m.item.id;
+            serieSelect.dispatchEvent(new Event('change'));
+        }
+    } else {
+        quantidadeInput.value = m.quantidade;
+        quantidadeInput.disabled = false;
+
+        // 🔹 Define unidade de origem manualmente quando não é item físico
+        unitOrigemSelect.innerHTML = '';
+        const opt = document.createElement("option");
+        opt.value = m.unit_origem_id;
+        opt.text = "Unidade atual";
+        unitOrigemSelect.appendChild(opt);
+        unitOrigemSelect.value = m.unit_origem_id;
+    }
+
+    // 4️⃣ Destino
+    document.getElementById("unit_destino").value = m.unit_destino_id;
+
+    // 5️⃣ Tipo
+    document.getElementById("tipo").value = m.tipo;
+
+    // 6️⃣ Observação
+    document.querySelector("textarea[name='observacao']").value = m.observacao || '';
+}
+
+carregarModoEdicao();
+
 </script>
 
 {% endblock %}

@@ -80,7 +80,21 @@
     {% endfor %}
     </tbody>
 </table>
-</div>
+</div>,
+
+<style>
+    .dataTables_length label {
+    display: flex;
+    align-items: center;
+    gap: 6px; /* espaço entre texto e select */
+}
+
+    .dataTables_length select {
+    width: auto;
+    display: inline-block;
+}
+</style>
+
 <!-- ======= IMPORTS ======= -->
 <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>

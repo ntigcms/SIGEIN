@@ -95,25 +95,37 @@
                     <a href="/products/edit/{{ p.id }}" title="Editar">
                         <i class="fas fa-pen" style="color:#ffaa00; font-size:18px;"></i>
                     </a>
-                    <form action="/products/delete/{{ p.id }}" method="post"
-      onsubmit="return confirm('Tem certeza que deseja excluir este produto?');"
-      style="display:inline;">
-    <button type="submit" style="background:none; border:none; padding:0; cursor:pointer;">
-        <i class="fas fa-trash" style="color:#cc0000; font-size:18px;"></i>
-    </button>
+                    <form class="delete-form" data-id="{{ p.id }}" style="display:inline;">
+                    <button type="submit" style="background:none; border:none; padding:0; cursor:pointer;">
+                        <i class="fas fa-trash" style="color:#cc0000; font-size:18px;"></i>
+                    </button>
 </form>
                 </td>
             </tr>
         {% endfor %}
         </tbody>
     </table>
-</div>
+</div>,
+
+<style>
+    .dataTables_length label {
+    display: flex;
+    align-items: center;
+    gap: 6px; /* espaço entre texto e select */
+}
+
+    .dataTables_length select {
+    width: auto;
+    display: inline-block;
+}
+</style>
 
 <!-- LIBS -->
 <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <!-- CSS -->
 <link rel="stylesheet" href="{{ request.url_for('static', path='css/equipamentos-grid.css') }}">
@@ -129,7 +141,10 @@ function toggleAll(source) {
 $(document).ready(function() {
     var table = $('#productsTable').DataTable({
         order: [[1, "asc"]],
-        columnDefs: [{ orderable: false, targets: [0,6] }],
+        columnDefs: [
+                    { orderable: false, targets: [0,6] },
+                    { visible: false, targets: [0,1,2] } // checkbox e ID ocultos
+        ],
         language: {
             emptyTable: "Nenhum produto encontrado",
             info: "Mostrando _START_ a _END_ de _TOTAL_",
@@ -141,6 +156,7 @@ $(document).ready(function() {
                 next:"Próximo", previous:"Anterior"
             }
         },
+        order: [[3, "asc"]],
         pageLength: 10,
         dom: 'rt<"bottom"l<"info-wrapper"ip>><"clear">'
     });
@@ -213,6 +229,60 @@ $(document).ready(function() {
             const resetFn = $(this).data('reset');
             if (typeof resetFn === 'function') resetFn();
         });
+    });
+});
+</script>
+
+<script>
+    // DELETE MODERNO
+$(document).on("submit", ".delete-form", function(e) {
+    e.preventDefault();
+
+    const form = $(this);
+    const productId = form.data("id");
+
+    Swal.fire({
+        title: 'Tem certeza?',
+        text: "Essa ação não poderá ser desfeita.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#cc0000',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sim, excluir',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+
+            fetch(`/products/delete/${productId}`, {
+                method: "POST"
+            })
+            .then(response => response.json())
+            .then(data => {
+
+                if (data.success) {
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Excluído!',
+                        text: 'Produto removido com sucesso.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        location.reload();
+                    });
+
+                } else {
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Não permitido',
+                        text: data.message
+                    });
+
+                }
+
+            });
+        }
     });
 });
 </script>

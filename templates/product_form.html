@@ -182,6 +182,7 @@
                 <div class="form-group">
                     <label>Marca *</label>
                     <select name="brand_id" required>
+                        <option value="">-- Selecione --</option>
                         {% for marca in marcas %}
                         <option value="{{ marca.id }}" {% if product and product.brand_id == marca.id %}selected{% endif %}>
                             {{ marca.nome }}

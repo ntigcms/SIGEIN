@@ -1,5 +1,4 @@
-from itertools import product
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi import APIRouter, Request, Form, Depends
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -14,6 +13,9 @@ router = APIRouter(prefix="/movements", tags=["Movimentações"])
 templates = Jinja2Templates(directory="templates")
 
 
+# -------------------------------
+# LISTAR MOVIMENTAÇÕES
+# -------------------------------
 @router.get("/")
 def listar_movimentacoes(
     request: Request,
@@ -28,20 +30,22 @@ def listar_movimentacoes(
     )
 
 
+# -------------------------------
+# FORMULÁRIO NOVA MOVIMENTAÇÃO
+# -------------------------------
 @router.get("/nova")
 def nova_movimentacao_form(
     request: Request,
     db: Session = Depends(get_db),
-    user: str = Depends(get_current_user)
+    user: User = Depends(get_current_user)
 ):
     if not user:
         return RedirectResponse("/login")
-    
+
     products = db.query(Product).all()
     units = db.query(Unit).all()
     categories = db.query(Category).all()
 
-    # Envia type_id para agrupamento no frontend
     products_js = [
         {
             "id": p.id,
@@ -53,16 +57,26 @@ def nova_movimentacao_form(
         for p in products
     ]
 
+    # Envia dict vazio para evitar Undefined no template
     return templates.TemplateResponse(
         "movement_form.html",
-        {"request": request, "products": products_js, "units": units, "categories": categories, "user": user}
+        {
+            "request": request,
+            "movimento": {},
+            "products": products_js,
+            "units": units,
+            "categories": categories,
+            "user": user
+        }
     )
 
 
+# -------------------------------
+# SUBMIT NOVA MOVIMENTAÇÃO
+# -------------------------------
 @router.post("/")
 def movimentacoes_submit(
     request: Request,
-
     type_id: int = Form(...),
     unit_origem_id: int = Form(None),
     unit_destino_id: int = Form(...),
@@ -71,12 +85,11 @@ def movimentacoes_submit(
     quantidade: int = Form(1),
     observacao: str = Form(""),
     db: Session = Depends(get_db),
-    username: str = Depends(get_current_user)  # retorna "admin", por exemplo
+    username: str = Depends(get_current_user)
 ):
     if not username:
         return RedirectResponse("/login")
 
-    # 🔹 Recupera o usuário real do DB para pegar o ID
     user = db.query(User).filter(User.username == username).first()
     if not user:
         return {"error": "Usuário não encontrado"}
@@ -102,12 +115,13 @@ def movimentacoes_submit(
 
     movimento = Movement(
         product_id=product.id,
+        item_id=item.id if item else None,
         unit_origem_id=unit_origem_id,
         unit_destino_id=unit_destino_id,
         quantidade=quantidade,
         tipo=tipo,
         observacao=observacao,
-        user_id=user.id,  # ✅ agora é integer
+        user_id=user.id,
         data=datetime.utcnow()
     )
 
@@ -132,23 +146,187 @@ def movimentacoes_submit(
     db.commit()
 
     registrar_log(
-    db=db,
-    usuario=user.username,  # ✅ string, não objeto
-    acao=f"Registrou movimentação {tipo} do produto {product.name}",
-    ip=request.client.host  # opcional, se registrar_log aceitar
-)
+        db=db,
+        usuario=user.username,
+        acao=f"Registrou movimentação {tipo} do produto {product.name}",
+        ip=request.client.host
+    )
 
-    # 🔹 Redireciona para a lista de movimentações
     return RedirectResponse(url="/movements/", status_code=HTTP_302_FOUND)
 
 
+# -------------------------------
+# FORMULÁRIO EDITAR MOVIMENTAÇÃO
+# -------------------------------
+@router.get("/edit/{movement_id}")
+def editar_movimentacao_form(
+    movement_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    if not user:
+        return RedirectResponse("/login")
+
+    movimento = db.query(Movement).filter(Movement.id == movement_id).first()
+    if not movimento:
+        return {"error": "Movimentação não encontrada"}
+
+    products = db.query(Product).all()
+    units = db.query(Unit).all()
+    categories = db.query(Category).all()
+
+    products_js = [
+        {
+            "id": p.id,
+            "type_id": p.type_id,
+            "type_name": p.type.nome,
+            "category_id": p.category_id,
+            "controla_por_serie": p.controla_por_serie
+        }
+        for p in products
+    ]
+
+    # 🔹 Converte movimento em dict JSON-serializável
+    movimento_dict = {
+        "id": movimento.id,
+        "quantidade": movimento.quantidade,
+        "tipo": movimento.tipo,
+        "observacao": movimento.observacao,
+        "unit_destino_id": movimento.unit_destino_id,
+        "product": {
+            "id": movimento.product.id if movimento.product else None,
+            "type_id": movimento.product.type_id if movimento.product else None,
+            "category_id": movimento.product.category_id if movimento.product else None
+        },
+        "item": None
+    }
+
+    if movimento.item:
+        movimento_dict["item"] = {
+            "id": movimento.item.id,
+            "tombo": movimento.item.tombo,
+            "num": movimento.item.num_tombo_ou_serie,
+            "unit_id": movimento.item.unit_id,
+            "unit_name": movimento.item.unit.name
+        }
+
+    return templates.TemplateResponse(
+        "movement_form.html",
+        {
+            "request": request,
+            "movimento": movimento_dict,
+            "products": products_js,
+            "units": units,
+            "categories": categories,
+            "user": user
+        }
+    )
 
 
+# -------------------------------
+# UPDATE MOVIMENTAÇÃO
+# -------------------------------
+@router.post("/edit/{movement_id}")
+def movimentacoes_update(
+    movement_id: int,
+    request: Request,
+    type_id: int = Form(...),
+    unit_origem_id: int = Form(None),
+    unit_destino_id: int = Form(...),
+    item_id: int = Form(None),
+    tipo: str = Form(...),
+    quantidade: int = Form(1),
+    observacao: str = Form(""),
+    db: Session = Depends(get_db),
+    username: str = Depends(get_current_user)
+):
+    if not username:
+        return RedirectResponse("/login")
+
+    movimento = db.query(Movement).filter(Movement.id == movement_id).first()
+    if not movimento:
+        return {"error": "Movimentação não encontrada"}
+
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        return {"error": "Usuário não encontrado"}
+
+    product = None
+    item = None
+
+    if item_id:
+        item = db.query(Item).filter(Item.id == item_id).first()
+        if not item:
+            return {"error": "Item físico não encontrado"}
+        product = item.product
+        unit_origem_id = item.unit_id
+        quantidade = 1
+    else:
+        product = db.query(Product).filter(Product.type_id == type_id).first()
+        if not product:
+            return {"error": "Produto não encontrado"}
+        if product.controla_por_serie:
+            return {"error": "Item físico obrigatório para produtos controlados por série"}
+        if not unit_origem_id:
+            return {"error": "Unidade de origem obrigatória"}
+
+    # Atualiza o movimento
+    movimento.product_id = product.id
+    movimento.item_id = item.id if item else None
+    movimento.unit_origem_id = unit_origem_id
+    movimento.unit_destino_id = unit_destino_id
+    movimento.quantidade = quantidade
+    movimento.tipo = tipo
+    movimento.observacao = observacao
+    movimento.user_id = user.id
+    movimento.data = datetime.utcnow()
+
+    if product.controla_por_serie and item and tipo in ["SAIDA", "TRANSFERENCIA"]:
+        item.unit_id = unit_destino_id
+        db.add(item)
+
+    db.add(movimento)
+    db.commit()
+
+    registrar_log(
+        db=db,
+        usuario=user.username,
+        acao=f"Editou movimentação {tipo} do produto {product.name}",
+        ip=request.client.host
+    )
+
+    return RedirectResponse(url="/movements/", status_code=HTTP_302_FOUND)
+
+
+# -------------------------------
+# DELETE MOVIMENTAÇÃO
+# -------------------------------
+@router.post("/delete/{movement_id}")
+def delete_movement(movement_id: int, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
+
+    movement = db.query(Movement).filter(Movement.id == movement_id).first()
+    if not movement:
+        return JSONResponse({"success": False, "message": "Movimentação não encontrada."})
+
+    # Exemplo: bloquear exclusão se tiver regras específicas
+    if movement.tipo == "Saída com Pendência":  # Exemplo
+        return JSONResponse({"success": False, "message": "Não é possível excluir esta movimentação."})
+
+    db.delete(movement)
+    db.commit()
+
+    return JSONResponse({"success": True})
+
+
+# -------------------------------
+# API AUXILIARES
+# -------------------------------
 @router.get("/movements/stock/type/{type_id}")
 def get_product_stock(type_id: int, db: Session = Depends(get_db)):
     result = []
 
-    # Produtos sem série (Stock)
+    # 1️⃣ Estoque por unidades (Stock)
     stocks = (
         db.query(Stock)
         .join(Product)
@@ -164,7 +342,7 @@ def get_product_stock(type_id: int, db: Session = Depends(get_db)):
             "quantidade": s.quantidade
         })
 
-    # Produtos com série (Item)
+    # 2️⃣ Itens físicos (Itens sem série e com série)
     items = (
         db.query(Item.unit_id, Unit.name, func.count(Item.id).label("quantidade"))
         .join(Product)
@@ -175,18 +353,27 @@ def get_product_stock(type_id: int, db: Session = Depends(get_db)):
     )
 
     for i in items:
+        # Se já existe no result (Stock), só somar quantidade? Ou ignorar duplicados
         if not any(r["unit_id"] == i.unit_id for r in result):
             result.append({
                 "unit_id": i.unit_id,
                 "unit_name": i.name,
                 "quantidade": i.quantidade
             })
+        else:
+            # Adiciona quantidade dos itens físicos ao estoque existente
+            for r in result:
+                if r["unit_id"] == i.unit_id:
+                    r["quantidade"] += i.quantidade
 
     return result
 
 
 @router.get("/items/{type_id}")
 def get_product_items(type_id: int, db: Session = Depends(get_db)):
+    items_result = []
+
+    # 1️⃣ Itens físicos já cadastrados (controla por série ou não)
     items = (
         db.query(Item)
         .join(Product)
@@ -195,26 +382,46 @@ def get_product_items(type_id: int, db: Session = Depends(get_db)):
         .all()
     )
 
-    return [
-        {
+    for i in items:
+        items_result.append({
             "id": i.id,
             "tombo": i.tombo,
-            "num": i.num_tombo_ou_serie,
+            "num": i.num_tombo_ou_serie if i.num_tombo_ou_serie else f"Produto sem série - {i.product.name}",
             "unit_id": i.unit_id,
             "unit_name": i.unit.name
-        }
-        for i in items
-    ]
+        })
+
+    # 2️⃣ Produtos sem série que ainda não têm Item cadastrado
+    products_sem_serie = (
+        db.query(Product)
+        .filter(Product.type_id == type_id, Product.controla_por_serie == False)
+        .all()
+    )
+
+    for p in products_sem_serie:
+        # Verifica se já existe um Item para este produto
+        item_exists = db.query(Item).filter(Item.product_id == p.id).first()
+        if not item_exists:
+            # Cria um registro “virtual” para mostrar no select
+            items_result.append({
+                "id": None,  # sem ID porque não existe Item
+                "tombo": False,
+                "num": f"Produto sem série - {p.name}",
+                "unit_id": 11,  # unidade GCM
+                "unit_name": "GCM"
+            })
+
+    return items_result
 
 
 @router.get("/items/search")
 def search_items(
     product_id: int,
-    tipo: str,  # TOMBO | SERIE
+    tipo: str,
     q: str = "",
     db: Session = Depends(get_db)
 ):
-    is_tombo = tipo == "TOMBO"
+    is_tombo = tipo.upper() == "TOMBO"
 
     items = (
         db.query(Item)

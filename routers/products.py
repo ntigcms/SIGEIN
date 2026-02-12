@@ -1,12 +1,12 @@
 from itertools import product
 from os import name
 from fastapi import APIRouter, Request, Form, Depends, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from starlette.status import HTTP_302_FOUND
 from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import get_current_user, registrar_log
-from models import Product, EquipmentType, Brand, Category, EquipmentState, Unit, Item, Movement
+from models import Product, EquipmentType, Brand, Category, EquipmentState, Unit, Item, Movement, Stock
 from fastapi.templating import Jinja2Templates
 
 router = APIRouter(prefix="/products", tags=["Products"])
@@ -120,6 +120,23 @@ async def add_product(
             valor_aquisicao=float(valor_aquisicao) if valor_aquisicao else None,
             garantia_ate=garantia_ate or None,
             observacao=observacao
+        )
+        db.add(item)
+        db.commit()
+
+    else:
+        # Para produtos que não controlam por série → cria Item com unit_id = 11
+        item = Item(
+            product_id=product.id,
+            tombo=False,  # Não controla por série
+            num_tombo_ou_serie=None,
+            estado_id=None,
+            status="Disponível",  # Default
+            unit_id=11,  # Unidade fixa
+            data_aquisicao=None,
+            valor_aquisicao=None,
+            garantia_ate=None,
+            observacao=None
         )
         db.add(item)
         db.commit()
@@ -261,11 +278,12 @@ def delete_product(
     user: str = Depends(get_current_user)
 ):
     if not user:
-        return RedirectResponse("/login")
+        return JSONResponse({"success": False, "message": "Usuário não autenticado."})
 
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
-        return RedirectResponse("/products")
+        return JSONResponse({"success": False, "message": "Produto não encontrado."})
+    
 
     # 🔒 BLOQUEAR SE EXISTIR MOVIMENTAÇÃO
     movimentacoes = db.query(Movement).filter(
@@ -273,9 +291,21 @@ def delete_product(
     ).first()
 
     if movimentacoes:
-        raise HTTPException(
-            status_code=400,
-            detail="Produto possui movimentações e não pode ser excluído."
+        return JSONResponse(
+            {
+                "success": False,
+                "message": "Produto possui movimentações e não pode ser excluído."
+            }
+        )
+    
+     # 🔒 BLOQUEAR SE EXISTIR ESTOQUE
+    estoque = db.query(Stock).filter(Stock.product_id == product.id).first()
+    if estoque:
+        return JSONResponse(
+            {
+                "success": False,
+                "message": "Produto possui estoque registrado e não pode ser excluído."
+            }
         )
 
     # 🔹 ITEM FÍSICO
@@ -283,7 +313,6 @@ def delete_product(
     if item:
         db.delete(item)
 
-    # 🔹 PRODUTO
     db.delete(product)
     db.commit()
 
@@ -294,4 +323,4 @@ def delete_product(
         ip=request.client.host
     )
 
-    return RedirectResponse("/products", status_code=HTTP_302_FOUND)
+    return JSONResponse({"success": True})
