@@ -133,6 +133,17 @@ const unitOrigemSelect = document.getElementById("unit_origem");
 const quantidadeInput = document.getElementById("quantidade");
 const itemIdInput = document.getElementById("item_id");
 
+/* ---------------- FUNÇÃO PARA ATUALIZAR UNIDADE ---------------- */
+function atualizarUnidadeOrigem(unit_id, unit_name, item_id=null) {
+    unitOrigemSelect.innerHTML = '';
+    if (!unit_id || !unit_name) return; // evita undefined
+    const opt = document.createElement("option");
+    opt.value = unit_id;
+    opt.text = unit_name;
+    unitOrigemSelect.appendChild(opt);
+    unitOrigemSelect.value = unit_id;
+    itemIdInput.value = item_id || '';
+}
 
 /* ---------------- CATEGORIA → PRODUTO ---------------- */
 categorySelect.addEventListener('change', () => {
@@ -145,12 +156,10 @@ categorySelect.addEventListener('change', () => {
     resetUnidade();
     quantidadeInput.value = '';
     quantidadeInput.disabled = true;
-    itemIdInput.value = '';
 
     if (!cat) return;
 
     const filtered = productsData.filter(p => p.category_id === cat);
-
     const grouped = {};
     filtered.forEach(p => {
         if (!grouped[p.type_id]) {
@@ -182,13 +191,27 @@ productSelect.addEventListener("change", async () => {
     const opt = productSelect.selectedOptions[0];
     if (!opt) return;
 
+    const product = productsData.find(p => p.type_id == opt.value);
+    if (!product) return;
+
     const controlaSerie = opt.dataset.controlaPorSerie === "true";
 
     if (controlaSerie) {
+        // Produto com série/tombo: unidade só após selecionar item
         quantidadeInput.disabled = true;
         await carregarItensFisicos(opt.value);
     } else {
+        // Produto sem série/tombo: preenche automaticamente unidade
         quantidadeInput.disabled = false;
+
+        if (product.unit_id && product.unit_name) {
+            unitOrigemSelect.innerHTML = '';
+            const optUnit = document.createElement("option");
+            optUnit.value = product.unit_id;
+            optUnit.text = product.unit_name;
+            unitOrigemSelect.appendChild(optUnit);
+            unitOrigemSelect.value = product.unit_id;
+        }
     }
 });
 
@@ -205,85 +228,52 @@ async function carregarItensFisicos(type_id) {
     const itens = await res.json();
     if (!itens.length) return;
 
-    // 🔥 Normaliza tipo boolean
     const itensNormalizados = itens.map(i => ({
         ...i,
-        isTombo:
-            i.tombo === true ||
-            i.tombo === "true" ||
-            i.tombo === 1 ||
-            i.tombo === "1"
+        isTombo: i.tombo === true || i.tombo === "true" || i.tombo === 1 || i.tombo === "1"
     }));
 
     const temSerie = itensNormalizados.some(i => !i.isTombo);
     const temTombo = itensNormalizados.some(i => i.isTombo);
 
-    // 🔹 Se tiver série, prioriza série
     if (temSerie) {
         serieContainer.style.display = "block";
-
-        itensNormalizados
-            .filter(i => !i.isTombo)
-            .forEach(i => {
-                const opt = document.createElement("option");
-                opt.value = i.id;
-                opt.text = i.num;
-                opt.dataset.unitId = i.unit_id;
-                opt.dataset.unitName = i.unit_name;
-                serieSelect.appendChild(opt);
-            });
-    }
-    // 🔹 Senão, mostra tombo
-    else if (temTombo) {
+        itensNormalizados.filter(i => !i.isTombo).forEach(i => {
+            const opt = document.createElement("option");
+            opt.value = i.id;
+            opt.text = i.num;
+            opt.dataset.unitId = i.unit_id;
+            opt.dataset.unitName = i.unit_name;
+            serieSelect.appendChild(opt);
+        });
+    } else if (temTombo) {
         tomboContainer.style.display = "block";
-
-        itensNormalizados
-            .filter(i => i.isTombo)
-            .forEach(i => {
-                const opt = document.createElement("option");
-                opt.value = i.id;
-                opt.text = i.num;
-                opt.dataset.unitId = i.unit_id;
-                opt.dataset.unitName = i.unit_name;
-                tomboSelect.appendChild(opt);
-            });
+        itensNormalizados.filter(i => i.isTombo).forEach(i => {
+            const opt = document.createElement("option");
+            opt.value = i.id;
+            opt.text = i.num;
+            opt.dataset.unitId = i.unit_id;
+            opt.dataset.unitName = i.unit_name;
+            tomboSelect.appendChild(opt);
+        });
     }
-}
 
+    // NÃO preenche a unidade automaticamente para produtos que controlam série/tombo
+}
 
 /* ---------------- ITEM → UNIDADE AUTOMÁTICA ---------------- */
 serieSelect.addEventListener("change", () => {
     tomboSelect.value = "";
-    resetUnidade();
-
     const opt = serieSelect.selectedOptions[0];
     if (!opt) return;
-
-    itemIdInput.value = opt.value;
-
-    const unitOpt = document.createElement("option");
-    unitOpt.value = opt.dataset.unitId;
-    unitOpt.text = opt.dataset.unitName;
-    unitOrigemSelect.innerHTML = '';
-    unitOrigemSelect.appendChild(unitOpt);
-    unitOrigemSelect.value = unitOpt.value;
+    atualizarUnidadeOrigem(opt.dataset.unitId, opt.dataset.unitName, opt.value);
 });
 
 tomboSelect.addEventListener("change", () => {
     serieSelect.value = "";
-    resetUnidade();
-
     const opt = tomboSelect.selectedOptions[0];
     if (!opt) return;
-
-    itemIdInput.value = opt.value;
-
-    const unitOpt = document.createElement("option");
-    unitOpt.value = opt.dataset.unitId;
-    unitOpt.text = opt.dataset.unitName;
-    unitOrigemSelect.innerHTML = '';
-    unitOrigemSelect.appendChild(unitOpt);
-    unitOrigemSelect.value = unitOpt.value;
+    atualizarUnidadeOrigem(opt.dataset.unitId, opt.dataset.unitName, opt.value);
 });
 
 /* ---------------- HELPERS ---------------- */
@@ -298,6 +288,8 @@ function resetItems() {
 function resetUnidade() {
     unitOrigemSelect.innerHTML = '<option value="">-- Selecione --</option>';
 }
+
+
 </script>
 
 <script>
@@ -355,6 +347,7 @@ async function carregarModoEdicao() {
 }
 
 carregarModoEdicao();
+    console.log("MOVIMENTO:", window.movimento);
 
 </script>
 

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Produtos - SIGEN{% endblock %}
+{% block title %}Produtos - SIGEIN{% endblock %}
 
 {% block content %}
 
@@ -13,31 +13,19 @@
 
 <!-- FILTROS -->
 <div class="filtros-container">
-
-    <div class="filtro-item">
-        <label>ID</label>
-        <div class="search-container" data-col="1">
-            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
-            <span class="arrow">▼</span>
-            <div class="options"></div>
-        </div>
-    </div>
-
-    <div class="filtro-item">
-        <label>Nome</label>
-        <div class="search-container" data-col="2">
-            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
-            <span class="arrow">▼</span>
-            <div class="options"></div>
-        </div>
-    </div>
-
     <div class="filtro-item">
         <label>Tipo</label>
         <div class="search-container" data-col="3">
             <input type="text" placeholder="Clique para selecionar..." class="filter-search">
             <span class="arrow">▼</span>
-            <div class="options"></div>
+            <div class="options">
+                {% for tipo in tipos %}
+                    <div class="option">
+                        <input type="checkbox" value="{{ tipo }}">
+                        <label>{{ tipo }}</label>
+                    </div>
+                {% endfor %}
+            </div>
         </div>
     </div>
 
@@ -46,23 +34,52 @@
         <div class="search-container" data-col="4">
             <input type="text" placeholder="Clique para selecionar..." class="filter-search">
             <span class="arrow">▼</span>
-            <div class="options"></div>
+            <div class="options">
+                {% for marca in marcas %}
+                    <div class="option">
+                        <input type="checkbox" value="{{ marca }}">
+                        <label>{{ marca }}</label>
+                    </div>
+                {% endfor %}
+            </div>
         </div>
     </div>
 
     <div class="filtro-item">
-        <label>Controla por Série</label>
+        <label>Estado</label>
         <div class="search-container" data-col="5">
             <input type="text" placeholder="Clique para selecionar..." class="filter-search">
             <span class="arrow">▼</span>
-            <div class="options"></div>
+            <div class="options">
+                {% for estado in estados %}
+                    <div class="option">
+                        <input type="checkbox" value="{{ estado }}">
+                        <label>{{ estado }}</label>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="filtro-item">
+        <label>Status</label>
+        <div class="search-container" data-col="6">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options">
+                {% for s in status_list %}
+                    <div class="option">
+                        <input type="checkbox" value="{{ s }}">
+                        <label>{{ s }}</label>
+                    </div>
+                {% endfor %}
+            </div>
         </div>
     </div>
 
     <div style="display:flex; align-items:center; margin-top:18px;">
         <button id="clear-filters" class="clear-btn">🧹 Limpar Filtros</button>
     </div>
-
 </div>
 
 <!-- TABELA -->
@@ -77,7 +94,8 @@
                 <th>Nome</th>
                 <th>Tipo</th>
                 <th>Marca</th>
-                <th>Controla por Série</th>
+                <th>Estado</th>
+                <th>Status</th>
                 <th>Ações</th>
             </tr>
         </thead>
@@ -88,24 +106,40 @@
                 <td><input type="checkbox" class="select-item"></td>
                 <td>{{ p.id }}</td>
                 <td>{{ p.name }}</td>
-                <td>{{ p.type.nome }}</td>
-                <td>{{ p.brand.nome }}</td>
-                <td>{{ "Sim" if p.controla_por_serie else "Não" }}</td>
+                <td>{{ p.type.nome if p.type else '-' }}</td>
+                <td>{{ p.brand.nome if p.brand else '-' }}</td>
+
+                {# Mostra todos os estados/status de todos os items do produto #}
+                <td>
+                    {% if p.items %}
+                        {{ p.items | map(attribute='estado.nome') | select | join(', ') }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td>
+                    {% if p.items %}
+                        {{ p.items | map(attribute='status') | select | join(', ') }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+
                 <td>
                     <a href="/products/edit/{{ p.id }}" title="Editar">
-                        <i class="fas fa-pen" style="color:#ffaa00; font-size:18px;"></i>
-                    </a>
+                        <i class="fas fa-pen" style="color:#ffaa00; font-size:18px;"></i></a>
+                    
                     <form class="delete-form" data-id="{{ p.id }}" style="display:inline;">
-                    <button type="submit" style="background:none; border:none; padding:0; cursor:pointer;">
+                        <button type="submit" style="background:none; border:none; padding:0; cursor:pointer;">
                         <i class="fas fa-trash" style="color:#cc0000; font-size:18px;"></i>
-                    </button>
-</form>
+                        </button>
+                    </form>
                 </td>
             </tr>
         {% endfor %}
         </tbody>
     </table>
-</div>,
+</div>
 
 <style>
     .dataTables_length label {
@@ -163,73 +197,78 @@ $(document).ready(function() {
 
     // FILTROS
     $('.search-container').each(function() {
-        const container = $(this);
-        const input = container.find('.filter-search');
-        const optionsDiv = container.find('.options');
-        const arrow = container.find('.arrow');
-        const colIndex = container.data('col');
-        const column = table.column(colIndex);
-        let selecionados = [];
-        const valores = column.data().unique().sort().toArray();
+    const container = $(this);
+    const input = container.find('.filter-search');
+    const optionsDiv = container.find('.options');
+    const arrow = container.find('.arrow');
+    const filterType = container.data('filter'); // tipo, marca, estado, status
+    let selecionados = [];
 
-        function renderOptions(lista) {
-            optionsDiv.empty();
-            lista.forEach(v => {
-                const checked = selecionados.includes(v) ? 'checked' : '';
-                optionsDiv.append(`
-                    <div class="option">
-                        <input type="checkbox" value="${v}" ${checked}>
-                        <label>${v}</label>
-                    </div>
-                `);
-            });
-            optionsDiv.show();
-            arrow.addClass('open');
+    function renderOptions(lista) {
+        optionsDiv.find('.option').each(function() {
+            const val = $(this).find('input').val();
+            $(this).toggle(lista.includes(val));
+        });
+        optionsDiv.show();
+        arrow.addClass('open');
+    }
+
+    input.on("click", function(e){
+        e.stopPropagation();
+        $('.search-container').not(container).find('.options').hide();
+        optionsDiv.is(":visible") ? optionsDiv.hide() : renderOptions([]);
+    });
+
+    input.on('input', function() {
+        const query = input.val().toLowerCase();
+        renderOptions(optionsDiv.find('.option').map(function(){ 
+            return $(this).find('input').val(); 
+        }).get().filter(v => v.toLowerCase().includes(query)));
+    });
+
+    optionsDiv.on('change', 'input[type="checkbox"]', function() {
+        const val = $(this).val();
+        this.checked ? selecionados.push(val) : selecionados = selecionados.filter(v => v !== val);
+
+        input.val(selecionados.join(', '));
+
+        let colIndex;
+        switch(filterType){
+            case "tipo": colIndex=3; break;
+            case "marca": colIndex=4; break;
+            case "estado": colIndex=5; break;
+            case "status": colIndex=6; break;
         }
 
-        input.on("click", function(e){
-            e.stopPropagation();
-            $('.search-container').not(container).find('.options').hide();
-            optionsDiv.is(":visible") ? optionsDiv.hide() : renderOptions(valores);
-        });
+        const column = $('#productsTable').DataTable().column(colIndex);
+        selecionados.length
+            ? column.search(selecionados.map(v => '^'+$.fn.dataTable.util.escapeRegex(v)+'$').join('|'), true, false).draw()
+            : column.search('').draw();
+    });
 
-        input.on('input', function() {
-            const query = input.val().toLowerCase();
-            renderOptions(valores.filter(v => v.toLowerCase().includes(query)));
-        });
-
-        optionsDiv.on('change', 'input[type="checkbox"]', function() {
-            const val = $(this).val();
-            this.checked ? selecionados.push(val) :
-                selecionados = selecionados.filter(v => v !== val);
-            input.val(selecionados.join(', '));
-            selecionados.length
-                ? column.search(selecionados.map(v => '^'+$.fn.dataTable.util.escapeRegex(v)+'$').join('|'), true, false).draw()
-                : column.search('').draw();
-        });
-
-        $(document).on('click', function(e) {
-            if (!$(e.target).closest(container).length) {
-                optionsDiv.hide();
-                arrow.removeClass('open');
-            }
-        });
-
-        container.data('reset', function() {
-            selecionados = [];
-            input.val('');
-            column.search('').draw();
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest(container).length) {
             optionsDiv.hide();
             arrow.removeClass('open');
-        });
+        }
     });
 
-    $('#clear-filters').on('click', function() {
-        $('.search-container').each(function() {
-            const resetFn = $(this).data('reset');
-            if (typeof resetFn === 'function') resetFn();
-        });
+    container.data('reset', function() {
+        selecionados = [];
+        input.val('');
+        const column = $('#productsTable').DataTable().column(colIndex);
+        column.search('').draw();
+        optionsDiv.hide();
+        arrow.removeClass('open');
     });
+});
+
+$('#clear-filters').on('click', function() {
+    $('.search-container').each(function() {
+        const resetFn = $(this).data('reset');
+        if (typeof resetFn === 'function') resetFn();
+    });
+});
 });
 </script>
 
@@ -285,6 +324,13 @@ $(document).on("submit", ".delete-form", function(e) {
         }
     });
 });
+
 </script>
 
+<style>
+    /* Garante que o SweetAlert fique acima de tudo */
+.swal2-container {
+    z-index: 99999 !important;
+}
+</style>
 {% endblock %}

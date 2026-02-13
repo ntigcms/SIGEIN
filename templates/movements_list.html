@@ -15,7 +15,7 @@
 <div class="filtros-container">
 
     <div class="filtro-item">
-        <label>ID</label>
+        <label>Tipo</label>
         <div class="search-container" data-col="1">
             <input type="text" placeholder="Clique para selecionar..." class="filter-search">
             <span class="arrow">▼</span>
@@ -24,7 +24,7 @@
     </div>
 
     <div class="filtro-item">
-        <label>Tipo</label>
+        <label>Origem</label>
         <div class="search-container" data-col="2">
             <input type="text" placeholder="Clique para selecionar..." class="filter-search">
             <span class="arrow">▼</span>
@@ -33,7 +33,7 @@
     </div>
 
     <div class="filtro-item">
-        <label>Origem</label>
+        <label>Destino</label>
         <div class="search-container" data-col="3">
             <input type="text" placeholder="Clique para selecionar..." class="filter-search">
             <span class="arrow">▼</span>
@@ -42,17 +42,8 @@
     </div>
 
     <div class="filtro-item">
-        <label>Destino</label>
-        <div class="search-container" data-col="4">
-            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
-            <span class="arrow">▼</span>
-            <div class="options"></div>
-        </div>
-    </div>
-
-    <div class="filtro-item">
         <label>Tombo/Serie</label>
-        <div class="search-container" data-col="5">
+        <div class="search-container" data-col="4,5">
             <input type="text" placeholder="Clique para selecionar..." class="filter-search">
             <span class="arrow">▼</span>
             <div class="options"></div>
@@ -128,8 +119,7 @@
 
         <td>
             <a href="/movements/edit/{{ m.id }}" title="Editar">
-                <i class="fas fa-pen" style="color:#ffaa00; font-size:18px;"></i>
-            </a>
+                <i class="fas fa-pen" style="color:#ffaa00; font-size:18px;"></i></a>
             <form class="delete-form" data-id="{{ m.id }}" style="display:inline;">
     <button type="submit" style="background:none; border:none; padding:0; cursor:pointer;">
         <i class="fas fa-trash" style="color:#cc0000; font-size:18px;"></i>
@@ -153,6 +143,13 @@
     width: auto;
     display: inline-block;
 }
+
+
+    /* Garante que o SweetAlert fique acima de tudo */
+.swal2-container {
+    z-index: 99999 !important;
+}
+
 </style>
 
 <!-- LIBS -->
@@ -199,10 +196,21 @@ $(document).ready(function() {
         const input = container.find('.filter-search');
         const optionsDiv = container.find('.options');
         const arrow = container.find('.arrow');
-        const colIndex = container.data('col');
-        const column = table.column(colIndex);
+        const colIndexes = container.data('col')
+                .toString()
+                .split(',')
+                .map(c => parseInt(c.trim()));
+        const columns = colIndexes.map(i => table.column(i));
+
         let selecionados = [];
-        const valores = column.data().unique().sort().toArray();
+        let valores = [];
+
+columns.forEach(col => {
+    valores = valores.concat(col.data().toArray());
+});
+
+valores = [...new Set(valores)].sort();
+
 
         function renderOptions(lista) {
             optionsDiv.empty();
@@ -235,9 +243,18 @@ $(document).ready(function() {
             this.checked ? selecionados.push(val) :
                 selecionados = selecionados.filter(v => v !== val);
             input.val(selecionados.join(', '));
-            selecionados.length
-                ? column.search(selecionados.map(v => '^'+$.fn.dataTable.util.escapeRegex(v)+'$').join('|'), true, false).draw()
-                : column.search('').draw();
+            if (selecionados.length) {
+    const regex = selecionados
+        .map(v => '^' + $.fn.dataTable.util.escapeRegex(v) + '$')
+        .join('|');
+
+    columns.forEach(col => col.search(regex, true, false));
+} else {
+    columns.forEach(col => col.search(''));
+}
+
+table.draw();
+
         });
 
         $(document).on('click', function(e) {
@@ -250,7 +267,8 @@ $(document).ready(function() {
         container.data('reset', function() {
             selecionados = [];
             input.val('');
-            column.search('').draw();
+            columns.forEach(col => col.search(''));
+            table.draw();
             optionsDiv.hide();
             arrow.removeClass('open');
         });

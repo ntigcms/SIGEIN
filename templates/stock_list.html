@@ -151,10 +151,27 @@ $(document).ready(function() {
             optionsDiv.show();
         }
 
-        input.on("click", function(e){
-            e.stopPropagation();
-            renderOptions(column.data().unique().sort().toArray());
-        });
+        input.on("click", function(e) {
+    e.stopPropagation();
+
+    const valores = column.data().unique().sort().toArray();
+
+    // 🔹 Fecha todos os outros filtros
+    $('.search-container').not(container).each(function() {
+        $(this).find('.options').hide();
+        $(this).find('.filter-search').removeClass('active');
+    });
+
+    // 🔹 Alterna o filtro atual
+    if (optionsDiv.is(":visible")) {
+        optionsDiv.hide();
+        input.removeClass('active');
+    } else {
+        renderOptions(valores);
+        input.addClass('active');
+    }
+});
+
 
         optionsDiv.on('change', 'input', function() {
             const val = $(this).val();

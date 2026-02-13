@@ -9,6 +9,8 @@ from datetime import datetime
 from dependencies import get_current_user, registrar_log
 from starlette.status import HTTP_302_FOUND
 
+from routers import products
+
 router = APIRouter(prefix="/movements", tags=["Movimentações"])
 templates = Jinja2Templates(directory="templates")
 
@@ -42,27 +44,55 @@ def nova_movimentacao_form(
     if not user:
         return RedirectResponse("/login")
 
+    # Consulta produtos, unidades e categorias
     products = db.query(Product).all()
     units = db.query(Unit).all()
     categories = db.query(Category).all()
 
-    products_js = [
-        {
-            "id": p.id,
-            "type_id": p.type_id,
-            "type_name": p.type.nome,
-            "category_id": p.category_id,
-            "controla_por_serie": p.controla_por_serie
-        }
-        for p in products
-    ]
+    products_js = []
 
-    # Envia dict vazio para evitar Undefined no template
+    for p in products:
+        units_options = []  # sempre inicializa a lista
+
+        if p.controla_por_serie:
+            # Produto com série: pega unidades dos itens existentes
+            for item in p.items:
+                if item.unit:
+                    units_options.append({
+                        "unit_id": item.unit.id,
+                        "unit_name": item.unit.name
+                    })
+            # Se não tiver item, pode deixar units_options vazio
+        else:
+            # Produto sem série: pega todas as unidades com estoque positivo
+            stocks = db.query(Stock).filter(
+                Stock.product_id == p.id,
+                Stock.quantidade > 0
+            ).all()
+            for s in stocks:
+                if s.unit:
+                    units_options.append({
+                        "unit_id": s.unit.id,
+                        "unit_name": s.unit.name
+                    })
+
+        # Adiciona o produto ao JS
+        products_js.append({
+            "id": p.id,
+            "name": p.name,
+            "type_id": p.type_id,
+            "type_name": p.type.nome if p.type else None,
+            "category_id": p.category_id,
+            "controla_por_serie": p.controla_por_serie,
+            "units_options": units_options  # lista de unidades de origem
+        })
+
+    # Renderiza o template
     return templates.TemplateResponse(
         "movement_form.html",
         {
             "request": request,
-            "movimento": {},
+            "movimento": {},  # dict vazio para nova movimentação
             "products": products_js,
             "units": units,
             "categories": categories,
@@ -176,16 +206,35 @@ def editar_movimentacao_form(
     units = db.query(Unit).all()
     categories = db.query(Category).all()
 
-    products_js = [
-        {
+    products_js = []
+
+    for p in products:
+        unit_id = None
+        unit_name = None
+
+        if p.controla_por_serie:
+            # pega unidade do primeiro item se houver
+            item = p.items[0] if p.items else None
+            if item and item.unit:
+                unit_id = item.unit.id
+                unit_name = item.unit.name
+        else:
+            # pega unidade do estoque se houver
+            stock = db.query(Stock).filter(Stock.product_id == p.id).first()
+            if stock and stock.unit:
+                unit_id = stock.unit.id
+                unit_name = stock.unit.name
+
+        products_js.append({
             "id": p.id,
+            "name": p.name,
             "type_id": p.type_id,
-            "type_name": p.type.nome,
+            "type_name": p.type.nome if p.type else None,
             "category_id": p.category_id,
-            "controla_por_serie": p.controla_por_serie
-        }
-        for p in products
-    ]
+            "controla_por_serie": p.controla_por_serie,
+            "unit_id": unit_id,
+            "unit_name": unit_name
+        })
 
     # 🔹 Converte movimento em dict JSON-serializável
     movimento_dict = {
@@ -208,7 +257,7 @@ def editar_movimentacao_form(
             "tombo": movimento.item.tombo,
             "num": movimento.item.num_tombo_ou_serie,
             "unit_id": movimento.item.unit_id,
-            "unit_name": movimento.item.unit.name
+            "unit_name": movimento.item.unit.name if movimento.item.unit else None
         }
 
     return templates.TemplateResponse(
@@ -222,6 +271,7 @@ def editar_movimentacao_form(
             "user": user
         }
     )
+
 
 
 # -------------------------------

@@ -156,7 +156,7 @@
 
                 <div class="form-group">
                     <label>Categoria</label>
-                    <select name="category_id" id="category">
+                    <select name="category_id" id="category" required>
                         <option value="">-- Selecione --</option>
                         {% for cat in categories %}
                         <option value="{{ cat.id }}" {% if product and product.category_id == cat.id %}selected{% endif %}>
@@ -196,6 +196,54 @@
                     <input type="text" name="model" value="{{ product.model if product else '' }}" required>
                 </div>
 
+                <div class="form-group">
+                    <label>Estado</label>
+                    <select name="estado_id" id="state">
+                        {% for estado in estados %}
+                    <option value="{{ estado.id }}" {% if item and item.estado_id == estado.id %}selected{% endif %}>
+                        {{ estado.nome }}
+                    </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+    <label>Status</label>
+    <select name="status">
+        <option {% if item and item.status == 'Disponível' %}selected{% endif %}>Disponível</option>
+        <option {% if item and item.status == 'Reservado' %}selected{% endif %}>Reservado</option>
+        <option {% if item and item.status == 'Alocado' %}selected{% endif %}>Alocado</option>
+        <option {% if item and item.status == 'Bloqueado' %}selected{% endif %}>Bloqueado</option>
+        <option {% if item and item.status == 'Devolvido' %}selected{% endif %}>Devolvido</option>
+        <option {% if item and item.status == 'Emprestado' %}selected{% endif %}>Emprestado</option>
+    </select>
+</div>
+
+
+                <div class="form-group">
+    <label>Unidade</label>
+    <select name="unit_id" id="unit">
+        <option value="">-- Selecione --</option>
+        {% for u in units %}
+        <option value="{{ u.id }}" {% if item and item.unit_id == u.id %}selected{% endif %}>{{ u.name }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+
+                <div class="form-group">
+    <label>Data de Aquisição</label>
+    <input type="date" name="data_aquisicao" value="{{ item.data_aquisicao.strftime('%Y-%m-%d') if item and item.data_aquisicao }}">
+</div>
+
+
+                <div class="form-group">
+    <label>Valor</label>
+    <input type="text" name="valor_aquisicao" id="valor_aquisicao" placeholder="R$ 0,00"
+           value="{{ 'R$ {:,.2f}'.format(item.valor_aquisicao).replace(',', 'X').replace('.', ',').replace('X', '.') if item and item.valor_aquisicao }}">
+</div>
+
+
                 <div class="form-group full">
                     <label>Descrição *</label>
                     <textarea name="description" required>{{ product.description if product else '' }}</textarea>
@@ -214,16 +262,15 @@
                     <input type="number" name="quantidade" value="{{ product.quantidade if product else 1 }}">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="quantidade-minima-container">
                     <label>Quantidade mínima</label>
                     <input type="number" name="quantidade_minima" value="{{ product.quantidade_minima if product else 0 }}">
                 </div>
-
-            </div>
         </fieldset>
 
         <!-- ITEM FÍSICO -->
-        <fieldset class="fieldset-section" id="item-fisico-section">
+        <fieldset class="fieldset-section" id="item-fisico-section" style="display:none;">
+
             <legend>Informações do Item Físico</legend>
 
             <div class="form-grid">
@@ -248,50 +295,10 @@
                         value="{{ item.num_tombo_ou_serie if item and not item.tombo }}">
             </div>
 
-                <div class="form-group">
-                    <label>Estado</label>
-                    <select name="state_id" id="state">
-                        {% for estado in estados %}
-                        <option value="{{ estado.id }}">{{ estado.nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Status</label>
-                    <select name="status">
-                        <option>Disponível</option>
-                        <option>Reservado</option>
-                        <option>Alocado</option>
-                        <option>Bloqueado</option>
-                        <option>Devolvido</option>
-                        <option>Emprestado</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Unidade</label>
-                    <select name="unit_id" id="unit">
-                        {% for u in units %}
-                        <option value="{{ u.id }}">{{ u.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Data de Aquisição</label>
-                    <input type="date" name="data_aquisicao" value="{{ item.data_aquisicao.strftime('%Y-%m-%d') if item and item.data_aquisicao }}">
-                </div>
-
-                <div class="form-group">
-                    <label>Valor</label>
-                    <input type="text" name="valor_aquisicao" id="valor_aquisicao" placeholder="R$ 0,00" value="{{ 'R$ {:,.2f}'.format(item.valor_aquisicao).replace(',', 'X').replace('.', ',').replace('X', '.') if item and item.valor_aquisicao }}">
-                </div>
-
-                <div class="form-group full">
+            <div class="form-group full">
                     <label>Observações</label>
                     <textarea name="observacao">{{ item.observacao if item }}</textarea>
-                </div>
+            </div>
 
             </div>
         </fieldset>
@@ -306,33 +313,22 @@
 
 
 <script>
-window.addEventListener('load', function () {
+window.addEventListener('DOMContentLoaded', function () {
+
     const controlaSerie = document.getElementById('controla_por_serie');
     const itemFisico = document.getElementById('item-fisico-section');
-    const qtdContainer = document.getElementById('quantidade-container');
-
-    const state = document.getElementById('state');
-    const unit = document.getElementById('unit');
-    const valor = document.getElementById('valor_aquisicao');
+    const quantidadeContainer = document.getElementById('quantidade-container');
+    const quantidadeMinimaContainer = document.getElementById('quantidade-minima-container');
 
     function toggleModoProduto() {
         if (controlaSerie.checked) {
             itemFisico.style.display = 'block';
-            qtdContainer.style.display = 'none';
-            // Tornar campos obrigatórios
-            state.required = true;
-            unit.required = true;
-            valor.required = true;
+            quantidadeContainer.style.display = 'none';
+            quantidadeMinimaContainer.style.display = 'none';
         } else {
             itemFisico.style.display = 'none';
-            qtdContainer.style.display = 'block';
-            // Campos não obrigatórios → envia default para evitar parsing error
-            state.required = false;
-            unit.required = false;
-            valor.required = false;
-            state.value = 0;
-            unit.value = 0;
-            valor.value = 0;
+            quantidadeContainer.style.display = 'block';
+            quantidadeMinimaContainer.style.display = 'block';
         }
     }
 
@@ -340,34 +336,39 @@ window.addEventListener('load', function () {
         const selecionado = document.querySelector('input[name="tombo"]:checked')?.value;
         const campoTombo = document.getElementById('campo-tombo');
         const campoSerie = document.getElementById('campo-serie');
+        const numTombo = document.getElementById('num_tombo');
+        const numSerie = document.getElementById('num_serie');
 
         if (selecionado === 'Sim') {
             campoTombo.style.display = 'block';
             campoSerie.style.display = 'none';
-            document.getElementById('num_tombo').required = true;
-            document.getElementById('num_serie').required = false;
+            numTombo.required = true;
+            numSerie.required = false;
         } else if (selecionado === 'Não') {
             campoTombo.style.display = 'none';
             campoSerie.style.display = 'block';
-            document.getElementById('num_tombo').required = false;
-            document.getElementById('num_serie').required = true;
+            numTombo.required = false;
+            numSerie.required = true;
         } else {
             campoTombo.style.display = 'none';
             campoSerie.style.display = 'none';
-            document.getElementById('num_tombo').required = false;
-            document.getElementById('num_serie').required = false;
+            numTombo.required = false;
+            numSerie.required = false;
         }
     }
 
     document.querySelectorAll('input[name="tombo"]').forEach(radio =>
         radio.addEventListener('change', toggleCamposTombo)
     );
+
     controlaSerie.addEventListener('change', toggleModoProduto);
 
+    // Executa ao carregar página
     toggleModoProduto();
     toggleCamposTombo();
 });
 </script>
+
 
 <script>
 window.addEventListener('load', function () {

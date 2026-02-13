@@ -1,24 +1,32 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
+    <!-- ================= META BÁSICA ================= -->
     <meta charset="UTF-8">
     <title>{% block title %}SIGEIN{% endblock %}</title>
 
-    <!-- === ESTILOS GERAIS === -->
+    <!-- ========================================================= -->
+    <!-- ================= ESTILOS INTERNOS ======================= -->
+    <!-- ========================================================= -->
     <style>
 
-        /* ===== Corpo da página ===== */
+        /* =========================
+           RESET E CORPO DA PÁGINA
+        ========================== */
         body {
             margin: 0;
             font-family: Arial, sans-serif;
             background: #d0e7ff;
         }
 
-        /* ===== MENU LATERAL ===== */
+        /* =========================
+           MENU LATERAL (SIDEBAR)
+        ========================== */
         .sidebar {
-            height: 100vh;
-            width: 220px;
-            position: fixed;
+            height: 100vh;              /* Ocupa altura total da tela */
+            width: 220px;               /* Largura fixa */
+            position: fixed;            /* Fixo na lateral */
             top: 0;
             left: 0;
             background-color: #7899d6;
@@ -27,6 +35,7 @@
             flex-direction: column;
         }
 
+        /* Links principais do menu */
         .sidebar a {
             display: flex;
             align-items: center;
@@ -38,6 +47,7 @@
             transition: background 0.3s;
         }
 
+        /* Título do menu */
         .sidebar-title {
             color: white !important;
             text-align: center !important;
@@ -46,23 +56,28 @@
             margin-bottom: 15px;
         }
 
+        /* Ícones do menu */
         .sidebar a i {
             margin-right: 10px;
             font-size: 1.2rem;
             color: #ffd700;
         }
 
+        /* Hover dos links */
         .sidebar a:hover {
             background-color: #005fa3;
         }
 
-        /* Submenu */
+        /* =========================
+           SUBMENU (ADMINISTRAÇÃO)
+        ========================== */
         .submenu {
             display: flex;
             flex-direction: column;
             margin: 5px 10px;
         }
 
+        /* Botão que abre o submenu */
         .submenu-btn {
             display: flex;
             justify-content: space-between;
@@ -82,6 +97,7 @@
             background-color: #005fa3;
         }
 
+        /* Ícones internos */
         .submenu-btn i,
         .submenu-content a i {
             color: #ffd700;
@@ -89,6 +105,7 @@
             font-size: 1.1rem;
         }
 
+        /* Conteúdo oculto do submenu */
         .submenu-content {
             display: none;
             flex-direction: column;
@@ -96,6 +113,7 @@
             margin-top: 5px;
         }
 
+        /* Links internos do submenu */
         .submenu-content a {
             display: flex;
             align-items: center;
@@ -110,27 +128,33 @@
             background-color: #006bb5;
         }
 
+        /* Quando submenu está aberto */
         .submenu.open .submenu-content {
             display: flex;
         }
 
+        /* Ícone seta (caret) */
         .submenu .caret {
             margin-left: auto;
             color: white;
             transition: transform 0.3s;
         }
 
+        /* Rotaciona seta quando aberto */
         .submenu.open .caret {
             transform: rotate(180deg);
         }
 
-        /* ===== CONTEÚDO PRINCIPAL ===== */
+        /* =========================
+           CONTEÚDO PRINCIPAL
+        ========================== */
         .main-content {
-            margin-left: 220px;
+            margin-left: 220px;  /* Espaço da sidebar */
             padding: 40px;
             min-height: 100vh;
         }
 
+        /* Container central padrão */
         .container {
             background: #ffffff;
             padding: 30px 40px;
@@ -140,78 +164,94 @@
             margin: auto;
         }
 
-        .app-title {
+        /* =========================
+           HEADER INSTITUCIONAL
+        ========================== */
+        .app-header {
+            background: linear-gradient(135deg, #d0e7ff, #1e293b);
+            color: #ffffff;
+            padding: 1px 20px;
             text-align: center;
-            color: rgba(8, 31, 245, 0.911);
-            font-family: monospace;
-            margin-bottom: 30px;
+            margin-bottom: 40px; /* 👈 ESPAÇO ENTRE HEADER E CONTEÚDO */
         }
 
-        .app-title h1, 
-        .app-title h3, 
-        .app-title h4 {
-            margin: 5px 0;
+        .app-header-content {
+            max-width: 900px;
+            margin: 0 auto;
         }
 
-        /* ===== MENU DO USUÁRIO ===== */
-        .user-menu {
-            position: fixed;
-            top: 10px;
-            right: 20px;
-            z-index: 1000;
+        .app-badge {
+            display: inline-block;
+            background: #22c55e;
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 50px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
         }
 
-        .user-btn {
-            background: none;
-            border: none;
-            font-size: 1rem;
-            cursor: pointer;
-            color: #0077cc;
+        .app-title {
+            font-size: 3rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            margin: 0;
+            color: #0a06fc;
         }
 
-        .user-icon i {
-            font-size: 1rem;
-            color: #0077cc;
-            border-radius: 50%;
-            vertical-align: middle;
+        .app-subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-top: 10px;
+            color: #0a06fc;
         }
 
-        .user-name {
-            margin-left: 8px;
-            font-weight: bold;
-            color: #0077cc;
+        .app-divider {
+            width: 80px;
+            height: 3px;
+            background: #22c55e;
+            margin: 25px auto;
+            border-radius: 3px;
         }
 
-        .dropdown {
-            display: none;
-            position: absolute;
-            right: 0;
-            top: 100%;
-            background-color: white;
-            min-width: 150px;
-            box-shadow: 0px 2px 5px rgba(0,0,0,0.2);
-            border-radius: 5px;
-            overflow: hidden;
+        .app-org {
+            font-size: 1.5rem;
+            opacity: 0.75;
+            line-height: 1.6;
+            color: hsl(0, 0%, 100%);
         }
 
-        .dropdown a {
-            display: block;
-            padding: 10px;
-            text-decoration: none;
-            color: #333;
-            transition: 0.2s;
-        }
+        /* =========================
+           MENU DO USUÁRIO (TOPO)
+        ========================== */
+        .user-menu { position: fixed; top: 10px; right: 20px; z-index: 1000; } 
+        .user-btn { background: none; border: none; font-size: 1rem; cursor: pointer; color: #0077cc; } 
+        .user-icon i { font-size: 1rem; color: #0077cc; border-radius: 50%; vertical-align: middle; } 
+        .user-name { margin-left: 8px; font-weight: bold; color: #0077cc; } 
+        .dropdown { 
+            display: none; 
+            position: absolute; 
+            right: 0; top: 100%; 
+            background-color: white; 
+            min-width: 150px; 
+            box-shadow: 0px 2px 5px rgba(0,0,0,0.2); 
+            border-radius: 5px; 
+            overflow: hidden; 
+        } 
+        .dropdown a { display: block; padding: 10px; text-decoration: none; color: #333; transition: 0.2s; } 
+        .dropdown a:hover { background-color: #f0f0f0; } 
+        .user-menu:hover .dropdown { display: block; }
 
-        .dropdown a:hover {
-            background-color: #f0f0f0;
-        }
-
-        .user-menu:hover .dropdown {
-            display: block;
-        }
-
-        /* ===== CAMPOS DE FORMULÁRIO ===== */
-        input[type="text"], input[type="password"], input[type="number"], textarea, select {
+        /* =========================
+           CAMPOS DE FORMULÁRIO
+        ========================== */
+        input[type="text"],
+        input[type="password"],
+        input[type="number"],
+        textarea,
+        select {
             width: 100%;
             padding: 12px 15px;
             margin: 10px 0 20px 0;
@@ -221,6 +261,7 @@
             box-sizing: border-box;
         }
 
+        /* Botões padrão do sistema */
         button {
             padding: 12px;
             border: none;
@@ -237,22 +278,9 @@
             transform: scale(1.05);
         }
 
-        .error {
-            color: red;
-            margin-bottom: 20px;
-            font-weight: bold;
-        }
-
-        a {
-            color: #0077cc;
-            text-decoration: none;
-        }
-
-        a:hover {
-            text-decoration: underline;
-        }
-
-        /* ===== FORM GRID ===== */
+        /* =========================
+           GRID DO FORMULÁRIO
+        ========================== */
         .form-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -264,38 +292,30 @@
             flex-direction: column;
         }
 
+        /* Controle de largura no grid */
         .form-group.wide { grid-column: span 2; }
         .form-group.full { grid-column: span 3; }
 
-        /* ===== TABLE GRID (mesmos tamanhos e responsividade) ===== */
-        .table-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px 25px;
-        }
-
-        .table-grid .table-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .table-grid .table-group.wide { grid-column: span 2; }
-        .table-grid .table-group.full { grid-column: span 3; }
-
-        /* ===== RESPONSIVIDADE ===== */
+        /* =========================
+           RESPONSIVIDADE
+        ========================== */
         @media (max-width: 900px) {
-            .form-grid, .table-grid { grid-template-columns: repeat(2, 1fr); }
+            .form-grid { grid-template-columns: repeat(2, 1fr); }
         }
 
         @media (max-width: 600px) {
-            .form-grid, .table-grid { grid-template-columns: 1fr; }
+            .form-grid { grid-template-columns: 1fr; }
         }
+
     </style>
-    
+
+    <!-- ================= CSS EXTERNOS ================= -->
     <link rel="stylesheet" href="/static/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/static/css/forms.css">
+
 </head>
+
 
 <body>
 
@@ -345,11 +365,23 @@
     <!-- ===== CONTEÚDO PRINCIPAL ===== -->
     <div class="main-content">
         <!-- Título da aplicação -->
-        <div class="app-title">
-            <h1>SIGEIN – Sistema Integrado de Gestão de Estoque e Inventário</h1>
-            <h3>Núcleo de Tecnologia da Informação</h3>
-            <h4>Guarda Civil Municipal de Salvador</h4>
-        </div>
+        <div class="app-header">
+    <div class="app-header-content">
+        <span class="app-badge">Sistema Oficial</span>
+        <h1 class="app-title">
+            SIGEIN
+        </h1>
+        <p class="app-subtitle">
+            Sistema Integrado de Gestão de Estoque e Inventário
+        </p>
+        <div class="app-divider"></div>
+        <p class="app-org">
+            Núcleo de Tecnologia da Informação<br>
+            Guarda Civil Municipal de Salvador
+        </p>
+    </div>
+</div>
+
 
         <!-- Menu do usuário (canto superior direito) -->
         <div class="user-menu">
