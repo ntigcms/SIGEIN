@@ -294,7 +294,7 @@ function resetUnidade() {
 
 <script>
 // ❌ Corrigido: atribuição segura de movimento
-window.movimento = {{ movimento | tojson }};
+window.movimento = "{{ movimento | tojson }}";
 
 async function carregarModoEdicao() {
     if (!window.movimento || !window.movimento.id) return;
