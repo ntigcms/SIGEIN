@@ -181,6 +181,7 @@ categorySelect.addEventListener('change', () => {
 });
 
 /* ---------------- PRODUTO ---------------- */
+/* ---------------- PRODUTO ---------------- */
 productSelect.addEventListener("change", async () => {
     resetItems();
     resetUnidade();
@@ -189,29 +190,45 @@ productSelect.addEventListener("change", async () => {
     itemIdInput.value = '';
 
     const opt = productSelect.selectedOptions[0];
-    if (!opt) return;
-
-    const product = productsData.find(p => p.type_id == opt.value);
-    if (!product) return;
+    if (!opt || !opt.value) return;
 
     const controlaSerie = opt.dataset.controlaPorSerie === "true";
 
     if (controlaSerie) {
-        // Produto com série/tombo: unidade só após selecionar item
+        // ✅ Produto com série/tombo: unidade preenchida após escolher o item
         quantidadeInput.disabled = true;
         await carregarItensFisicos(opt.value);
+
     } else {
-        // Produto sem série/tombo: preenche automaticamente unidade
+        // ✅ Produto sem série: popula lista com TODAS as unidades que têm estoque
         quantidadeInput.disabled = false;
 
-        if (product.unit_id && product.unit_name) {
-            unitOrigemSelect.innerHTML = '';
-            const optUnit = document.createElement("option");
-            optUnit.value = product.unit_id;
-            optUnit.text = product.unit_name;
-            unitOrigemSelect.appendChild(optUnit);
-            unitOrigemSelect.value = product.unit_id;
+        // Busca o produto pelo type_id (pode haver múltiplos com mesmo type_id e unidades diferentes)
+        const produtosDaCategoria = productsData.filter(p => p.type_id == opt.value);
+
+        // Coleta todas as units_options únicas entre os produtos do mesmo tipo
+        const unitsMap = {};
+        produtosDaCategoria.forEach(p => {
+            if (p.units_options) {
+                p.units_options.forEach(u => {
+                    if (!unitsMap[u.unit_id]) {
+                        unitsMap[u.unit_id] = u.unit_name;
+                    }
+                });
+            }
+        });
+
+        const unidades = Object.entries(unitsMap);
+
+        if (unidades.length > 0) {
+            unidades.forEach(([unit_id, unit_name]) => {
+                const optUnit = document.createElement("option");
+                optUnit.value = unit_id;
+                optUnit.text = unit_name;
+                unitOrigemSelect.appendChild(optUnit);
+            });
         }
+        // Se só tiver uma unidade, já fica selecionada automaticamente pelo browser
     }
 });
 
@@ -293,29 +310,39 @@ function resetUnidade() {
 </script>
 
 <script>
-// ❌ Corrigido: atribuição segura de movimento
-window.movimento = "{{ movimento | tojson }}";
+// ✅ Forma correta — sem JSON.parse com aspas simples
+const movimentoData = {{ movimento | tojson | safe }};
 
 async function carregarModoEdicao() {
-    if (!window.movimento || !window.movimento.id) return;
+    let m;
+    try {
+        m = JSON.parse('{{ movimento | tojson | safe }}');
+    } catch(e) {
+        console.error("❌ Erro ao parsear movimento:", e);
+        return;
+    }
 
-    const m = window.movimento;
+    // 🔍 DEBUG — remover depois
+    console.log("MOVIMENTO recebido:", JSON.stringify(m, null, 2));
+    console.log("products recebidos:", productsData);
+
+    if (!m || !m.id) {
+        console.log("⚠️ movimento vazio ou sem ID, saindo...");
+        return;
+    }
 
     // 1️⃣ Seleciona categoria
     categorySelect.value = m.product.category_id;
     categorySelect.dispatchEvent(new Event('change'));
-
-    // Pequeno delay para popular produtos
     await new Promise(r => setTimeout(r, 50));
 
     // 2️⃣ Seleciona produto
     productSelect.value = m.product.type_id;
     productSelect.dispatchEvent(new Event('change'));
-
-    // 3️⃣ Espera carregar itens físicos (se houver)
     await new Promise(r => setTimeout(r, 300));
 
     if (m.item) {
+        // Produto com série/tombo
         if (m.item.tombo) {
             tomboSelect.value = m.item.id;
             tomboSelect.dispatchEvent(new Event('change'));
@@ -324,31 +351,31 @@ async function carregarModoEdicao() {
             serieSelect.dispatchEvent(new Event('change'));
         }
     } else {
+        // ✅ Produto sem série: seleciona a unidade de origem salva
         quantidadeInput.value = m.quantidade;
         quantidadeInput.disabled = false;
 
-        // 🔹 Define unidade de origem manualmente quando não é item físico
-        unitOrigemSelect.innerHTML = '';
-        const opt = document.createElement("option");
-        opt.value = m.unit_origem_id;
-        opt.text = "Unidade atual";
-        unitOrigemSelect.appendChild(opt);
-        unitOrigemSelect.value = m.unit_origem_id;
+        if (m.unit_origem_id) {
+            unitOrigemSelect.value = m.unit_origem_id;
+
+            // Se o select ainda não tem a opção (estoque zerado), adiciona manualmente
+            if (!unitOrigemSelect.value || unitOrigemSelect.value != m.unit_origem_id) {
+                const opt = document.createElement("option");
+                opt.value = m.unit_origem_id;
+                opt.text = "Unidade atual";
+                unitOrigemSelect.appendChild(opt);
+                unitOrigemSelect.value = m.unit_origem_id;
+            }
+        }
     }
 
-    // 4️⃣ Destino
+    // 3️⃣ Destino, tipo e observação
     document.getElementById("unit_destino").value = m.unit_destino_id;
-
-    // 5️⃣ Tipo
     document.getElementById("tipo").value = m.tipo;
-
-    // 6️⃣ Observação
     document.querySelector("textarea[name='observacao']").value = m.observacao || '';
 }
 
 carregarModoEdicao();
-    console.log("MOVIMENTO:", window.movimento);
-
 </script>
 
 {% endblock %}

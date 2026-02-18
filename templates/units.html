@@ -46,7 +46,7 @@
     <h4>Lista de Unidades Administrativas</h4>
 <table id="unitsTable" style="width:100%; border-collapse: collapse; text-align:left;">
     <thead>
-        <tr style="background-color: #004080; color:white;">
+        <tr style="background-color: #0d6efd; color:white;">
             <th><input type="checkbox" id="select-all" onclick="toggleAll(this)"></th>
             <th>ID</th>
             <th>Setor</th>
@@ -63,8 +63,7 @@
         <td>{{ unidade.manager }}</td>
         <td>
             <a href="/units/edit/{{ unidade.id }}" title="Editar">
-                <i class="fas fa-pen" style="color:#ffaa00; font-size: 18px; margin-right: 10px; cursor:pointer;"></i>
-            </a>
+                <i class="fas fa-pen" style="color:#ffaa00; font-size: 18px; margin-right: 10px; cursor:pointer;"></i></a>
             <a href="/units/delete/{{ unidade.id }}" title="Excluir"
                onclick="return confirm('Tem certeza que deseja excluir esta unidade administrativa?');">
                 <i class="fas fa-trash" style="color:#cc0000; font-size: 18px; cursor:pointer;"></i>
@@ -197,7 +196,10 @@ function toggleAll(source) {
 $(document).ready(function() {
     var table = $('#unitsTable').DataTable({
         order: [[1, "asc"]],
-        columnDefs: [{ orderable: false, targets: [0,4] }],
+        columnDefs: [
+                    { orderable: false, targets: [0,4] },
+                    { visible: false, targets: [0,1,2] } // checkbox e ID ocultos
+                    ],
         language: {
             emptyTable: "Nenhuma unidade encontrada",
             info: "Mostrando _START_ a _END_ de _TOTAL_",

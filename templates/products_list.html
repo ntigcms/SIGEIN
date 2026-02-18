@@ -15,7 +15,7 @@
 <div class="filtros-container">
     <div class="filtro-item">
         <label>Tipo</label>
-        <div class="search-container" data-col="3">
+        <div class="search-container" data-col="3" data-filter="tipo">
             <input type="text" placeholder="Clique para selecionar..." class="filter-search">
             <span class="arrow">▼</span>
             <div class="options">
@@ -31,7 +31,7 @@
 
     <div class="filtro-item">
         <label>Marca</label>
-        <div class="search-container" data-col="4">
+        <div class="search-container" data-col="4" data-filter="marca">
             <input type="text" placeholder="Clique para selecionar..." class="filter-search">
             <span class="arrow">▼</span>
             <div class="options">
@@ -47,7 +47,7 @@
 
     <div class="filtro-item">
         <label>Estado</label>
-        <div class="search-container" data-col="5">
+        <div class="search-container" data-col="5" data-filter="estado">
             <input type="text" placeholder="Clique para selecionar..." class="filter-search">
             <span class="arrow">▼</span>
             <div class="options">
@@ -63,7 +63,7 @@
 
     <div class="filtro-item">
         <label>Status</label>
-        <div class="search-container" data-col="6">
+        <div class="search-container" data-col="6" data-filter="status">
             <input type="text" placeholder="Clique para selecionar..." class="filter-search">
             <span class="arrow">▼</span>
             <div class="options">
@@ -96,6 +96,8 @@
                 <th>Marca</th>
                 <th>Estado</th>
                 <th>Status</th>
+                <th>Unidade</th>
+                <th>Tombo/Série</th>
                 <th>Ações</th>
             </tr>
         </thead>
@@ -122,6 +124,27 @@
                         {{ p.items | map(attribute='status') | select | join(', ') }}
                     {% else %}
                         -
+                    {% endif %}
+                </td>
+
+                 <td>
+                    {% if p.items %}
+                        {{ p.items | map(attribute='unit.name') | select | join(', ') }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if p.items %}
+                        {% set numeros = p.items | map(attribute='num_tombo_ou_serie') | select | list %}
+                    {% if numeros %}
+                        {{ numeros | join(', ') }}
+                    {% else %}
+                        <span class="badge-nao">Não</span>
+                    {% endif %}
+                    {% else %}
+                        <span class="badge-nao">Não</span>
                     {% endif %}
                 </td>
 
@@ -201,49 +224,62 @@ $(document).ready(function() {
     const input = container.find('.filter-search');
     const optionsDiv = container.find('.options');
     const arrow = container.find('.arrow');
-    const filterType = container.data('filter'); // tipo, marca, estado, status
+    const filterType = container.data('filter');
     let selecionados = [];
 
-    function renderOptions(lista) {
+    function renderOptions(query = '') {
+        // ✅ sem lista — filtra por texto e mostra tudo se query vazia
         optionsDiv.find('.option').each(function() {
-            const val = $(this).find('input').val();
-            $(this).toggle(lista.includes(val));
+            const val = $(this).find('input').val().toLowerCase();
+            $(this).toggle(query === '' || val.includes(query));
         });
         optionsDiv.show();
         arrow.addClass('open');
     }
 
-    input.on("click", function(e){
+    input.on("click", function(e) {
         e.stopPropagation();
-        $('.search-container').not(container).find('.options').hide();
-        optionsDiv.is(":visible") ? optionsDiv.hide() : renderOptions([]);
+        $('.search-container').not(container).find('.options').hide()
+            .closest('.search-container').find('.arrow').removeClass('open');
+
+        if (optionsDiv.is(":visible")) {
+            optionsDiv.hide();
+            arrow.removeClass('open');
+        } else {
+            renderOptions(''); // ✅ abre com todos os itens visíveis
+        }
     });
 
     input.on('input', function() {
-        const query = input.val().toLowerCase();
-        renderOptions(optionsDiv.find('.option').map(function(){ 
-            return $(this).find('input').val(); 
-        }).get().filter(v => v.toLowerCase().includes(query)));
+        renderOptions(input.val().toLowerCase()); // ✅ filtra pelo que digitou
     });
 
     optionsDiv.on('change', 'input[type="checkbox"]', function() {
         const val = $(this).val();
-        this.checked ? selecionados.push(val) : selecionados = selecionados.filter(v => v !== val);
+        if (this.checked) {
+            selecionados.push(val);
+        } else {
+            selecionados = selecionados.filter(v => v !== val);
+        }
 
         input.val(selecionados.join(', '));
 
         let colIndex;
-        switch(filterType){
-            case "tipo": colIndex=3; break;
-            case "marca": colIndex=4; break;
-            case "estado": colIndex=5; break;
-            case "status": colIndex=6; break;
+        switch(filterType) {
+            case "tipo":   colIndex = 3; break;
+            case "marca":  colIndex = 4; break;
+            case "estado": colIndex = 5; break;
+            case "status": colIndex = 6; break;
         }
 
-        const column = $('#productsTable').DataTable().column(colIndex);
-        selecionados.length
-            ? column.search(selecionados.map(v => '^'+$.fn.dataTable.util.escapeRegex(v)+'$').join('|'), true, false).draw()
-            : column.search('').draw();
+        const searchValue = selecionados.map(v =>
+            // ✅ escapa caracteres especiais para o regex do DataTables
+            v.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
+        ).join('|');
+
+        table.column(colIndex)
+            .search(selecionados.length ? searchValue : '', true, false)
+            .draw();
     });
 
     $(document).on('click', function(e) {
@@ -256,8 +292,10 @@ $(document).ready(function() {
     container.data('reset', function() {
         selecionados = [];
         input.val('');
-        const column = $('#productsTable').DataTable().column(colIndex);
-        column.search('').draw();
+        // desmarca checkboxes
+        optionsDiv.find('input[type="checkbox"]').prop('checked', false);
+        const colIdx = container.data('col');
+        table.column(colIdx).search('').draw();
         optionsDiv.hide();
         arrow.removeClass('open');
     });

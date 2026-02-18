@@ -85,8 +85,7 @@
             <td>{{ user.status }}</td>
             <td>
                 <a href="/users/edit/{{ user.id }}" title="Editar">
-                    <i class="fas fa-pen" style="color:#ffaa00; font-size: 18px; margin-right: 10px; cursor:pointer;"></i>
-                </a>
+                    <i class="fas fa-pen" style="color:#ffaa00; font-size: 18px; margin-right: 10px; cursor:pointer;"></i></a>
                 <a href="/users/delete/{{ user.id }}" title="Excluir"
                    onclick="return confirm('Tem certeza que deseja excluir este usuário?');">
                    <i class="fas fa-trash" style="color:#cc0000; font-size: 18px; cursor:pointer;"></i>
@@ -133,7 +132,10 @@ function toggleAll(source) {
 $(document).ready(function() {
     var table = $('#usuariosTable').DataTable({
         order: [[1, "asc"]],
-        columnDefs: [{ orderable: false, targets: [0, 6] }],
+        columnDefs: [
+                    { orderable: false, targets: [0, 6] },
+                    { visible: false, targets: [0, 1] } // checkbox oculto
+                    ],
         language: {
             emptyTable: "Nenhum usuário encontrado",
             info: "Mostrando _START_ até _END_ de _TOTAL_ usuários",

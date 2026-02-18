@@ -62,6 +62,10 @@ class Product(Base):
     controla_por_serie = Column(Boolean, default=True)
     ativo = Column(Boolean, default=True)
 
+    # NOVOS CAMPOS
+    quantidade = Column(Integer, default=0)
+    quantidade_minima = Column(Integer, default=0)
+
     # RELACIONAMENTOS
     category = relationship("Category", back_populates="products")
     type = relationship("EquipmentType")

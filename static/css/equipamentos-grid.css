@@ -10,7 +10,7 @@
     margin-bottom: 15px;
     padding: 15px 20px;
     border-radius: 8px;
-    background-color: #f8f9fa;
+    background-color: #faf9f8;
     position: relative;
     z-index: 5000;
 }
@@ -26,7 +26,7 @@
     font-size: 13px;
     font-weight: 600;
     color: #004080;
-    margin-bottom: 5px;
+    margin-bottom: 0px;
 }
 
 /* Campo custom */
@@ -34,12 +34,13 @@
     position: relative;
     width: 100%;
     z-index: 5001;
+    margin-top: 0; /* ← garante que não tem margem no topo */
 }
 
 .search-container .options {
     position: absolute;
-    top: 100%;
-    left: 0;
+    top:55px; left:0; right:0;
+    margin-top: 2px;
     width: 100%;
     max-height: 200px;
     overflow-y: auto;
@@ -51,14 +52,57 @@
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
+.table-section {
+    -webkit-box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12); /* Safari antigo */
+    -moz-box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);    /* Firefox antigo */
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);         /* padrão */
+}
 
 .filter-search {
     width: 100%;
-    padding: 8px 28px 8px 8px;
+    min-height: 38px;
+    padding: 4px 30px 4px 6px;
     border: 1px solid #aaa;
     border-radius: 6px;
     font-size: 13px;
     box-sizing: border-box;
+    margin-top: 0; /* ← garante que não tem margem no topo */
+    display: flex; /* ← remove espaço fantasma de inline */
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    cursor: text;
+    background: #fff;
+    
+    /* ✅ Remove o amarelo de autofill — compatível com todos os browsers */
+    -webkit-box-shadow: 0 0 0px 1000px #fff inset !important;
+    box-shadow: 0 0 0px 1000px #fff inset !important;
+    -webkit-text-fill-color: #333 !important;
+    background-color: #fff !important;
+    transition: background-color 9999s ease-in-out 0s;
+}
+
+.filter-search:focus {
+    outline: none;
+    border-color: #004080;
+    -webkit-box-shadow: 0 0 0px 1000px #fff inset !important;
+    box-shadow: 0 0 0px 1000px #fff inset !important;
+    background-color: #fff !important;
+}
+
+/* input interno digitável */
+.filter-search input {
+    border: none;
+    outline: none;
+    font-size: 13px;
+    flex: 1;
+    min-width: 60px;
+}
+
+/* foco */
+.filter-search:focus-within {
+    border-color: #004080;
+    box-shadow: 0 0 0 2px rgba(0,64,128,0.15);
 }
 
 /* SETA */
@@ -186,4 +230,13 @@
 .dataTables_scroll,
 .dataTables_scrollBody {
     overflow: visible !important;
+}
+
+.badge-nao {
+    background:#fee2e2;
+    color:#b91c1c;
+    padding:4px 8px;
+    border-radius:6px;
+    font-size:12px;
+    font-weight:600;
 }

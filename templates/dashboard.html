@@ -2,63 +2,101 @@
 
 {% block title %}Dashboard - SIGEIN{% endblock %}
 
+ <!-- Link para o CSS principal -->
+    <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+
 {% block content %}
 <h2>Bem-vindo ao Dashboard!</h2>
-<p>Escolha uma opção no menu lateral ou abaixo para começar.</p>
+<p>Resumo rápido do estoque e movimentações:</p>
 
-<div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 20px;">
+<div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 20px;">
 
-    <!-- Equipamentos -->
-    <a href="/equipment" style="flex:1; min-width: 150px; text-decoration:none;">
-        <div style="background:#0077cc; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
-            <img width="32" height="32" src="https://img.icons8.com/external-filled-outline-wichaiwi/64/external-Equipment-business-filled-outline-wichaiwi.png" alt="external-Equipment-business-filled-outline-wichaiwi alt="home" style="font-size: 24px; margin-bottom: 8px;"></i>
-            <div>Equipamentos</div>
+    <!-- Total Produtos -->
+    <div style="flex:1; min-width: 180px; background:#4CAF50; color:white; padding:20px; border-radius:10px; text-align:center;">
+        <div style="font-size: 24px; margin-bottom: 8px;">{{ total_products }}</div>
+        <div>Total de Produtos</div>
+    </div>
+
+    <!-- Estoque Crítico -->
+    <div style="flex:1; min-width: 180px; background:#FF5722; color:white; padding:20px; border-radius:10px; text-align:center;">
+        <div style="font-size: 24px; margin-bottom: 8px;">{{ critical_products }}</div>
+        <div>Produtos Críticos</div>
+    </div>
+
+    <!-- Estoque Zerado -->
+    <div style="flex:1; min-width: 180px; background:#f44336; color:white; padding:20px; border-radius:10px; text-align:center;">
+        <div style="font-size: 24px; margin-bottom: 8px;">{{ zero_stock_products }}</div>
+        <div>Produtos Zerados</div>
+    </div>
+
+    <!-- Movimentações Recentes -->
+    <div style="flex:1; min-width: 180px; background:#2196F3; color:white; padding:20px; border-radius:10px; text-align:center;">
+        <div style="font-size: 24px; margin-bottom: 8px;">{{ recent_movements_count }}</div>
+        <div>Movimentações Recentes</div>
+    </div>
+
+</div>
+
+<h3 style="margin-top:30px;">Produtos com Estoque Crítico</h3>
+<table style="width:100%; border-collapse: collapse; margin-top:10px;">
+    <thead style="background:#ddd;">
+        <tr>
+            <th style="padding:8px; border:1px solid #ccc;">Produto</th>
+            <th style="padding:8px; border:1px solid #ccc;">Unidade</th>
+            <th style="padding:8px; border:1px solid #ccc;">Quantidade</th>
+            <th style="padding:8px; border:1px solid #ccc;">Mínimo</th>
+            <th style="padding:8px; border:1px solid #ccc;">Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for s in critical_stock %}
+<tr class="
+    {% if s.status == 'ZERADO' %}status-zerado
+    {% elif s.status == 'CRITICO' %}status-critico
+    {% else %}status-ok{% endif %}
+">
+    <td style="padding:8px; border:1px solid #ccc;">{{ s.product_name }}</td>
+    <td style="padding:8px; border:1px solid #ccc;">{{ s.unit_name }}</td>
+    <td style="padding:8px; border:1px solid #ccc;">{{ s.quantidade }}</td>
+    <td style="padding:8px; border:1px solid #ccc;">{{ s.quantidade_minima }}</td>
+    <td style="padding:8px; border:1px solid #ccc;">{{ s.status }}</td>
+</tr>
+{% endfor %}
+
+    </tbody>
+</table>
+
+<h3 style="margin-top:30px;">Ações Rápidas</h3>
+<div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px;">
+
+    <a href="/stock" style="flex:1; min-width: 150px; text-decoration:none;">
+        <div style="background:#607d8b; color:white; padding:20px; border-radius:8px; text-align:center;">
+            <img width="32" height="32" src="https://img.icons8.com/fluency/48/warehouse.png" alt="Estoque">
+            <div>Estoque</div>
         </div>
     </a>
 
-    <!-- Usuários -->
-    <a href="/users" style="flex:1; min-width: 150px; text-decoration:none;">
-        <div style="background:#00aaff; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
-            <img width="32" height="32" src="https://img.icons8.com/plasticine/100/user.png" style="font-size: 24px; margin-bottom: 8px;"></i>
-            <div>Usuários</div>
-        </div>
-    </a>
-
-    <!-- Unidades -->
-    <a href="/units" style="flex:1; min-width: 150px; text-decoration:none;">
-        <div style="background:#0077cc; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
-            <img width="32" height="32" src="https://img.icons8.com/3d-fluency/94/place-marker.png" style="font-size: 24px; margin-bottom: 8px;"></i>
-            <div>Unidade Administrativa</div>
-        </div>
-    </a>
-
-    <!-- Movimentações -->
     <a href="/movements" style="flex:1; min-width: 150px; text-decoration:none;">
-        <div style="background:#00aaff; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
-            <img width="32" height="32" src="https://img.icons8.com/dusk/64/move-stock.png" style="font-size: 24px; margin-bottom: 8px;"></i>
+        <div style="background:#00bcd4; color:white; padding:20px; border-radius:8px; text-align:center;">
+            <img width="32" height="32" src="https://img.icons8.com/dusk/64/move-stock.png" alt="Movimentações">
             <div>Movimentações</div>
         </div>
     </a>
 
-    <!-- Tipos de Equipamentos (Administração) -->
-    <a href="/equipment-types" style="flex:1; min-width: 150px; text-decoration:none;">
-        <div style="background:#0077cc; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
-            <img width="32" height="32" src="https://img.icons8.com/external-flaticons-flat-flat-icons/64/external-equipments-home-based-business-flaticons-flat-flat-icons-2.png" alt="external-equipments-home-based-business-flaticons-flat-flat-icons-2" style="font-size: 24px; margin-bottom: 8px;"></i>
-            <div>Tipos de Equipamentos</div>
+    <a href="/audit" style="flex:1; min-width: 150px; text-decoration:none;">
+        <div style="background:#9c27b0; color:white; padding:20px; border-radius:8px; text-align:center;">
+            <img width="32" height="32" src="https://img.icons8.com/ios-filled/50/ffffff/inspection.png" alt="Auditoria">
+            <div>Auditoria</div>
         </div>
     </a>
 
-    <!-- Logs -->
-    <a href="/logs" style="flex:1; min-width: 150px; text-decoration:none;">
-        <div style="background:#00aaff; color:white; padding:20px; border-radius:8px; text-align:center; transition: all 0.3s;">
-            <img
-    src="https://img.icons8.com/external-flaticons-lineal-color-flat-icons/32/external-logs-computer-programming-icons-flaticons-lineal-color-flat-icons.png"
-    alt="Logs"
-    width="32"
-    height="32" style="font-size: 24px; margin-bottom: 8px;"></i>
-            <div>Logs</div>
+    <a href="/alerts" style="flex:1; min-width: 150px; text-decoration:none;">
+        <div style="background:#ff9800; color:white; padding:20px; border-radius:8px; text-align:center;">
+            <img width="32" height="32" src="https://img.icons8.com/ios-filled/50/ffffff/error.png" alt="Alertas">
+            <div>Alertas Críticos</div>
         </div>
     </a>
 
 </div>
+
 {% endblock %}

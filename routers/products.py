@@ -11,8 +11,6 @@ from datetime import datetime
 router = APIRouter(prefix="/products", tags=["Products"])
 templates = Jinja2Templates(directory="templates")
 
-
-# ----------------- LIST -----------------
 # ----------------- LIST -----------------
 @router.get("/")
 def list_products(request: Request, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
@@ -85,34 +83,28 @@ async def add_product(
     category_id: int = Form(None),
     type_id: int = Form(...),
     brand_id: int = Form(...),
-    model: str = Form(...),
-    description: str = Form(...),
+    model: str = Form(None),
+    description: str = Form(None),
     controla_por_serie: bool = Form(False),
+    unit_id: int = Form(None),
+    quantidade: int = Form(0),
+    quantidade_minima: int = Form(0),
+    tombo: str = Form(None),
+    num_tombo: str = Form(None),
+    num_serie: str = Form(None),
+    estado_id: int = Form(None),
+    status: str = Form(None),
+    data_aquisicao: str = Form(None),
+    valor_aquisicao: float = Form(None),
+    garantia_ate: str = Form(None),
+    observacao: str = Form(None),
     db: Session = Depends(get_db),
     user: str = Depends(get_current_user)
 ):
     if not user:
         return RedirectResponse("/login")
 
-    form = await request.form()
-
-    # Campos do item físico
-    tombo = form.get("tombo")
-    num_tombo = form.get("num_tombo")
-    num_serie = form.get("num_serie")
-    estado_id = form.get("estado_id")
-    status = form.get("status")
-    unit_id = form.get("unit_id")
-    data_aquisicao = form.get("data_aquisicao")
-    valor_aquisicao = form.get("valor_aquisicao")
-    garantia_ate = form.get("garantia_ate")
-    observacao = form.get("observacao")
-
-    # Campos para produtos sem série
-    quantidade = int(form.get("quantidade", 0))
-    quantidade_minima = int(form.get("quantidade_minima", 0))
-
-    # --- PRODUTO ---
+    # --- CRIA PRODUTO ---
     product = Product(
         name=name,
         category_id=category_id,
@@ -120,32 +112,69 @@ async def add_product(
         brand_id=brand_id,
         model=model,
         description=description,
-        controla_por_serie=controla_por_serie,
-        quantidade=quantidade if not controla_por_serie else 0,
-        quantidade_minima=quantidade_minima if not controla_por_serie else 0
+        controla_por_serie=controla_por_serie
     )
     db.add(product)
     db.commit()
     db.refresh(product)
 
-    # --- ITEM FÍSICO ---
-    is_tombo = (tombo == "Sim")
-    item = Item(
-        product_id=product.id,
-        tombo=is_tombo if controla_por_serie else False,
-        num_tombo_ou_serie=(num_tombo if is_tombo else num_serie) if controla_por_serie else None,
-        estado_id=int(estado_id) if estado_id else None,
-        status=status or "Disponível",
-        unit_id=int(unit_id) if unit_id else None,
-        data_aquisicao=datetime.strptime(data_aquisicao, "%Y-%m-%d").date() if data_aquisicao else None,
-        valor_aquisicao=float(valor_aquisicao) if valor_aquisicao else None,
-        garantia_ate=garantia_ate or None,
-        observacao=observacao
-    )
-    db.add(item)
-    db.commit()
+    if controla_por_serie:
+        # Produtos com série/tombo → cada Item é individual
+        is_tombo = (tombo == "Sim")
+        item = Item(
+            product_id=product.id,
+            tombo=is_tombo,
+            num_tombo_ou_serie=(num_tombo if is_tombo else num_serie),
+            estado_id=estado_id,
+            status=status or "Disponível",
+            unit_id=unit_id,
+            # ❌ REMOVIDO: quantidade e quantidade_minima NÃO existem em Item
+            data_aquisicao=datetime.strptime(data_aquisicao, "%Y-%m-%d").date() if data_aquisicao else None,
+            valor_aquisicao=valor_aquisicao,
+            garantia_ate=garantia_ate or None,
+            observacao=observacao
+        )
+        db.add(item)
+        db.commit()
 
-    registrar_log(db, usuario=user, acao=f"Cadastrou produto: {name}", ip=request.client.host)
+    else:
+        # Produtos sem série → cria Stock
+        if unit_id is None:
+            return {"error": "Unidade é obrigatória para produtos sem série"}
+        
+        stock = Stock(
+            product_id=product.id,
+            unit_id=unit_id,
+            quantidade=quantidade,  # ✅ quantidade vai no Stock
+            quantidade_minima=quantidade_minima,  # ✅ quantidade_minima vai no Stock
+            localizacao=None
+        )
+        db.add(stock)
+        db.commit()
+
+        # Cria também um "Item genérico" para popular a tabela de produtos
+        item = Item(
+            product_id=product.id,
+            tombo=False,
+            num_tombo_ou_serie=None,
+            estado_id=int(estado_id) if estado_id else None,
+            status=status or "Disponível",
+            unit_id=int(unit_id) if unit_id else None,
+            data_aquisicao=datetime.strptime(data_aquisicao, "%Y-%m-%d").date() if data_aquisicao else None,
+            valor_aquisicao=float(valor_aquisicao) if valor_aquisicao else None,
+            garantia_ate=garantia_ate or None,
+            observacao=observacao or f"Estoque inicial: {quantidade}"
+        )
+        db.add(item)
+        db.commit()
+
+    registrar_log(
+        db,
+        usuario=user,
+        acao=f"Cadastrou produto: {product.name} (Série: {'Sim' if controla_por_serie else 'Não'})",
+        ip=request.client.host
+    )
+
     return RedirectResponse("/products", status_code=HTTP_302_FOUND)
 
 

@@ -312,3 +312,8 @@ select:focus {
         grid-template-columns: 1fr;
     }
 }
+
+    .status-ok { background-color: #ffffff; }
+    .status-critico { background-color: #fff3cd; }   /* amarelo claro */
+    .status-zerado { background-color: #f8d7da; }    /* vermelho claro */
+
