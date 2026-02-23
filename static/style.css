@@ -317,3 +317,11 @@ select:focus {
     .status-critico { background-color: #fff3cd; }   /* amarelo claro */
     .status-zerado { background-color: #f8d7da; }    /* vermelho claro */
 
+/* Ícone do menu E-Protocolo */
+.menu-item i.fa-file-signature {
+    color: #0d6efd;
+}
+
+.menu-item:hover i.fa-file-signature {
+    color: #fff;
+}
