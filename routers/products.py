@@ -79,7 +79,7 @@ def add_product_form(request: Request, db: Session = Depends(get_db), user: str 
 @router.post("/add")
 async def add_product(
     request: Request,
-    name: str = Form(...),
+    # ❌ Removido: name: str = Form(...),
     category_id: int = Form(None),
     type_id: int = Form(...),
     brand_id: int = Form(...),
@@ -89,11 +89,11 @@ async def add_product(
     unit_id: int = Form(None),
     quantidade: int = Form(0),
     quantidade_minima: int = Form(0),
-    tombo: str = Form(None),
-    num_tombo: str = Form(None),
-    num_serie: str = Form(None),
+    unit_id_serie: int = Form(None),
     estado_id: int = Form(None),
     status: str = Form(None),
+    tipo_numero: list = Form([]),
+    numero: list = Form([]),
     data_aquisicao: str = Form(None),
     valor_aquisicao: float = Form(None),
     garantia_ate: str = Form(None),
@@ -104,9 +104,23 @@ async def add_product(
     if not user:
         return RedirectResponse("/login")
 
+    # ✅ Gera nome automaticamente: Tipo + Marca + Modelo
+    tipo = db.query(EquipmentType).filter(EquipmentType.id == type_id).first()
+    marca = db.query(Brand).filter(Brand.id == brand_id).first()
+    
+    nome_partes = []
+    if tipo:
+        nome_partes.append(tipo.nome)
+    if marca:
+        nome_partes.append(marca.nome)
+    if model:
+        nome_partes.append(model)
+    
+    name = " ".join(nome_partes) if nome_partes else "Produto sem nome"
+
     # --- CRIA PRODUTO ---
     product = Product(
-        name=name,
+        name=name,  # ✅ nome gerado automaticamente
         category_id=category_id,
         type_id=type_id,
         brand_id=brand_id,
@@ -119,61 +133,73 @@ async def add_product(
     db.refresh(product)
 
     if controla_por_serie:
-        # Produtos com série/tombo → cada Item é individual
-        is_tombo = (tombo == "Sim")
-        item = Item(
-            product_id=product.id,
-            tombo=is_tombo,
-            num_tombo_ou_serie=(num_tombo if is_tombo else num_serie),
-            estado_id=estado_id,
-            status=status or "Disponível",
-            unit_id=unit_id,
-            # ❌ REMOVIDO: quantidade e quantidade_minima NÃO existem em Item
-            data_aquisicao=datetime.strptime(data_aquisicao, "%Y-%m-%d").date() if data_aquisicao else None,
-            valor_aquisicao=valor_aquisicao,
-            garantia_ate=garantia_ate or None,
-            observacao=observacao
-        )
-        db.add(item)
+        items_criados = 0
+        
+        for i, num in enumerate(numero):
+            if not num or num.strip() == "":
+                continue
+                
+            is_tombo = (tipo_numero[i] == "tombo" if i < len(tipo_numero) else True)
+            
+            item = Item(
+                product_id=product.id,
+                tombo=is_tombo,
+                num_tombo_ou_serie=num.strip(),
+                estado_id=estado_id,
+                status=status or "Disponível",
+                unit_id=unit_id_serie,
+                data_aquisicao=datetime.strptime(data_aquisicao, "%Y-%m-%d").date() if data_aquisicao else None,
+                valor_aquisicao=valor_aquisicao,
+                garantia_ate=garantia_ate or None,
+                observacao=observacao
+            )
+            db.add(item)
+            items_criados += 1
+        
         db.commit()
+        
+        registrar_log(
+            db,
+            usuario=user,
+            acao=f"Cadastrou produto em lote: {product.name} ({items_criados} itens)",
+            ip=request.client.host
+        )
 
     else:
-        # Produtos sem série → cria Stock
         if unit_id is None:
             return {"error": "Unidade é obrigatória para produtos sem série"}
         
         stock = Stock(
             product_id=product.id,
             unit_id=unit_id,
-            quantidade=quantidade,  # ✅ quantidade vai no Stock
-            quantidade_minima=quantidade_minima,  # ✅ quantidade_minima vai no Stock
+            quantidade=quantidade,
+            quantidade_minima=quantidade_minima,
             localizacao=None
         )
         db.add(stock)
         db.commit()
 
-        # Cria também um "Item genérico" para popular a tabela de produtos
         item = Item(
             product_id=product.id,
             tombo=False,
             num_tombo_ou_serie=None,
-            estado_id=int(estado_id) if estado_id else None,
-            status=status or "Disponível",
-            unit_id=int(unit_id) if unit_id else None,
+            estado_id=None,
+            status="Disponível",
+            unit_id=unit_id,
             data_aquisicao=datetime.strptime(data_aquisicao, "%Y-%m-%d").date() if data_aquisicao else None,
-            valor_aquisicao=float(valor_aquisicao) if valor_aquisicao else None,
+            valor_aquisicao=valor_aquisicao,
             garantia_ate=garantia_ate or None,
             observacao=observacao or f"Estoque inicial: {quantidade}"
         )
         db.add(item)
         db.commit()
 
-    registrar_log(
-        db,
-        usuario=user,
-        acao=f"Cadastrou produto: {product.name} (Série: {'Sim' if controla_por_serie else 'Não'})",
-        ip=request.client.host
-    )
+        registrar_log(
+            db,
+            usuario=user,
+            acao=f"Cadastrou produto: {product.name}",
+            ip=request.client.host
+        )
 
     return RedirectResponse("/products", status_code=HTTP_302_FOUND)
 
@@ -216,7 +242,7 @@ def edit_product_form(product_id: int, request: Request, db: Session = Depends(g
 def edit_product(
     product_id: int,
     request: Request,
-    name: str = Form(...),
+    # ❌ Removido: name: str = Form(...),
     category_id: int = Form(None),
     type_id: int = Form(...),
     brand_id: int = Form(...),
@@ -246,7 +272,19 @@ def edit_product(
     if not product:
         return RedirectResponse("/products")
 
-    product.name = name
+    # ✅ Gera nome automaticamente
+    tipo = db.query(EquipmentType).filter(EquipmentType.id == type_id).first()
+    marca = db.query(Brand).filter(Brand.id == brand_id).first()
+    
+    nome_partes = []
+    if tipo:
+        nome_partes.append(tipo.nome)
+    if marca:
+        nome_partes.append(marca.nome)
+    if model:
+        nome_partes.append(model)
+    
+    product.name = " ".join(nome_partes) if nome_partes else "Produto sem nome"
     product.category_id = int(category_id) if category_id else None
     product.type_id = int(type_id)
     product.brand_id = int(brand_id)
@@ -296,6 +334,24 @@ def edit_product(
 
     registrar_log(db, usuario=user, acao=f"Editou produto: {name}", ip=request.client.host)
     return RedirectResponse("/products", status_code=HTTP_302_FOUND)
+
+@router.get("/tipos-por-categoria/{category_id}")
+def get_tipos_por_categoria(category_id: int, db: Session = Depends(get_db)):
+    """Retorna tipos de equipamento de uma categoria específica"""
+    tipos = (
+        db.query(EquipmentType)
+        .filter(EquipmentType.category_id == category_id)
+        .order_by(EquipmentType.nome)
+        .all()
+    )
+    
+    return [
+        {
+            "id": t.id,
+            "nome": t.nome
+        }
+        for t in tipos
+    ]
 
 
 # ----------------- DELETE -----------------
