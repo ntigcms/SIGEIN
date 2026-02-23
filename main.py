@@ -27,7 +27,7 @@ app.state.templates = templates
 Base.metadata.create_all(bind=engine)
 
 # Routers
-from routers import auth, dashboard, users, units, movements, logs, root, equipment_types, brands, states, products, stock, categories
+from routers import auth, dashboard, users, units, movements, logs, root, equipment_types, brands, states, products, stock, categories, eprotocolo
 
 app.include_router(root.router)
 app.include_router(auth.router)
@@ -41,4 +41,5 @@ app.include_router(products.router)
 app.include_router(brands.router)
 app.include_router(states.router)
 app.include_router(stock.router)
+app.include_router(eprotocolo.router)
 app.include_router(logs.router)

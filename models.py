@@ -220,3 +220,30 @@ class EquipmentState(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, unique=True, nullable=False)
+
+# =====================================================
+# EPROTOCOLO
+# =====================================================
+
+
+class Processo(Base):
+    __tablename__ = "processos"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    numero = Column(String, unique=True, index=True)
+    ano = Column(Integer)
+    assunto = Column(String)
+    requerente = Column(String)
+    conteudo = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+   
+
+class Circular(Base):
+    __tablename__ = "circulares"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    numero = Column(String, unique=True)
+    assunto = Column(String)
+    conteudo = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
