@@ -348,8 +348,10 @@
 
     </div>
 </div>
+        <a href="/eprotocolo" ><img width="32" height="32" src="https://img.icons8.com/arcade/64/documents.png" alt="E-documents" />E-Protocolo</a>
 
-        <a href="/logs" style="display:inline-flex; align-items:center; gap:8px;">
+
+    <a href="/logs" style="display:inline-flex; align-items:center; gap:8px;">
   <img
     src="https://img.icons8.com/external-flaticons-lineal-color-flat-icons/32/external-logs-computer-programming-icons-flaticons-lineal-color-flat-icons.png"
     alt="Logs"
@@ -357,7 +359,7 @@
     height="32"
   >
   Logs
-</a>
+    </a>
 
 
     </div>
@@ -365,7 +367,8 @@
     <!-- ===== CONTEÚDO PRINCIPAL ===== -->
     <div class="main-content">
         <!-- Título da aplicação -->
-        <div class="app-header">
+{% if not hide_app_header %}
+<div class="app-header">
     <div class="app-header-content">
         <span class="app-badge">Sistema Oficial</span>
         <h1 class="app-title">
@@ -381,6 +384,7 @@
         </p>
     </div>
 </div>
+{% endif %}
 
 
         <!-- Menu do usuário (canto superior direito) -->
