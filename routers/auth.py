@@ -5,19 +5,19 @@ from sqlalchemy.orm import Session
 from starlette.status import HTTP_302_FOUND
 from database import get_db
 import models
-from dependencies import get_current_user, registrar_log  # ✅ Removido sessions
+from dependencies import registrar_log
+from security import verify_password  # ✅ Nosso módulo de hash seguro
+from models import StatusUsuarioEnum
+
+
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
-
+# ✅ ADICIONE ESTA ROTA (GET) - Exibe o formulário de login
 @router.get("/login")
 def login_form(request: Request):
-    """Exibe formulário de login"""
-    # Se já estiver logado, redireciona
-    if request.session.get("user"):
-        return RedirectResponse("/dashboard", status_code=302)
-    
+    """Exibe o formulário de login"""
     return templates.TemplateResponse("login.html", {"request": request})
 
 
@@ -28,43 +28,54 @@ def login_post(
     password: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    """Processa login do usuário"""
+    """Processa login do usuário com hash seguro e status Enum/string"""
     ip = request.client.host
 
-    # Busca usuário no banco
-    user = db.query(models.User).filter(
-        models.User.username == username,
-        models.User.password == password  # ⚠️ Em produção use hash
-    ).first()
+    # Busca usuário no banco pelo e-mail
+    user = db.query(models.User).filter(models.User.email == username).first()
 
-    # ❌ Falha no login
-    if not user:
+    # ❌ Usuário não existe ou senha incorreta
+    if not user or not verify_password(password, user.password):
         registrar_log(db, usuario=username, acao="Tentativa de login falhou", ip=ip)
         return templates.TemplateResponse(
             "login.html",
             {"request": request, "error": "Usuário ou senha inválidos"}
         )
 
-    # ✅ Verifica status do usuário
-    status = user.status.value if hasattr(user.status, 'value') else user.status
-    if status != "ativo":
-        registrar_log(db, usuario=username, acao=f"Login negado - status: {status}", ip=ip)
+    # ✅ Converte status do usuário para Enum se estiver usando Enum
+    try:
+        status = StatusUsuarioEnum(user.status)  # se user.status já for string do DB
+    except ValueError:
+        status = user.status  # fallback: mantém a string original
+
+    # ❌ Bloqueia login se status não for ativo
+    if isinstance(status, StatusUsuarioEnum):
+        is_ativo = status == StatusUsuarioEnum.ATIVO
+        status_str = status.value
+    else:
+        # Caso seja string, compara ignorando maiúsculas/minúsculas
+        is_ativo = str(status).lower() == "ativo"
+        status_str = str(status)
+
+    if not is_ativo:
+        registrar_log(db, usuario=username, acao=f"Login negado - status: {status_str}", ip=ip)
         return templates.TemplateResponse(
             "login.html",
             {
                 "request": request,
-                "error": f"Usuário {status}. Entre em contato com o administrador."
+                "error": f"Usuário {status_str}. Entre em contato com o administrador."
             }
         )
 
-    # ✅ Login bem-sucedido - Salva na sessão
-    request.session["user"] = user.username
+    # ✅ Login bem-sucedido - salva dados na sessão
+    request.session["user"] = user.email
     request.session["user_id"] = user.id
     request.session["municipio_id"] = user.municipio_id
-    request.session["perfil"] = user.perfil.value if hasattr(user.perfil, 'value') else user.perfil
+    request.session["perfil"] = user.perfil.value if hasattr(user.perfil, "value") else str(user.perfil)
 
     registrar_log(db, usuario=username, acao="Login bem-sucedido", ip=ip)
 
+    # Redireciona para dashboard
     return RedirectResponse(url="/dashboard", status_code=HTTP_302_FOUND)
 
 

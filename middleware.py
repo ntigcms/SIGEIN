@@ -56,8 +56,8 @@ class MultiTenantMiddleware(BaseHTTPMiddleware):
                     return RedirectResponse("/login")
                 return await call_next(request)
             
-            # Busca usuário completo no banco
-            user = db.query(User).filter(User.username == username).first()
+            # Busca usuário completo no banco (email armazenado na sessão)
+            user = db.query(User).filter(User.email == username).first()
             
             if not user:
                 # Usuário não existe mais no banco
@@ -65,7 +65,7 @@ class MultiTenantMiddleware(BaseHTTPMiddleware):
                 return RedirectResponse("/login")
             
             # Verifica se usuário está ativo
-            status = user.status.value if hasattr(user.status, 'value') else user.status
+            status = user.status
             if status != "ativo":
                 return Response(
                     content="""
@@ -89,7 +89,7 @@ class MultiTenantMiddleware(BaseHTTPMiddleware):
             request.state.municipio_id = user.municipio_id
             request.state.orgao_id = user.orgao_id
             request.state.unidade_id = user.unidade_id
-            request.state.perfil = user.perfil.value if hasattr(user.perfil, 'value') else user.perfil
+            request.state.perfil = user.perfil
             request.state.db = db
             
             # Atualiza último acesso

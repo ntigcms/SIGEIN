@@ -123,7 +123,7 @@ def get_product(
     """
     Verifica permissão manualmente quando precisa de lógica condicional
     """
-    user_obj = db.query(User).filter(User.username == current_user).first()
+    user_obj = db.query(User).filter(User.email == current_user).first()
     
     product = db.query(Product).filter(Product.id == product_id).first()
     
@@ -132,7 +132,7 @@ def get_product(
         return {"error": "Sem permissão para visualizar estoque"}
     
     # Verifica se produto é do mesmo município (exceto MASTER)
-    perfil = user_obj.perfil.value if hasattr(user_obj.perfil, 'value') else user_obj.perfil
+    perfil = user_obj.perfil
     if perfil != "master" and product.municipio_id != user_obj.municipio_id:
         return {"error": "Produto de outro município"}
     
@@ -161,7 +161,7 @@ async def delete_product(
     product = db.query(Product).filter(Product.id == product_id).first()
     
     # Verifica município (se não for MASTER)
-    perfil = user_obj.perfil.value if hasattr(user_obj.perfil, 'value') else user_obj.perfil
+    perfil = user_obj.perfil
     if perfil != "master" and product.municipio_id != user_obj.municipio_id:
         return {"error": "Não pode excluir produto de outro município"}
     
@@ -184,7 +184,7 @@ def list_products(
     """
     Lista produtos com filtro automático por município
     """
-    perfil = user_obj.perfil.value if hasattr(user_obj.perfil, 'value') else user_obj.perfil
+    perfil = user_obj.perfil
     
     if perfil == "master":
         # MASTER vê todos os produtos de todos os municípios
@@ -219,7 +219,7 @@ def dashboard(
     """
     Passa permissões para o template para mostrar/ocultar botões
     """
-    user_obj = db.query(User).filter(User.username == current_user).first()
+    user_obj = db.query(User).filter(User.email == current_user).first()
     
     # Cria dicionário de permissões para o template
     permissoes = {

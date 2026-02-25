@@ -42,9 +42,9 @@ class User(Base):
     orgao_id = Column(Integer, ForeignKey("orgaos.id"), nullable=False)
     unidade_id = Column(Integer, ForeignKey("unidades.id"), nullable=False)
     
-    # ✅ Perfil e Status com Enum
-    perfil = Column(SQLEnum(PerfilEnum), nullable=False, default=PerfilEnum.OPERADOR)
-    status = Column(SQLEnum(StatusUsuarioEnum), nullable=False, default=StatusUsuarioEnum.PENDENTE)
+    # ✅ Perfil e Status gravados como string (colunas existentes role/status)
+    perfil = Column("role", String(50), nullable=False, default=PerfilEnum.OPERADOR.value)
+    status = Column(String(20), nullable=False, default=StatusUsuarioEnum.PENDENTE.value)
     
     # ✅ Auditoria
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -61,46 +61,43 @@ class User(Base):
     def __str__(self):
         return f"{self.nome} ({self.cpf})"
     
-    # ✅ Métodos helper para permissões
+    # ✅ Métodos helper para permissões (usam strings)
     def pode_acessar_inventario(self):
         return self.perfil in [
-            PerfilEnum.MASTER,
-            PerfilEnum.ADMIN_MUNICIPAL,
-            PerfilEnum.GESTOR_ESTOQUE,
-            PerfilEnum.GESTOR_GERAL
+            PerfilEnum.MASTER.value,
+            PerfilEnum.ADMIN_MUNICIPAL.value,
+            PerfilEnum.GESTOR_ESTOQUE.value,
+            PerfilEnum.GESTOR_GERAL.value,
         ]
     
     def pode_acessar_protocolo(self):
         return self.perfil in [
-            PerfilEnum.MASTER,
-            PerfilEnum.ADMIN_MUNICIPAL,
-            PerfilEnum.GESTOR_PROTOCOLO,
-            PerfilEnum.GESTOR_GERAL
+            PerfilEnum.MASTER.value,
+            PerfilEnum.ADMIN_MUNICIPAL.value,
+            PerfilEnum.GESTOR_PROTOCOLO.value,
+            PerfilEnum.GESTOR_GERAL.value,
         ]
     
     def pode_gerenciar_usuarios(self):
         return self.perfil in [
-            PerfilEnum.MASTER,
-            PerfilEnum.ADMIN_MUNICIPAL
+            PerfilEnum.MASTER.value,
+            PerfilEnum.ADMIN_MUNICIPAL.value,
         ]
 
 
 # =====================================================
-# UNIT
+# UNIT (LEGADO)
 # =====================================================
 
-#class Unit(Base):
-#    __tablename__ = "units"
-#
-#   id = Column(Integer, primary_key=True, index=True)
-#    name = Column(String(150), unique=True, nullable=False)
-#    manager = Column(String(100), nullable=False)
+class Unit(Base):
+    __tablename__ = "units"
 
-#    stocks = relationship("Stock", back_populates="unit")
-#    items = relationship("Item", back_populates="unit")
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(150), unique=True, nullable=False)
+    manager = Column(String(100), nullable=False)
 
-#    def __str__(self):
-#        return self.name
+    def __str__(self):
+        return self.name
 
 
 # =====================================================
@@ -174,7 +171,8 @@ class Item(Base):
     orgao = relationship("Orgao")
     product = relationship("Product", back_populates="items")
     estado = relationship("EquipmentState")
-    unit = relationship("Unidade", backref="items")
+    # Usa a tabela 'unidades', mas o atributo continua sendo 'unit'
+    unit = relationship("Unidade", back_populates="items")
 
 
 # =====================================================
@@ -200,7 +198,8 @@ class Stock(Base):
     municipio = relationship("Municipio")
     orgao = relationship("Orgao")
     product = relationship("Product", back_populates="stocks")
-    unit = relationship("Unidade", backref="stocks")
+    # Usa a tabela 'unidades', mas o atributo continua sendo 'unit'
+    unit = relationship("Unidade", back_populates="stocks")
 
 
 # =====================================================
@@ -468,13 +467,13 @@ class Unidade(Base):
 
     # 🔥 Relacionamentos importantes
     users = relationship("User", back_populates="unidade")
-    items = relationship("Item", back_populates="unidade")
-    stocks = relationship("Stock", back_populates="unidade")
+    items = relationship("Item", back_populates="unit")
+    stocks = relationship("Stock", back_populates="unit")
     movimentos_origem = relationship(
         "Movement",
-        foreign_keys="Movement.unidade_origem_id"
+        foreign_keys="Movement.unit_origem_id"
     )
     movimentos_destino = relationship(
         "Movement",
-        foreign_keys="Movement.unidade_destino_id"
+        foreign_keys="Movement.unit_destino_id"
     )

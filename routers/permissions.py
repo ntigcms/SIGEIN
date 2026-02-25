@@ -150,7 +150,8 @@ def obter_usuario_atual(
     """Obtém objeto User completo do usuário logado"""
     if not current_user:
         return None
-    return db.query(User).filter(User.username == current_user).first()
+    # current_user armazena o e-mail
+    return db.query(User).filter(User.email == current_user).first()
 
 
 def usuario_tem_permissao(user: User, permissao: str) -> bool:
@@ -158,7 +159,7 @@ def usuario_tem_permissao(user: User, permissao: str) -> bool:
     if not user:
         return False
     
-    perfil = user.perfil.value if hasattr(user.perfil, 'value') else user.perfil
+    perfil = user.perfil
     permissoes = PERMISSOES_POR_PERFIL.get(perfil, [])
     return permissao in permissoes
 
@@ -168,7 +169,7 @@ def usuario_pode_acessar_municipio(user: User, municipio_id: int) -> bool:
     if not user:
         return False
     
-    perfil = user.perfil.value if hasattr(user.perfil, 'value') else user.perfil
+    perfil = user.perfil
     
     # MASTER acessa todos os municípios
     if perfil == "master":
@@ -183,7 +184,7 @@ def usuario_pode_acessar_orgao(user: User, orgao_id: int) -> bool:
     if not user:
         return False
     
-    perfil = user.perfil.value if hasattr(user.perfil, 'value') else user.perfil
+    perfil = user.perfil
     
     # MASTER e ADMIN_MUNICIPAL acessam todos os órgãos do município
     if perfil in ["master", "admin_municipal"]:
@@ -219,7 +220,7 @@ def requer_permissao(permissao: str):
                 return RedirectResponse("/login")
             
             # Obtém objeto User
-            user_obj = db.query(User).filter(User.username == current_user).first()
+            user_obj = db.query(User).filter(User.email == current_user).first()
             
             if not user_obj:
                 return RedirectResponse("/login")
@@ -270,12 +271,12 @@ def requer_perfil(*perfis_permitidos: str):
             if not current_user:
                 return RedirectResponse("/login")
             
-            user_obj = db.query(User).filter(User.username == current_user).first()
+            user_obj = db.query(User).filter(User.email == current_user).first()
             
             if not user_obj:
                 return RedirectResponse("/login")
             
-            perfil_atual = user_obj.perfil.value if hasattr(user_obj.perfil, 'value') else user_obj.perfil
+            perfil_atual = user_obj.perfil
             
             if perfil_atual not in perfis_permitidos:
                 return HTMLResponse(
@@ -324,12 +325,12 @@ def requer_mesmo_municipio():
             if not current_user:
                 return RedirectResponse("/login")
             
-            user_obj = db.query(User).filter(User.username == current_user).first()
+            user_obj = db.query(User).filter(User.email == current_user).first()
             
             if not user_obj:
                 return RedirectResponse("/login")
             
-            perfil = user_obj.perfil.value if hasattr(user_obj.perfil, 'value') else user_obj.perfil
+            perfil = user_obj.perfil
             
             # MASTER pode acessar qualquer município
             if perfil == "master":
@@ -385,7 +386,7 @@ def UsuarioComPermissao(permissao: str):
         if not current_user:
             raise HTTPException(status_code=401, detail="Não autenticado")
         
-        user_obj = db.query(User).filter(User.username == current_user).first()
+        user_obj = db.query(User).filter(User.email == current_user).first()
         
         if not user_obj:
             raise HTTPException(status_code=401, detail="Usuário não encontrado")
@@ -419,12 +420,12 @@ def UsuarioComPerfil(*perfis: str):
         if not current_user:
             raise HTTPException(status_code=401, detail="Não autenticado")
         
-        user_obj = db.query(User).filter(User.username == current_user).first()
+        user_obj = db.query(User).filter(User.email == current_user).first()
         
         if not user_obj:
             raise HTTPException(status_code=401, detail="Usuário não encontrado")
         
-        perfil_atual = user_obj.perfil.value if hasattr(user_obj.perfil, 'value') else user_obj.perfil
+        perfil_atual = user_obj.perfil
         
         if perfil_atual not in perfis:
             raise HTTPException(

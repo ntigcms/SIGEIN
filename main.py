@@ -56,7 +56,7 @@ Base.metadata.create_all(bind=engine)
 from routers import (
     auth, dashboard, users, units, movements, logs, root,
     equipment_types, brands, states, products, stock,
-    categories, eprotocolo
+    categories, eprotocolo, api_geografica
 )
 
 app.include_router(root.router)
@@ -72,4 +72,5 @@ app.include_router(brands.router)
 app.include_router(states.router)
 app.include_router(stock.router)
 app.include_router(eprotocolo.router)
+app.include_router(api_geografica.router)
 app.include_router(logs.router)

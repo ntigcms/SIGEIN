@@ -14,8 +14,10 @@ templates = Jinja2Templates(directory="templates")
 def get_current_user(request: Request):
     """
     Obtém usuário logado da sessão do SessionMiddleware
+    Retorna o EMAIL do usuário (não username)
     """
-    return request.session.get("user")  # ✅ Usa SessionMiddleware
+    return request.session.get("user")  # ✅ Retorna o email
+
 
 
 def registrar_log(db: Session, usuario: str, acao: str, ip: str = None):

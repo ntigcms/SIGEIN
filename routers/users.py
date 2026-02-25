@@ -20,18 +20,14 @@ templates = Jinja2Templates(directory="templates")
 
 def validar_cpf(cpf: str) -> bool:
     """Valida CPF brasileiro"""
-    # Remove caracteres não numéricos
     cpf = re.sub(r'\D', '', cpf)
     
-    # Verifica se tem 11 dígitos
     if len(cpf) != 11:
         return False
     
-    # Verifica se todos os dígitos são iguais (CPF inválido)
     if cpf == cpf[0] * 11:
         return False
     
-    # Validação do primeiro dígito verificador
     soma = sum(int(cpf[i]) * (10 - i) for i in range(9))
     resto = soma % 11
     digito1 = 0 if resto < 2 else 11 - resto
@@ -39,7 +35,6 @@ def validar_cpf(cpf: str) -> bool:
     if int(cpf[9]) != digito1:
         return False
     
-    # Validação do segundo dígito verificador
     soma = sum(int(cpf[i]) * (11 - i) for i in range(10))
     resto = soma % 11
     digito2 = 0 if resto < 2 else 11 - resto
@@ -68,23 +63,26 @@ def limpar_cpf(cpf: str) -> str:
 def list_users(
     request: Request, 
     db: Session = Depends(get_db), 
-    current_user: dict = Depends(get_current_user)
+    current_user: str = Depends(get_current_user)  # ✅ Agora é o email
 ):
     """Lista usuários com filtro por perfil"""
     if not current_user:
         return RedirectResponse("/login")
     
-    user_obj = db.query(User).filter(User.username == current_user).first()
+    # ✅ BUSCA POR EMAIL (não username)
+    user_obj = db.query(User).filter(User.email == current_user).first()
+    
     if not user_obj:
         return RedirectResponse("/login")
     
+    # ✅ Perfil é string agora (não Enum)
+    perfil = user_obj.perfil
+    
     # ✅ FILTRO POR PERFIL
-    if user_obj.perfil.value == "master":
-        # MASTER vê todos os usuários
+    if perfil == "master":
         users = db.query(User).order_by(User.nome).all()
     
-    elif user_obj.perfil.value == "admin_municipal":
-        # ADMIN vê apenas usuários do seu município
+    elif perfil == "admin_municipal":
         users = (
             db.query(User)
             .filter(User.municipio_id == user_obj.municipio_id)
@@ -93,7 +91,6 @@ def list_users(
         )
     
     else:
-        # Outros perfis não podem acessar gestão de usuários
         return HTMLResponse(
             "<h2>Acesso Negado</h2><p>Você não tem permissão para gerenciar usuários.</p>",
             status_code=403
@@ -105,7 +102,7 @@ def list_users(
             "request": request, 
             "users": users, 
             "user": current_user,
-            "user_perfil": user_obj.perfil.value
+            "user_perfil": perfil
         }
     )
 
@@ -117,16 +114,15 @@ def list_users(
 @router.get("/add")
 def add_user_form(
     request: Request, 
-    current_user: dict = Depends(get_current_user),
+    current_user: str = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     if not current_user:
         return RedirectResponse("/login")
+
+    user_obj = db.query(User).filter(User.email == current_user).first()
     
-    user_obj = db.query(User).filter(User.username == current_user).first()
-    
-    # ✅ Verifica permissão
-    if user_obj.perfil.value not in ["master", "admin_municipal"]:
+    if user_obj.perfil not in ["master", "admin_municipal"]:
         return HTMLResponse("Acesso Negado", status_code=403)
 
     return templates.TemplateResponse(
@@ -138,7 +134,6 @@ def add_user_form(
             "current_user": current_user
         }
     )
-
 
 # ========================================
 # INSERÇÃO NO BANCO

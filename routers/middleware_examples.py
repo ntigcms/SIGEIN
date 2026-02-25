@@ -132,7 +132,7 @@ def list_products_v4(
     Injeta objeto User diretamente
     """
     
-    perfil = user.perfil.value if hasattr(user.perfil, 'value') else user.perfil
+    perfil = user.perfil
     
     query = db.query(Product)
     
@@ -345,7 +345,7 @@ def dashboard(
     Dashboard personalizado por perfil e município
     """
     
-    perfil = user.perfil.value if hasattr(user.perfil, 'value') else user.perfil
+    perfil = user.perfil
     
     # Dados básicos do usuário
     info = {
