@@ -1,33 +1,63 @@
 from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware  # ✅ Import no topo
+from middleware import MultiTenantMiddleware
 from database import Base, engine
-from dependencies import sessions
+import os
 
-# Criação do app (somente uma vez)
+# ========================================
+# 1. CRIAR APP
+# ========================================
 app = FastAPI()
 
-# Montagem do diretório static
+# ========================================
+# 2. ADICIONAR MIDDLEWARES (ANTES DE TUDO)
+# ========================================
+SECRET_KEY = os.getenv("SECRET_KEY", "sua-chave-secreta-aqui-mude-em-producao")
+
+# ✅ SessionMiddleware PRIMEIRO
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SECRET_KEY,
+    session_cookie="session",
+    max_age=3600 * 24,
+    same_site="lax",
+    https_only=False
+)
+
+# ✅ MultiTenantMiddleware DEPOIS
+#app.add_middleware(MultiTenantMiddleware)
+
+# ========================================
+# 3. STATIC FILES
+# ========================================
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Configuração de templates
+# ========================================
+# 4. TEMPLATES
+# ========================================
 templates = Jinja2Templates(directory="templates")
 
-# Função global para templates
 def get_logged_user(request: Request):
-    session_id = request.cookies.get("session_id")
-    if session_id and session_id in sessions:
-        return sessions[session_id]
-    return None
+    return request.session.get("user")
 
 templates.env.globals["get_logged_user"] = get_logged_user
 app.state.templates = templates
 
-# Criação das tabelas
+# ========================================
+# 5. DATABASE
+# ========================================
 Base.metadata.create_all(bind=engine)
 
-# Routers
-from routers import auth, dashboard, users, units, movements, logs, root, equipment_types, brands, states, products, stock, categories, eprotocolo
+# ========================================
+# 6. ROUTERS (POR ÚLTIMO)
+# ========================================
+from routers import (
+    auth, dashboard, users, units, movements, logs, root,
+    equipment_types, brands, states, products, stock,
+    categories, eprotocolo
+)
 
 app.include_router(root.router)
 app.include_router(auth.router)

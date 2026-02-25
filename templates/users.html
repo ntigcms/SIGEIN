@@ -1,29 +1,524 @@
 {% extends "base.html" %}
 
-{% block title %}Usuários - SIGEIN{% endblock %}
+{% block title %}{{ 'Editar' if action == 'edit' else 'Cadastrar' }} Usuário - SIGEIN{% endblock %}
 
 {% block content %}
-<h2>Usuários</h2>
-<a href="/users/add"><button>Adicionar Usuário</button></a>
 
-<table style="width:100%; margin-top:20px; border-collapse: collapse;">
-    <thead>
-        <tr style="background:#0077cc; color:white;">
-            <th style="padding:10px; border:1px solid #ccc;">ID</th>
-            <th style="padding:10px; border:1px solid #ccc;">Nome</th>
-            <th style="padding:10px; border:1px solid #ccc;">E-mail</th>
-            <th style="padding:10px; border:1px solid #ccc;">Permissão</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for user in users %}
-        <tr>
-            <td style="padding:10px; border:1px solid #ccc;">{{ user.id }}</td>
-            <td style="padding:10px; border:1px solid #ccc;">{{ user.name }}</td>
-            <td style="padding:10px; border:1px solid #ccc;">{{ user.email }}</td>
-            <td style="padding:10px; border:1px solid #ccc;">{{ user.role }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="container">
+    <h2>{{ 'Editar' if action == 'edit' else 'Cadastrar' }} Usuário</h2>
+
+    <form method="post" id="user-form">
+        
+        <!-- DADOS PESSOAIS -->
+        <fieldset>
+            <legend>Dados Pessoais</legend>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="nome">Nome Completo*</label>
+                    <input type="text" name="nome" id="nome" required 
+                           value="{{ user.nome if user else '' }}"
+                           placeholder="Digite o nome completo">
+                </div>
+                
+                <div class="form-group">
+                    <label for="cpf">CPF*</label>
+                    <input type="text" name="cpf" id="cpf" required 
+                           value="{{ user.cpf if user else '' }}"
+                           placeholder="000.000.000-00"
+                           maxlength="14">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="email">E-mail*</label>
+                <input type="email" name="email" id="email" required 
+                       value="{{ user.email if user else '' }}"
+                       placeholder="usuario@exemplo.com">
+            </div>
+        </fieldset>
+
+        <!-- LOTAÇÃO ADMINISTRATIVA -->
+        <fieldset>
+            <legend>Lotação Administrativa</legend>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="estado">Estado*</label>
+                    <select id="estado" required onchange="carregarMunicipios()">
+                        <option value="">-- Selecione o Estado --</option>
+                        <!-- Será preenchido via JavaScript -->
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="municipio_id">Município*</label>
+                    <select name="municipio_id" id="municipio_id" required disabled onchange="carregarOrgaos()">
+                        <option value="">-- Selecione o Estado primeiro --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="orgao_id">Órgão*</label>
+                    <select name="orgao_id" id="orgao_id" required disabled onchange="carregarUnidades()">
+                        <option value="">-- Selecione o Município primeiro --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="unidade_id">Unidade*</label>
+                    <select name="unidade_id" id="unidade_id" required disabled>
+                        <option value="">-- Selecione o Órgão primeiro --</option>
+                    </select>
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- PERFIL E STATUS -->
+        <fieldset>
+            <legend>Perfil e Acesso</legend>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="perfil">Perfil*</label>
+                    <select name="perfil" id="perfil" required onchange="mostrarDescricaoPerfil()">
+                        <option value="">-- Selecione --</option>
+                        <option value="master" {% if user and user.perfil == 'master' %}selected{% endif %}>
+                            MASTER - Acesso Total ao Sistema
+                        </option>
+                        <option value="admin_municipal" {% if user and user.perfil == 'admin_municipal' %}selected{% endif %}>
+                            ADMIN MUNICIPAL - Gerencia Município Completo
+                        </option>
+                        <option value="gestor_estoque" {% if user and user.perfil == 'gestor_estoque' %}selected{% endif %}>
+                            GESTOR DE ESTOQUE - Gerencia Inventário
+                        </option>
+                        <option value="gestor_protocolo" {% if user and user.perfil == 'gestor_protocolo' %}selected{% endif %}>
+                            GESTOR DE PROTOCOLO - Gerencia E-Protocolo
+                        </option>
+                        <option value="gestor_geral" {% if user and user.perfil == 'gestor_geral' %}selected{% endif %}>
+                            GESTOR GERAL - Estoque + Protocolo
+                        </option>
+                        <option value="operador" {% if user and user.perfil == 'operador' %}selected{% endif %}>
+                            OPERADOR - Acesso Básico
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="status">Status*</label>
+                    <select name="status" id="status" required>
+                        <option value="">-- Selecione --</option>
+                        <option value="ativo" {% if user and user.status == 'ativo' %}selected{% endif %}>
+                            Ativo
+                        </option>
+                        <option value="inativo" {% if user and user.status == 'inativo' %}selected{% endif %}>
+                            Inativo
+                        </option>
+                        <option value="bloqueado" {% if user and user.status == 'bloqueado' %}selected{% endif %}>
+                            Bloqueado
+                        </option>
+                        <option value="pendente" {% if user and user.status == 'pendente' %}selected{% endif %}>
+                            Pendente Aprovação
+                        </option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Descrição do perfil selecionado -->
+            <div class="perfil-info" id="perfil-info" style="display:none;">
+                <i class="fas fa-info-circle"></i>
+                <span id="perfil-descricao"></span>
+            </div>
+        </fieldset>
+
+        <!-- SENHA -->
+        <fieldset>
+            <legend>Senha de Acesso</legend>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="senha">{{ 'Nova Senha' if action == 'edit' else 'Senha*' }}</label>
+                    <input type="password" name="senha" id="senha" 
+                           {{ 'required' if action != 'edit' else '' }}
+                           minlength="6"
+                           placeholder="{{ 'Deixe em branco para manter a senha atual' if action == 'edit' else 'Mínimo 6 caracteres' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmar_senha">{{ 'Confirmar Nova Senha' if action == 'edit' else 'Confirmar Senha*' }}</label>
+                    <input type="password" name="confirmar_senha" id="confirmar_senha" 
+                           {{ 'required' if action != 'edit' else '' }}
+                           minlength="6"
+                           placeholder="Digite a senha novamente">
+                </div>
+            </div>
+            
+            <div class="senha-requirements">
+                <small>
+                    <i class="fas fa-key"></i> 
+                    A senha deve ter no mínimo 6 caracteres
+                </small>
+            </div>
+        </fieldset>
+
+        <!-- BOTÕES -->
+        <div class="buttons">
+            <button type="submit" class="btn-submit">
+                <i class="fas fa-save"></i>
+                {{ 'Atualizar' if action == 'edit' else 'Cadastrar' }}
+            </button>
+            <a href="/users" class="btn-cancel">
+                <i class="fas fa-times"></i>
+                Cancelar
+            </a>
+        </div>
+    </form>
+</div>
+
+<style>
+fieldset {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    background: #fafafa;
+}
+
+legend {
+    font-weight: 600;
+    color: #0d6efd;
+    padding: 0 10px;
+    font-size: 16px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #004080;
+    margin-bottom: 5px;
+}
+
+.form-group input,
+.form-group select {
+    padding: 10px 12px;
+    border: 1px solid #aaa;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+}
+
+.form-group select:disabled {
+    background: #e9ecef;
+    cursor: not-allowed;
+}
+
+/* Info do perfil */
+.perfil-info {
+    background: #e7f3ff;
+    border-left: 4px solid #0d6efd;
+    padding: 12px 15px;
+    border-radius: 4px;
+    margin-top: 10px;
+    font-size: 13px;
+    color: #004085;
+}
+
+.perfil-info i {
+    margin-right: 8px;
+}
+
+/* Requisitos de senha */
+.senha-requirements {
+    margin-top: 8px;
+}
+
+.senha-requirements small {
+    color: #6c757d;
+    font-size: 12px;
+}
+
+.senha-requirements i {
+    margin-right: 5px;
+}
+
+/* Botões */
+.buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn-submit {
+    background: #0d6efd;
+    color: #fff;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-submit:hover {
+    background: #0b5ed7;
+}
+
+.btn-cancel {
+    padding: 11px 24px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.btn-cancel:hover {
+    background: #f1f5f9;
+}
+</style>
+
+<script>
+// ========================================
+// MÁSCARA DE CPF
+// ========================================
+document.getElementById('cpf').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, ''); // Remove não-dígitos
+    
+    if (value.length <= 11) {
+        value = value.replace(/(\d{3})(\d)/, '$1.$2');
+        value = value.replace(/(\d{3})(\d)/, '$1.$2');
+        value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    }
+    
+    e.target.value = value;
+});
+
+// ========================================
+// VALIDAÇÃO DE SENHAS
+// ========================================
+document.getElementById('user-form').addEventListener('submit', function(e) {
+    const senha = document.getElementById('senha').value;
+    const confirmar = document.getElementById('confirmar_senha').value;
+    
+    if (senha && senha !== confirmar) {
+        e.preventDefault();
+        alert('As senhas não coincidem!');
+        return false;
+    }
+});
+
+// ========================================
+// CARREGAR MUNICÍPIOS
+// ========================================
+async function carregarMunicipios() {
+    const estadoId = document.getElementById('estado').value;
+    const municipioSelect = document.getElementById('municipio_id');
+    const orgaoSelect = document.getElementById('orgao_id');
+    const unidadeSelect = document.getElementById('unidade_id');
+    
+    if (!estadoId) {
+        municipioSelect.disabled = true;
+        municipioSelect.innerHTML = '<option value="">-- Selecione o Estado primeiro --</option>';
+        orgaoSelect.disabled = true;
+        unidadeSelect.disabled = true;
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/municipios/${estadoId}`);
+        const municipios = await response.json();
+        
+        municipioSelect.innerHTML = '<option value="">-- Selecione --</option>';
+        municipios.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.nome;
+            municipioSelect.appendChild(opt);
+        });
+        
+        municipioSelect.disabled = false;
+        orgaoSelect.disabled = true;
+        unidadeSelect.disabled = true;
+    } catch (error) {
+        console.error('Erro ao carregar municípios:', error);
+        alert('Erro ao carregar municípios');
+    }
+}
+
+// ========================================
+// CARREGAR ÓRGÃOS
+// ========================================
+async function carregarOrgaos() {
+    const municipioId = document.getElementById('municipio_id').value;
+    const orgaoSelect = document.getElementById('orgao_id');
+    const unidadeSelect = document.getElementById('unidade_id');
+    
+    if (!municipioId) {
+        orgaoSelect.disabled = true;
+        unidadeSelect.disabled = true;
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/orgaos/${municipioId}`);
+        const orgaos = await response.json();
+        
+        orgaoSelect.innerHTML = '<option value="">-- Selecione --</option>';
+        orgaos.forEach(o => {
+            const opt = document.createElement('option');
+            opt.value = o.id;
+            opt.textContent = `${o.nome} ${o.sigla ? '(' + o.sigla + ')' : ''}`;
+            orgaoSelect.appendChild(opt);
+        });
+        
+        orgaoSelect.disabled = false;
+        unidadeSelect.disabled = true;
+    } catch (error) {
+        console.error('Erro ao carregar órgãos:', error);
+        alert('Erro ao carregar órgãos');
+    }
+}
+
+// ========================================
+// CARREGAR UNIDADES
+// ========================================
+async function carregarUnidades() {
+    const orgaoId = document.getElementById('orgao_id').value;
+    const unidadeSelect = document.getElementById('unidade_id');
+    
+    if (!orgaoId) {
+        unidadeSelect.disabled = true;
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/unidades/${orgaoId}`);
+        const unidades = await response.json();
+        
+        unidadeSelect.innerHTML = '<option value="">-- Selecione --</option>';
+        unidades.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.textContent = `${u.nome} ${u.sigla ? '(' + u.sigla + ')' : ''}`;
+            unidadeSelect.appendChild(opt);
+        });
+        
+        unidadeSelect.disabled = false;
+    } catch (error) {
+        console.error('Erro ao carregar unidades:', error);
+        alert('Erro ao carregar unidades');
+    }
+}
+
+// ========================================
+// DESCRIÇÃO DO PERFIL
+// ========================================
+function mostrarDescricaoPerfil() {
+    const perfil = document.getElementById('perfil').value;
+    const infoDiv = document.getElementById('perfil-info');
+    const descricao = document.getElementById('perfil-descricao');
+    
+    const descricoes = {
+        'master': '✅ Acesso total ao sistema | Gerencia múltiplos municípios | Configurações globais',
+        'admin_municipal': '✅ Acesso total ao município | Gerencia usuários | Inventário + Protocolo completo',
+        'gestor_estoque': '✅ Acesso total ao inventário do órgão | Gera relatórios | NÃO acessa protocolo',
+        'gestor_protocolo': '✅ Acesso total ao protocolo | Cria e tramita processos | NÃO acessa inventário',
+        'gestor_geral': '✅ Combina Estoque + Protocolo | Visão 360° do órgão | NÃO gerencia usuários',
+        'operador': '⚠️ Acesso básico | Consulta e ações limitadas | Não pode criar/editar/excluir'
+    };
+    
+    if (perfil && descricoes[perfil]) {
+        descricao.textContent = descricoes[perfil];
+        infoDiv.style.display = 'block';
+    } else {
+        infoDiv.style.display = 'none';
+    }
+}
+
+// ========================================
+// CARREGAR ESTADOS AO INICIAR
+// ========================================
+async function carregarEstados() {
+    try {
+        const response = await fetch('/api/estados');
+        const estados = await response.json();
+        
+        const estadoSelect = document.getElementById('estado');
+        estados.forEach(e => {
+            const opt = document.createElement('option');
+            opt.value = e.id;
+            opt.textContent = `${e.nome} (${e.uf})`;
+            estadoSelect.appendChild(opt);
+        });
+    } catch (error) {
+        console.error('Erro ao carregar estados:', error);
+    }
+}
+
+// ========================================
+// MODO EDIÇÃO - PREENCHER DADOS
+// ========================================
+async function carregarModoEdicao() {
+    {% if user and action == 'edit' %}
+        // Carrega estados primeiro
+        await carregarEstados();
+        
+        // Busca o estado do município do usuário
+        const response = await fetch(`/api/estado-do-municipio/{{ user.municipio_id }}`);
+        const data = await response.json();
+        
+        // Seleciona estado
+        document.getElementById('estado').value = data.estado_id;
+        
+        // Carrega municípios e seleciona
+        await carregarMunicipios();
+        document.getElementById('municipio_id').value = {{ user.municipio_id }};
+        
+        // Carrega órgãos e seleciona
+        await carregarOrgaos();
+        document.getElementById('orgao_id').value = {{ user.orgao_id }};
+        
+        // Carrega unidades e seleciona
+        await carregarUnidades();
+        document.getElementById('unidade_id').value = {{ user.unidade_id }};
+        
+        // Mostra descrição do perfil
+        mostrarDescricaoPerfil();
+    {% else %}
+        carregarEstados();
+    {% endif %}
+}
+
+// Inicializa
+document.addEventListener('DOMContentLoaded', carregarModoEdicao);
+</script>
+
+<script src="https://kit.fontawesome.com/a076d05399.js"></script>
+
 {% endblock %}
