@@ -61,27 +61,23 @@ def limpar_cpf(cpf: str) -> str:
 
 @router.get("/")
 def list_users(
-    request: Request, 
-    db: Session = Depends(get_db), 
-    current_user: str = Depends(get_current_user)  # ✅ Agora é o email
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
 ):
-    """Lista usuários com filtro por perfil"""
     if not current_user:
         return RedirectResponse("/login")
-    
-    # ✅ BUSCA POR EMAIL (não username)
+
     user_obj = db.query(User).filter(User.email == current_user).first()
-    
+
     if not user_obj:
         return RedirectResponse("/login")
-    
-    # ✅ Perfil é string agora (não Enum)
+
     perfil = user_obj.perfil
-    
-    # ✅ FILTRO POR PERFIL
+
     if perfil == "master":
         users = db.query(User).order_by(User.nome).all()
-    
+
     elif perfil == "admin_municipal":
         users = (
             db.query(User)
@@ -89,22 +85,22 @@ def list_users(
             .order_by(User.nome)
             .all()
         )
-    
     else:
         return HTMLResponse(
             "<h2>Acesso Negado</h2><p>Você não tem permissão para gerenciar usuários.</p>",
             status_code=403
         )
-    
+
     return templates.TemplateResponse(
         "users_list.html",
         {
-            "request": request, 
-            "users": users, 
+            "request": request,
+            "users": users,
             "user": current_user,
             "user_perfil": perfil
         }
     )
+
 
 
 # ========================================
@@ -113,7 +109,7 @@ def list_users(
 
 @router.get("/add")
 def add_user_form(
-    request: Request, 
+    request: Request,
     current_user: str = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -121,12 +117,12 @@ def add_user_form(
         return RedirectResponse("/login")
 
     user_obj = db.query(User).filter(User.email == current_user).first()
-    
+
     if user_obj.perfil not in ["master", "admin_municipal"]:
         return HTMLResponse("Acesso Negado", status_code=403)
 
     return templates.TemplateResponse(
-        "user_form.html", 
+        "user_form.html",
         {
             "request": request,
             "user": None,
@@ -134,6 +130,7 @@ def add_user_form(
             "current_user": current_user
         }
     )
+
 
 # ========================================
 # INSERÇÃO NO BANCO
@@ -153,70 +150,39 @@ def add_user(
     senha: str = Form(...),
     confirmar_senha: str = Form(...),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: str = Depends(get_current_user)
 ):
     if not current_user:
         return RedirectResponse("/login")
-    
-    user_obj = db.query(User).filter(User.username == current_user).first()
-    
-    # ✅ Verifica permissão
-    if user_obj.perfil.value not in ["master", "admin_municipal"]:
+
+    user_obj = db.query(User).filter(User.email == current_user).first()
+
+    if user_obj.perfil not in ["master", "admin_municipal"]:
         raise HTTPException(status_code=403, detail="Sem permissão")
-    
-    # ✅ VALIDAÇÕES
+
     cpf_limpo = limpar_cpf(cpf)
-    
+
     if not validar_cpf(cpf_limpo):
-        return HTMLResponse(
-            "<script>alert('CPF inválido!'); window.history.back();</script>",
-            status_code=400
-        )
-    
+        return HTMLResponse("<script>alert('CPF inválido!'); window.history.back();</script>", status_code=400)
+
     if senha != confirmar_senha:
-        return HTMLResponse(
-            "<script>alert('As senhas não coincidem!'); window.history.back();</script>",
-            status_code=400
-        )
-    
+        return HTMLResponse("<script>alert('As senhas não coincidem!'); window.history.back();</script>", status_code=400)
+
     if len(senha) < 6:
-        return HTMLResponse(
-            "<script>alert('A senha deve ter no mínimo 6 caracteres!'); window.history.back();</script>",
-            status_code=400
-        )
-    
-    # ✅ Verifica se CPF já existe
-    cpf_existe = db.query(User).filter(User.cpf == cpf_limpo).first()
-    if cpf_existe:
-        return HTMLResponse(
-            "<script>alert('CPF já cadastrado!'); window.history.back();</script>",
-            status_code=400
-        )
-    
-    # ✅ Verifica se email já existe
-    email_existe = db.query(User).filter(User.email == email).first()
-    if email_existe:
-        return HTMLResponse(
-            "<script>alert('E-mail já cadastrado!'); window.history.back();</script>",
-            status_code=400
-        )
-    
-    # ✅ ADMIN_MUNICIPAL só pode criar usuários do seu município
-    if user_obj.perfil.value == "admin_municipal":
-        if municipio_id != user_obj.municipio_id:
-            raise HTTPException(
-                status_code=403, 
-                detail="Você só pode criar usuários do seu município"
-            )
-    
-    # ✅ Ninguém (exceto MASTER) pode criar outro MASTER
-    if perfil == "master" and user_obj.perfil.value != "master":
-        raise HTTPException(
-            status_code=403,
-            detail="Apenas MASTER pode criar outros usuários MASTER"
-        )
-    
-    # ✅ CRIA USUÁRIO
+        return HTMLResponse("<script>alert('A senha deve ter no mínimo 6 caracteres!'); window.history.back();</script>", status_code=400)
+
+    if db.query(User).filter(User.cpf == cpf_limpo).first():
+        return HTMLResponse("<script>alert('CPF já cadastrado!'); window.history.back();</script>", status_code=400)
+
+    if db.query(User).filter(User.email == email).first():
+        return HTMLResponse("<script>alert('E-mail já cadastrado!'); window.history.back();</script>", status_code=400)
+
+    if user_obj.perfil == "admin_municipal" and municipio_id != user_obj.municipio_id:
+        raise HTTPException(status_code=403, detail="Você só pode criar usuários do seu município")
+
+    if perfil == "master" and user_obj.perfil != "master":
+        raise HTTPException(status_code=403, detail="Apenas MASTER pode criar outros usuários MASTER")
+
     novo_usuario = User(
         nome=nome,
         cpf=cpf_limpo,
@@ -227,21 +193,19 @@ def add_user(
         unidade_id=unidade_id,
         perfil=perfil,
         status=status,
-        created_by=user_obj.id,
-        username=email.split('@')[0]  # username gerado do email
-    )
-    
+        created_by=user_obj.id
+)
+
     db.add(novo_usuario)
     db.commit()
-    
-    # ✅ LOG
+
     registrar_log(
-        db, 
-        usuario=current_user, 
-        acao=f"Cadastrou usuário {nome} (CPF: {cpf_limpo}, Perfil: {perfil})", 
+        db,
+        usuario=current_user,
+        acao=f"Cadastrou usuário {nome} (CPF: {cpf_limpo}, Perfil: {perfil})",
         ip=request.client.host
     )
-    
+
     return RedirectResponse("/users", status_code=HTTP_302_FOUND)
 
 
@@ -259,10 +223,10 @@ def edit_user_form(
     if not current_user:
         return RedirectResponse("/login")
     
-    user_obj = db.query(User).filter(User.username == current_user).first()
+    user_obj = db.query(User).filter(User.email == current_user).first()
     
     # ✅ Verifica permissão
-    if user_obj.perfil.value not in ["master", "admin_municipal"]:
+    if str(user_obj.perfil) not in ["master", "admin_municipal"]:
         return HTMLResponse("Acesso Negado", status_code=403)
     
     # ✅ Busca usuário a editar
@@ -314,10 +278,10 @@ def edit_user(
     if not current_user:
         return RedirectResponse("/login")
     
-    user_obj = db.query(User).filter(User.username == current_user).first()
+    user_obj = db.query(User).filter(User.email == current_user).first()
     
     # ✅ Verifica permissão
-    if user_obj.perfil.value not in ["master", "admin_municipal"]:
+    if str(user_obj.perfil) not in ["master", "admin_municipal"]:
         raise HTTPException(status_code=403, detail="Sem permissão")
     
     # ✅ Busca usuário
@@ -378,7 +342,7 @@ def edit_user(
     user.unidade_id = unidade_id
     user.perfil = perfil
     user.status = status
-    user.username = email.split('@')[0]
+    user.email = email.split('@')[0]
     
     # ✅ Atualiza senha apenas se fornecida
     if senha:
@@ -406,45 +370,38 @@ def delete_user(
     request: Request,
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: str = Depends(get_current_user)
 ):
     if not current_user:
         return JSONResponse({"success": False, "message": "Não autenticado"})
-    
-    user_obj = db.query(User).filter(User.username == current_user).first()
-    
-    # ✅ Verifica permissão
-    if user_obj.perfil.value not in ["master", "admin_municipal"]:
+
+    user_obj = db.query(User).filter(User.email == current_user).first()
+
+    if user_obj.perfil not in ["master", "admin_municipal"]:
         return JSONResponse({"success": False, "message": "Sem permissão"})
-    
-    # ✅ Busca usuário a excluir
+
     user_to_delete = db.query(User).filter(User.id == user_id).first()
+
     if not user_to_delete:
         return JSONResponse({"success": False, "message": "Usuário não encontrado"})
-    
-    # ✅ Impede exclusão do próprio usuário
+
     if user_to_delete.id == user_obj.id:
         return JSONResponse({"success": False, "message": "Você não pode excluir a si mesmo"})
-    
-    # ✅ Apenas MASTER pode excluir outro MASTER
-    if user_to_delete.perfil.value == "master" and user_obj.perfil.value != "master":
+
+    if user_to_delete.perfil == "master" and user_obj.perfil != "master":
         return JSONResponse({"success": False, "message": "Apenas MASTER pode excluir outro MASTER"})
-    
-    # ✅ ADMIN_MUNICIPAL só pode excluir usuários do seu município
-    if user_obj.perfil.value == "admin_municipal":
-        if user_to_delete.municipio_id != user_obj.municipio_id:
-            return JSONResponse({"success": False, "message": "Você só pode excluir usuários do seu município"})
-    
-    # ✅ EXCLUI
+
+    if user_obj.perfil == "admin_municipal" and user_to_delete.municipio_id != user_obj.municipio_id:
+        return JSONResponse({"success": False, "message": "Você só pode excluir usuários do seu município"})
+
     db.delete(user_to_delete)
     db.commit()
-    
-    # ✅ LOG
+
     registrar_log(
         db,
         usuario=current_user,
         acao=f"Excluiu usuário {user_to_delete.nome} (ID: {user_id})",
         ip=request.client.host
     )
-    
+
     return JSONResponse({"success": True, "message": "Usuário excluído com sucesso"})

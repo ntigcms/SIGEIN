@@ -13,20 +13,12 @@
 <div class="filtros-container">
 
     <div class="filtro-item">
-        <label>ID</label>
-        <div class="search-container" data-col="1">
-            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
-            <span class="arrow">▼</span>
-            <div class="options" style="display:none;"></div>
-        </div>
-    </div>
-    <div class="filtro-item">
         <label>Nome</label>
         <div class="search-container" data-col="2">
             <input type="text" placeholder="Clique para selecionar..." class="filter-search">
             <span class="arrow">▼</span>
             <div class="options" style="display:none;"></div>
-        </div>
+    </div>
     </div>
     <div class="filtro-item">
         <label>Email</label>
@@ -78,18 +70,20 @@
         {% for user in users %}
         <tr style="border-bottom:1px solid #ccc;">
             <td><input type="checkbox" class="select-item"></td>
-            <td>{{ user.id }}</td>
-            <td>{{ user.username }}</td>
-            <td>{{ user.email }}</td>
-            <td>{{ user.role }}</td>
-            <td>{{ user.status }}</td>
+        <td>{{ user.id }}</td>
+        <td>{{ user.nome }}</td>
+        <td>{{ user.email }}</td>
+        <td>{{ user.perfil }}</td>
+        <td>{{ user.status }}</td>
             <td>
                 <a href="/users/edit/{{ user.id }}" title="Editar">
                     <i class="fas fa-pen" style="color:#ffaa00; font-size: 18px; margin-right: 10px; cursor:pointer;"></i></a>
-                <a href="/users/delete/{{ user.id }}" title="Excluir"
-                   onclick="return confirm('Tem certeza que deseja excluir este usuário?');">
-                   <i class="fas fa-trash" style="color:#cc0000; font-size: 18px; cursor:pointer;"></i>
-                </a>
+                    
+                    <form class="delete-form" data-id="{{ user.id }}"  method="post" style="display:inline;">
+                        <button type="submit" style="background:none; border:none; padding:0; cursor:pointer;">
+                            <i class="fas fa-trash" style="color:#cc0000; font-size:18px;"></i>
+                        </button>
+                    </form>
             </td>
         </tr>
             {% endfor %}
@@ -116,6 +110,7 @@
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"/>
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <!-- CSS VISUAL (SEM DUPLICAÇÃO) -->
 <link rel="stylesheet" href="{{ request.url_for('static', path='css/equipamentos-grid.css') }}">
 
@@ -239,4 +234,65 @@ $(document).ready(function() {
     });
 });
 </script>
+
+<script>
+    // DELETE MODERNO
+$(document).on("submit", ".delete-form", function(e) {
+    e.preventDefault();
+
+    const form = $(this);
+    const userId = form.data("id");
+
+    Swal.fire({
+        title: 'Tem certeza?',
+        text: "Essa ação não poderá ser desfeita.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#cc0000',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sim, excluir',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+
+            fetch(`/users/delete/${userId}`, {
+                method: "POST"
+            })
+            .then(response => response.json())
+            .then(data => {
+
+                if (data.success) {
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Excluído!',
+                        text: 'Usuário removido com sucesso.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        location.reload();
+                    });
+
+                } else {
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Não permitido',
+                        text: data.message
+                    });
+
+                }
+
+            });
+        }
+    });
+});
+</script>
+
+<style>
+    /* Garante que o SweetAlert fique acima de tudo */
+.swal2-container {
+    z-index: 99999 !important;
+}
+</style>
 {% endblock %}
