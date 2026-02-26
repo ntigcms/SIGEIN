@@ -3,3 +3,10 @@ uvicorn
 jinja2
 sqlalchemy
 databases
+itsdangerous
+psycopg2
+pytz
+reportlab
+openpyxl
+passlib
+bcrypt<4.0

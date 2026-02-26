@@ -21,9 +21,9 @@ equipments = [
 for eq in equipments:
     db.add(eq)
 
-# Exemplo: criar usuário administrador
-admin_user = models.User(username="admin", password="1234")
-db.add(admin_user)
+# Exemplo antigo de usuário administrador (mantido apenas como comentário)
+# admin_user = models.User(username="admin", password="1234")
+# db.add(admin_user)
 
 db.commit()
 db.close()

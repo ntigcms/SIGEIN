@@ -5,55 +5,92 @@ from sqlalchemy.orm import Session
 from starlette.status import HTTP_302_FOUND
 from database import get_db
 import models
-from dependencies import sessions, get_current_user, registrar_log  # ⬅️ import do logger
+from dependencies import registrar_log
+from security import verify_password  # ✅ Nosso módulo de hash seguro
+from models import StatusUsuarioEnum
+
+
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
-
+# ✅ ADICIONE ESTA ROTA (GET) - Exibe o formulário de login
 @router.get("/login")
 def login_form(request: Request):
+    """Exibe o formulário de login"""
     return templates.TemplateResponse("login.html", {"request": request})
 
 
 @router.post("/login")
-def login_post(request: Request, username: str = Form(...), password: str = Form(...),
-               db: Session = Depends(get_db)):
-    ip = request.client.host  # pega IP do usuário
+def login_post(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """Processa login do usuário com hash seguro e status Enum/string"""
+    ip = request.client.host
 
-    user = db.query(models.User).filter(
-        models.User.username == username,
-        models.User.password == password
-    ).first()
+    # Busca usuário no banco pelo e-mail
+    user = db.query(models.User).filter(models.User.email == username).first()
 
-    # Falha no login
-    if not user:
+    # ❌ Usuário não existe ou senha incorreta
+    if not user or not verify_password(password, user.password):
         registrar_log(db, usuario=username, acao="Tentativa de login falhou", ip=ip)
         return templates.TemplateResponse(
             "login.html",
             {"request": request, "error": "Usuário ou senha inválidos"}
         )
 
-    # Login bem-sucedido
-    session_id = str(user.id)
-    sessions[session_id] = user.username
-    response = RedirectResponse(url="/dashboard", status_code=HTTP_302_FOUND)
-    response.set_cookie(key="session_id", value=session_id)
+    # ✅ Converte status do usuário para Enum se estiver usando Enum
+    try:
+        status = StatusUsuarioEnum(user.status)  # se user.status já for string do DB
+    except ValueError:
+        status = user.status  # fallback: mantém a string original
+
+    # ❌ Bloqueia login se status não for ativo
+    if isinstance(status, StatusUsuarioEnum):
+        is_ativo = status == StatusUsuarioEnum.ATIVO
+        status_str = status.value
+    else:
+        # Caso seja string, compara ignorando maiúsculas/minúsculas
+        is_ativo = str(status).lower() == "ativo"
+        status_str = str(status)
+
+    if not is_ativo:
+        registrar_log(db, usuario=username, acao=f"Login negado - status: {status_str}", ip=ip)
+        return templates.TemplateResponse(
+            "login.html",
+            {
+                "request": request,
+                "error": f"Usuário {status_str}. Entre em contato com o administrador."
+            }
+        )
+
+    # ✅ Login bem-sucedido - salva dados na sessão
+    request.session["user"] = user.email
+    request.session["user_id"] = user.id
+    request.session["municipio_id"] = user.municipio_id
+    request.session["perfil"] = user.perfil.value if hasattr(user.perfil, "value") else str(user.perfil)
 
     registrar_log(db, usuario=username, acao="Login bem-sucedido", ip=ip)
-    return response
+
+    # Redireciona para dashboard
+    return RedirectResponse(url="/dashboard", status_code=HTTP_302_FOUND)
 
 
 @router.get("/logout")
 def logout(request: Request, db: Session = Depends(get_db)):
+    """Efetua logout do usuário"""
     ip = request.client.host
-    session_id = request.cookies.get("session_id")
-
-    if session_id in sessions:
-        usuario = sessions[session_id]
+    
+    # Registra logout antes de limpar sessão
+    usuario = request.session.get("user")
+    if usuario:
         registrar_log(db, usuario=usuario, acao="Logout efetuado", ip=ip)
-        del sessions[session_id]
-
+    
+    # ✅ Limpa a sessão do SessionMiddleware
+    request.session.clear()
+    
     response = RedirectResponse(url="/login", status_code=HTTP_302_FOUND)
-    response.delete_cookie("session_id")
     return response

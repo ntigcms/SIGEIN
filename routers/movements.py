@@ -130,7 +130,7 @@ def movimentacoes_submit(
     if not username:
         return RedirectResponse("/login")
 
-    user = db.query(User).filter(User.username == username).first()
+    user = db.query(User).filter(User.email == username).first()
     if not user:
         return {"error": "Usuário não encontrado"}
 
@@ -320,7 +320,7 @@ def movimentacoes_update(
     if not movimento:
         return {"error": "Movimentação não encontrada"}
 
-    user = db.query(User).filter(User.username == username).first()
+    user = db.query(User).filter(User.email == username).first()
     if not user:
         return {"error": "Usuário não encontrado"}
 
