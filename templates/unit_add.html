@@ -7,9 +7,9 @@
 
     <h2 class="form-title">
         {% if action == 'add' %}
-            Cadastrar Unidade
+            Cadastrar Unidade Administrativa
         {% else %}
-            Editar Unidade
+            Editar Unidade Administrativa
         {% endif %}
     </h2>
 
@@ -17,33 +17,77 @@
           action="{% if action == 'add' %}/units/add{% else %}/units/edit/{{ unidade.id }}{% endif %}"
           class="form-card">
 
+        <!-- LOTAÇÃO (ESTADO / MUNICÍPIO / ÓRGÃO) -->
+        <fieldset class="form-section">
+            <legend>Lotação Administrativa</legend>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="estado">Estado *</label>
+                    <select id="estado" required onchange="carregarMunicipios()">
+                        <option value="">-- Selecione o Estado --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="municipio_id">Município *</label>
+                    <select name="municipio_id" id="municipio_id" required disabled onchange="carregarOrgaos()">
+                        <option value="">-- Selecione o Estado primeiro --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label for="orgao_id">Órgão *</label>
+                    <select name="orgao_id" id="orgao_id" required disabled>
+                        <option value="">-- Selecione o Município primeiro --</option>
+                    </select>
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- DADOS DA UNIDADE -->
         <fieldset class="form-section">
             <legend>Informações da Unidade</legend>
 
             <div class="form-grid">
-
-                <!-- Setor / Nome -->
                 <div class="form-group full">
-                    <label for="name">Setor *</label>
+                    <label for="nome">Nome da Unidade *</label>
                     <input type="text"
-                           id="name"
-                           name="name"
-                           placeholder="Nome do setor"
-                           value="{% if action == 'edit' %}{{ unidade.name }}{% endif %}"
+                           id="nome"
+                           name="nome"
+                           placeholder="Ex: Almoxarifado Central"
+                           value="{% if action == 'edit' %}{{ unidade.nome }}{% endif %}"
                            required>
                 </div>
 
-                <!-- Responsável -->
-                <div class="form-group full">
-                    <label for="manager">Responsável *</label>
+                <div class="form-group">
+                    <label for="sigla">Sigla</label>
                     <input type="text"
-                           id="manager"
-                           name="manager"
+                           id="sigla"
+                           name="sigla"
+                           placeholder="Ex: ALMOX"
+                           value="{% if action == 'edit' %}{{ unidade.sigla }}{% endif %}">
+                </div>
+
+                <div class="form-group">
+                    <label for="responsavel">Responsável</label>
+                    <input type="text"
+                           id="responsavel"
+                           name="responsavel"
                            placeholder="Nome do responsável"
-                           value="{% if action == 'edit' %}{{ unidade.manager }}{% endif %}"
-                           required>
+                           value="{% if action == 'edit' %}{{ unidade.responsavel }}{% endif %}">
                 </div>
 
+                <div class="form-group">
+                    <label for="ramal">Ramal</label>
+                    <input type="text"
+                           id="ramal"
+                           name="ramal"
+                           placeholder="Ramal/telefone curto"
+                           value="{% if action == 'edit' %}{{ unidade.ramal }}{% endif %}">
+                </div>
             </div>
         </fieldset>
 
@@ -65,4 +109,166 @@
     </form>
 
 </div>
+
+<style>
+.form-card fieldset {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    background: #fafafa;
+}
+
+.form-card legend {
+    font-weight: 600;
+    color: #0d6efd;
+    padding: 0 10px;
+    font-size: 16px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group.full {
+    grid-column: 1 / -1;
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #004080;
+    margin-bottom: 5px;
+}
+
+.form-group input,
+.form-group select {
+    padding: 8px 12px;
+    border: 1px solid #aaa;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.form-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+}
+</style>
+
+<script>
+// ====== CARREGAR MUNICÍPIOS ======
+async function carregarMunicipios() {
+    const estadoId = document.getElementById('estado').value;
+    const municipioSelect = document.getElementById('municipio_id');
+    const orgaoSelect = document.getElementById('orgao_id');
+
+    if (!estadoId) {
+        municipioSelect.disabled = true;
+        municipioSelect.innerHTML = '<option value="">-- Selecione o Estado primeiro --</option>';
+        orgaoSelect.disabled = true;
+        orgaoSelect.innerHTML = '<option value="">-- Selecione o Município primeiro --</option>';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/municipios/${estadoId}`);
+        const municipios = await response.json();
+
+        municipioSelect.innerHTML = '<option value="">-- Selecione --</option>';
+        municipios.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.nome;
+            municipioSelect.appendChild(opt);
+        });
+
+        municipioSelect.disabled = false;
+        orgaoSelect.disabled = true;
+        orgaoSelect.innerHTML = '<option value="">-- Selecione o Município primeiro --</option>';
+    } catch (error) {
+        console.error('Erro ao carregar municípios:', error);
+        alert('Erro ao carregar municípios');
+    }
+}
+
+// ====== CARREGAR ÓRGÃOS ======
+async function carregarOrgaos() {
+    const municipioId = document.getElementById('municipio_id').value;
+    const orgaoSelect = document.getElementById('orgao_id');
+
+    if (!municipioId) {
+        orgaoSelect.disabled = true;
+        orgaoSelect.innerHTML = '<option value="">-- Selecione o Município primeiro --</option>';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/orgaos/${municipioId}`);
+        const orgaos = await response.json();
+
+        orgaoSelect.innerHTML = '<option value="">-- Selecione --</option>';
+        orgaos.forEach(o => {
+            const opt = document.createElement('option');
+            opt.value = o.id;
+            opt.textContent = `${o.nome} ${o.sigla ? '(' + o.sigla + ')' : ''}`;
+            orgaoSelect.appendChild(opt);
+        });
+
+        orgaoSelect.disabled = false;
+    } catch (error) {
+        console.error('Erro ao carregar órgãos:', error);
+        alert('Erro ao carregar órgãos');
+    }
+}
+
+// ====== CARREGAR ESTADOS ======
+async function carregarEstados() {
+    try {
+        const response = await fetch('/api/estados');
+        const estados = await response.json();
+
+        const estadoSelect = document.getElementById('estado');
+        estados.forEach(e => {
+            const opt = document.createElement('option');
+            opt.value = e.id;
+            opt.textContent = `${e.nome} (${e.uf})`;
+            estadoSelect.appendChild(opt);
+        });
+    } catch (error) {
+        console.error('Erro ao carregar estados:', error);
+    }
+}
+
+// ====== MODO EDIÇÃO ======
+async function carregarModoEdicaoUnidade() {
+    {% if unidade and action == 'edit' %}
+        await carregarEstados();
+
+        // Estado/Município do órgão da unidade
+        const resp = await fetch(`/api/estado-do-municipio/{{ unidade.orgao.municipio_id }}`);
+        const data = await resp.json();
+
+        document.getElementById('estado').value = data.estado_id;
+
+        await carregarMunicipios();
+        document.getElementById('municipio_id').value = {{ unidade.orgao.municipio_id }};
+
+        await carregarOrgaos();
+        document.getElementById('orgao_id').value = {{ unidade.orgao_id }};
+    {% else %}
+        carregarEstados();
+    {% endif %}
+}
+
+document.addEventListener('DOMContentLoaded', carregarModoEdicaoUnidade);
+</script>
+
 {% endblock %}

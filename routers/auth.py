@@ -6,7 +6,7 @@ from starlette.status import HTTP_302_FOUND
 from database import get_db
 import models
 from dependencies import registrar_log
-from security import verify_password  # ✅ Nosso módulo de hash seguro
+from security import verify_password, hash_password  # ✅ Nosso módulo de hash seguro
 from models import StatusUsuarioEnum
 
 
@@ -28,32 +28,44 @@ def login_post(
     password: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    """Processa login do usuário com hash seguro e status Enum/string"""
     ip = request.client.host
 
-    # Busca usuário no banco pelo e-mail
-    user = db.query(models.User).filter(models.User.email == username).first()
+    # Busca usuário
+    user = db.query(models.User).filter(
+        models.User.email == username
+    ).first()
 
-    # ❌ Usuário não existe ou senha incorreta
-    if not user or not verify_password(password, user.password):
+    # ❌ Usuário não existe
+    if not user:
         registrar_log(db, usuario=username, acao="Tentativa de login falhou", ip=ip)
         return templates.TemplateResponse(
             "login.html",
             {"request": request, "error": "Usuário ou senha inválidos"}
         )
 
-    # ✅ Converte status do usuário para Enum se estiver usando Enum
-    try:
-        status = StatusUsuarioEnum(user.status)  # se user.status já for string do DB
-    except ValueError:
-        status = user.status  # fallback: mantém a string original
+    # ❌ Senha incorreta
+    if not verify_password(password, user.password):
+        registrar_log(db, usuario=username, acao="Tentativa de login falhou", ip=ip)
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": "Usuário ou senha inválidos"}
+        )
 
-    # ❌ Bloqueia login se status não for ativo
+    # 🔥 MIGRAÇÃO AUTOMÁTICA PARA BCRYPT (se for SHA-256 antigo)
+    if not user.password.startswith("$2b$"):
+        user.password = hash_password(password)
+        db.commit()
+
+    # ✅ Verifica status
+    try:
+        status = StatusUsuarioEnum(user.status)
+    except ValueError:
+        status = user.status
+
     if isinstance(status, StatusUsuarioEnum):
         is_ativo = status == StatusUsuarioEnum.ATIVO
         status_str = status.value
     else:
-        # Caso seja string, compara ignorando maiúsculas/minúsculas
         is_ativo = str(status).lower() == "ativo"
         status_str = str(status)
 
@@ -67,15 +79,17 @@ def login_post(
             }
         )
 
-    # ✅ Login bem-sucedido - salva dados na sessão
+    # ✅ Login bem-sucedido
     request.session["user"] = user.email
     request.session["user_id"] = user.id
     request.session["municipio_id"] = user.municipio_id
-    request.session["perfil"] = user.perfil.value if hasattr(user.perfil, "value") else str(user.perfil)
+    request.session["perfil"] = (
+        user.perfil.value if hasattr(user.perfil, "value")
+        else str(user.perfil)
+    )
 
     registrar_log(db, usuario=username, acao="Login bem-sucedido", ip=ip)
 
-    # Redireciona para dashboard
     return RedirectResponse(url="/dashboard", status_code=HTTP_302_FOUND)
 
 

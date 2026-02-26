@@ -11,24 +11,44 @@
 <!-- FILTROS PERSONALIZADOS -->
 <div class="filtros-container">
     <div class="filtro-item">
-        <label>ID</label>
-        <div class="search-container" data-col="1">
-            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
-            <span class="arrow">▼</span>
-            <div class="options" style="display:none;"></div>
-        </div>
-    </div>
-    <div class="filtro-item">
-        <label>Setor</label>
+        <label>Estado</label>
         <div class="search-container" data-col="2">
             <input type="text" placeholder="Clique para selecionar..." class="filter-search">
             <span class="arrow">▼</span>
             <div class="options" style="display:none;"></div>
         </div>
     </div>
+
+    <div class="filtro-item">
+        <label>Município</label>
+        <div class="search-container" data-col="3">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options" style="display:none;"></div>
+        </div>
+    </div>
+
+    <div class="filtro-item">
+        <label>Órgão</label>
+        <div class="search-container" data-col="4">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options" style="display:none;"></div>
+        </div>
+    </div>
+    
+    <div class="filtro-item">
+        <label>Nome da Unidade</label>
+        <div class="search-container" data-col="5">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options" style="display:none;"></div>
+        </div>
+    </div>
+    
     <div class="filtro-item">
         <label>Responsável</label>
-        <div class="search-container" data-col="3">
+        <div class="search-container" data-col="8">
             <input type="text" placeholder="Clique para selecionar..." class="filter-search">
             <span class="arrow">▼</span>
             <div class="options" style="display:none;"></div>
@@ -49,37 +69,48 @@
         <tr style="background-color: #0d6efd; color:white;">
             <th><input type="checkbox" id="select-all" onclick="toggleAll(this)"></th>
             <th>ID</th>
-            <th>Setor</th>
+            <th>Estado</th>
+            <th>Município</th>
+            <th>Órgão</th>
+            <th>Nome da Unidade</th>
+            <th>Sigla</th>
+            <th>Ramal</th>
             <th>Responsável</th>
             <th>Ações</th>
         </tr>
     </thead>
     <tbody>
-    {% for unidade in units %}
-    <tr>
-        <td><input type="checkbox" class="select-item"></td>
-        <td>{{ unidade.id }}</td>
-        <td>{{ unidade.name }}</td>
-        <td>{{ unidade.manager }}</td>
-        <td>
-            <a href="/units/edit/{{ unidade.id }}" title="Editar">
-                <i class="fas fa-pen" style="color:#ffaa00; font-size: 18px; margin-right: 10px; cursor:pointer;"></i></a>
-            <a href="/units/delete/{{ unidade.id }}" title="Excluir"
-               onclick="return confirm('Tem certeza que deseja excluir esta unidade administrativa?');">
-                <i class="fas fa-trash" style="color:#cc0000; font-size: 18px; cursor:pointer;"></i>
-            </a>
-        </td>
-    </tr>
-    {% else %}
-    <tr>
-        <td colspan="5" style="text-align:center; padding:20px; color:#666;">
-            Nenhuma unidade administrativa cadastrada.
-        </td>
-    </tr>
-    {% endfor %}
-    </tbody>
+        {% for unidade in units %}
+        <tr>
+            <td><input type="checkbox" class="select-item"></td>
+            <td>{{ unidade.id }}</td>
+            <td>{{ unidade.estado }}</td>
+            <td>{{ unidade.municipio }}</td>
+            <td>{{ unidade.orgao }}</td>
+            <td>{{ unidade.nome }}</td>
+            <td>{{ unidade.sigla }}</td>
+            <td>{{ unidade.ramal }}</td>
+            <td>{{ unidade.responsavel }}</td>
+            <td>
+                <a href="/units/edit/{{ unidade.id }}" title="Editar">
+                    <i class="fas fa-pen" style="color:#ffaa00; font-size: 18px; margin-right: 10px; cursor:pointer;"></i></a>
+                    <form class="delete-form" data-id="{{ unidade.id }}"  method="post" style="display:inline;">
+                        <button type="submit" style="background:none; border:none; padding:0; cursor:pointer;">
+                            <i class="fas fa-trash" style="color:#cc0000; font-size:18px;"></i>
+                        </button>
+                    </form>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="10" style="text-align:center; padding:20px; color:#666;">
+                Nenhuma unidade administrativa cadastrada.
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
 </table>
-</div>,
+</div>
 
 <style>
     .dataTables_length label {
@@ -99,6 +130,7 @@
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <!-- CSS VISUAL (SEM DUPLICAÇÃO) -->
 <link rel="stylesheet" href="{{ request.url_for('static', path='css/equipamentos-grid.css') }}">
 
@@ -198,7 +230,7 @@ $(document).ready(function() {
         order: [[1, "asc"]],
         columnDefs: [
                     { orderable: false, targets: [0,4] },
-                    { visible: false, targets: [0,1,2] } // checkbox e ID ocultos
+                    { visible: false, targets: [0,1] } // checkbox e ID ocultos
                     ],
         language: {
             emptyTable: "Nenhuma unidade encontrada",
@@ -222,7 +254,7 @@ $(document).ready(function() {
         const column = table.column(colIndex);
         let selecionados = [];
 
-        const valores = column.data().unique().sort().toArray();
+        const valores = column.data().unique().sort().toArray().filter(v => v);
 
         function renderOptions(lista) {
             optionsDiv.empty();
@@ -304,4 +336,65 @@ $(document).ready(function() {
     });
 });
 </script>
+
+<script>
+    // DELETE MODERNO
+$(document).on("submit", ".delete-form", function(e) {
+    e.preventDefault();
+
+    const form = $(this);
+    const unitId = form.data("id");
+
+    Swal.fire({
+        title: 'Tem certeza?',
+        text: "Essa ação não poderá ser desfeita.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#cc0000',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sim, excluir',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+
+            fetch(`/units/delete/${unitId}`, {
+                method: "POST"
+            })
+            .then(response => response.json())
+            .then(data => {
+
+                if (data.success) {
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Excluído!',
+                        text: 'Unidade administrativa removida com sucesso.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        location.reload();
+                    });
+
+                } else {
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Não permitido',
+                        text: data.message
+                    });
+
+                }
+
+            });
+        }
+    });
+});
+</script>
+
+<style>
+    /* Garante que o SweetAlert fique acima de tudo */
+.swal2-container {
+    z-index: 99999 !important;
+}
+</style>
 {% endblock %}
