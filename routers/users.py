@@ -218,7 +218,7 @@ def edit_user_form(
     user_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: str = Depends(get_current_user)
 ):
     if not current_user:
         return RedirectResponse("/login")
@@ -226,7 +226,7 @@ def edit_user_form(
     user_obj = db.query(User).filter(User.email == current_user).first()
     
     # ✅ Verifica permissão
-    if str(user_obj.perfil) not in ["master", "admin_municipal"]:
+    if user_obj.perfil not in ["master", "admin_municipal"]:
         return HTMLResponse("Acesso Negado", status_code=403)
     
     # ✅ Busca usuário a editar
@@ -235,12 +235,16 @@ def edit_user_form(
         return HTMLResponse("Usuário não encontrado", status_code=404)
     
     # ✅ ADMIN_MUNICIPAL só pode editar usuários do seu município
-    if user_obj.perfil.value == "admin_municipal":
+    # ❌ ANTES: if user_obj.perfil.value == "admin_municipal":
+    # ✅ DEPOIS:
+    if user_obj.perfil == "admin_municipal":
         if user_to_edit.municipio_id != user_obj.municipio_id:
             return HTMLResponse("Você só pode editar usuários do seu município", status_code=403)
     
     # ✅ Ninguém (exceto MASTER) pode editar outro MASTER
-    if user_to_edit.perfil.value == "master" and user_obj.perfil.value != "master":
+    # ❌ ANTES: if user_to_edit.perfil.value == "master" and user_obj.perfil.value != "master":
+    # ✅ DEPOIS:
+    if user_to_edit.perfil == "master" and user_obj.perfil != "master":
         return HTMLResponse("Apenas MASTER pode editar outros MASTER", status_code=403)
     
     return templates.TemplateResponse(
@@ -342,7 +346,7 @@ def edit_user(
     user.unidade_id = unidade_id
     user.perfil = perfil
     user.status = status
-    user.email = email.split('@')[0]
+    user.email = email
     
     # ✅ Atualiza senha apenas se fornecida
     if senha:
@@ -374,34 +378,42 @@ def delete_user(
 ):
     if not current_user:
         return JSONResponse({"success": False, "message": "Não autenticado"})
-
+    
     user_obj = db.query(User).filter(User.email == current_user).first()
-
+    
+    # ✅ Verifica permissão
     if user_obj.perfil not in ["master", "admin_municipal"]:
         return JSONResponse({"success": False, "message": "Sem permissão"})
-
+    
+    # ✅ Busca usuário a excluir
     user_to_delete = db.query(User).filter(User.id == user_id).first()
-
     if not user_to_delete:
         return JSONResponse({"success": False, "message": "Usuário não encontrado"})
-
+    
+    # ✅ Impede exclusão do próprio usuário
     if user_to_delete.id == user_obj.id:
         return JSONResponse({"success": False, "message": "Você não pode excluir a si mesmo"})
-
+    
+    # ✅ Apenas MASTER pode excluir outro MASTER
+    # ❌ ANTES: if user_to_delete.perfil.value == "master" and user_obj.perfil.value != "master":
+    # ✅ DEPOIS:
     if user_to_delete.perfil == "master" and user_obj.perfil != "master":
         return JSONResponse({"success": False, "message": "Apenas MASTER pode excluir outro MASTER"})
-
-    if user_obj.perfil == "admin_municipal" and user_to_delete.municipio_id != user_obj.municipio_id:
-        return JSONResponse({"success": False, "message": "Você só pode excluir usuários do seu município"})
-
+    
+    # ✅ ADMIN_MUNICIPAL só pode excluir usuários do seu município
+    if user_obj.perfil == "admin_municipal":
+        if user_to_delete.municipio_id != user_obj.municipio_id:
+            return JSONResponse({"success": False, "message": "Você só pode excluir usuários do seu município"})
+    
+    # ✅ EXCLUI
     db.delete(user_to_delete)
     db.commit()
-
+    
     registrar_log(
         db,
         usuario=current_user,
         acao=f"Excluiu usuário {user_to_delete.nome} (ID: {user_id})",
         ip=request.client.host
     )
-
+    
     return JSONResponse({"success": True, "message": "Usuário excluído com sucesso"})
