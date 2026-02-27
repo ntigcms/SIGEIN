@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Órgão{% endblock %}
+
+{% block content %}
+<div class="form-container">
+
+    <h2 class="form-title">
+        {% if action == 'add' %}
+            Cadastrar Órgão
+        {% else %}
+            Editar Órgão
+        {% endif %}
+    </h2>
+
+    <form method="post"
+          action="{% if action == 'add' %}/orgaos/add{% else %}/orgaos/edit/{{ orgao.id }}{% endif %}"
+          class="form-card">
+
+        <fieldset class="form-section">
+            <legend>Localização (Estado / Município)</legend>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="estado">Estado *</label>
+                    <select id="estado" required onchange="carregarMunicipios()">
+                        <option value="">-- Selecione o Estado --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="municipio_id">Município *</label>
+                    <select name="municipio_id" id="municipio_id" required disabled>
+                        <option value="">-- Selecione o Estado primeiro --</option>
+                    </select>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="form-section">
+            <legend>Dados do Órgão</legend>
+
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label for="nome">Nome do Órgão *</label>
+                    <input type="text"
+                           id="nome"
+                           name="nome"
+                           required
+                           placeholder="Ex: Secretaria de Saúde"
+                           value="{% if orgao %}{{ orgao.nome }}{% endif %}">
+                </div>
+
+                <div class="form-group">
+                    <label for="sigla">Sigla</label>
+                    <input type="text"
+                           id="sigla"
+                           name="sigla"
+                           placeholder="Ex: SESAU"
+                           value="{% if orgao %}{{ orgao.sigla or '' }}{% endif %}">
+                </div>
+
+                <div class="form-group">
+                    <label for="responsavel">Responsável</label>
+                    <input type="text"
+                           id="responsavel"
+                           name="responsavel"
+                           placeholder="Nome do responsável"
+                           value="{% if orgao %}{{ orgao.responsavel or '' }}{% endif %}">
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email"
+                           id="email"
+                           name="email"
+                           placeholder="email@orgao.gov.br"
+                           value="{% if orgao %}{{ orgao.email or '' }}{% endif %}">
+                </div>
+
+                <div class="form-group">
+                    <label for="telefone">Telefone</label>
+                    <input type="text"
+                           id="telefone"
+                           name="telefone"
+                           placeholder="(71) 99999-9999"
+                           value="{% if orgao %}{{ orgao.telefone or '' }}{% endif %}">
+                </div>
+
+                <div class="form-group" style="display: flex; align-items: center; padding-top: 24px;">
+                    <label style="flex-direction: row; margin: 0; cursor: pointer;">
+                        <input type="checkbox"
+                               name="ativo"
+                               value="true"
+                               {% if not orgao or orgao.ativo %}checked{% endif %}>
+                        <span style="margin-left: 8px;">Órgão ativo</span>
+                    </label>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">
+                {% if action == 'add' %}Cadastrar{% else %}Atualizar{% endif %}
+            </button>
+            <a href="/orgaos" class="btn-secondary">Cancelar</a>
+        </div>
+
+    </form>
+
+</div>
+
+<style>
+.form-card fieldset {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    background: #fafafa;
+}
+.form-card legend {
+    font-weight: 600;
+    color: #0d6efd;
+    padding: 0 10px;
+    font-size: 16px;
+}
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px;
+}
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+.form-group.full { grid-column: 1 / -1; }
+.form-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #004080;
+    margin-bottom: 5px;
+}
+.form-group input,
+.form-group select {
+    padding: 8px 12px;
+    border: 1px solid #aaa;
+    border-radius: 6px;
+    font-size: 14px;
+}
+.form-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+}
+</style>
+
+<script>
+async function carregarMunicipios() {
+    const estadoId = document.getElementById('estado').value;
+    const municipioSelect = document.getElementById('municipio_id');
+
+    if (!estadoId) {
+        municipioSelect.disabled = true;
+        municipioSelect.innerHTML = '<option value="">-- Selecione o Estado primeiro --</option>';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/municipios/${estadoId}`);
+        const municipios = await response.json();
+        municipioSelect.innerHTML = '<option value="">-- Selecione --</option>';
+        municipios.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.nome;
+            municipioSelect.appendChild(opt);
+        });
+        municipioSelect.disabled = false;
+    } catch (error) {
+        console.error('Erro ao carregar municípios:', error);
+        alert('Erro ao carregar municípios');
+    }
+}
+
+async function carregarEstados() {
+    try {
+        const response = await fetch('/api/estados');
+        const estados = await response.json();
+        const estadoSelect = document.getElementById('estado');
+        estados.forEach(e => {
+            const opt = document.createElement('option');
+            opt.value = e.id;
+            opt.textContent = `${e.nome} (${e.uf})`;
+            estadoSelect.appendChild(opt);
+        });
+    } catch (error) {
+        console.error('Erro ao carregar estados:', error);
+    }
+}
+
+async function carregarModoEdicaoOrgao() {
+    {% if orgao and action == 'edit' %}
+        await carregarEstados();
+        const resp = await fetch(`/api/estado-do-municipio/{{ orgao.municipio_id }}`);
+        const data = await resp.json();
+        document.getElementById('estado').value = data.estado_id;
+        await carregarMunicipios();
+        document.getElementById('municipio_id').value = {{ orgao.municipio_id }};
+    {% else %}
+        carregarEstados();
+    {% endif %}
+}
+
+document.addEventListener('DOMContentLoaded', carregarModoEdicaoOrgao);
+</script>
+{% endblock %}
