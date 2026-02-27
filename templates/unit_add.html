@@ -55,7 +55,7 @@
                 <div class="form-group full">
                     <label for="nome">Nome da Unidade *</label>
                     <input type="text"
-                           id="nome"
+                           id="nome" required
                            name="nome"
                            placeholder="Ex: Almoxarifado Central"
                            value="{% if action == 'edit' %}{{ unidade.nome }}{% endif %}"
@@ -65,7 +65,7 @@
                 <div class="form-group">
                     <label for="sigla">Sigla</label>
                     <input type="text"
-                           id="sigla"
+                           id="sigla" required
                            name="sigla"
                            placeholder="Ex: ALMOX"
                            value="{% if action == 'edit' %}{{ unidade.sigla }}{% endif %}">
@@ -74,7 +74,7 @@
                 <div class="form-group">
                     <label for="responsavel">Responsável</label>
                     <input type="text"
-                           id="responsavel"
+                           id="responsavel" required
                            name="responsavel"
                            placeholder="Nome do responsável"
                            value="{% if action == 'edit' %}{{ unidade.responsavel }}{% endif %}">
@@ -83,9 +83,10 @@
                 <div class="form-group">
                     <label for="ramal">Ramal</label>
                     <input type="text"
-                           id="ramal"
+                           id="ramal" required
                            name="ramal"
-                           placeholder="Ramal/telefone curto"
+                           inputmode="numeric"
+                           placeholder="Ramal/telefone curto (apenas números)"
                            value="{% if action == 'edit' %}{{ unidade.ramal }}{% endif %}">
                 </div>
             </div>

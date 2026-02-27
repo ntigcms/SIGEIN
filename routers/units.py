@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Request, Form, Depends
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
 from starlette.status import HTTP_302_FOUND
 from sqlalchemy.orm import Session, joinedload
+import re
 
 from database import get_db
 from dependencies import get_current_user, registrar_log
@@ -100,11 +101,27 @@ def add_unit(
 
     ip = request.client.host
 
+    # Valida responsável: não pode ter dígitos
+    resp_clean = (responsavel or "").strip()
+    if resp_clean and re.search(r"\d", resp_clean):
+        return HTMLResponse(
+            "<script>alert('O campo Responsável não pode conter números.'); window.history.back();</script>",
+            status_code=400,
+        )
+
+    # Valida ramal: apenas números
+    ramal_clean = (ramal or "").strip()
+    if ramal_clean and not ramal_clean.isdigit():
+        return HTMLResponse(
+            "<script>alert('O campo Ramal deve conter apenas números.'); window.history.back();</script>",
+            status_code=400,
+        )
+
     nova_unidade = Unidade(
         nome=nome,
         sigla=sigla or None,
-        responsavel=responsavel or None,
-        ramal=ramal or None,
+        responsavel=resp_clean or None,
+        ramal=ramal_clean or None,
         orgao_id=orgao_id,
         ativo=True,
     )
@@ -165,12 +182,29 @@ def edit_unit(
         return RedirectResponse("/login")
 
     ip = request.client.host
+
+    # Valida responsável
+    resp_clean = (responsavel or "").strip()
+    if resp_clean and re.search(r"\d", resp_clean):
+        return HTMLResponse(
+            "<script>alert('O campo Responsável não pode conter números.'); window.history.back();</script>",
+            status_code=400,
+        )
+
+    # Valida ramal
+    ramal_clean = (ramal or "").strip()
+    if ramal_clean and not ramal_clean.isdigit():
+        return HTMLResponse(
+            "<script>alert('O campo Ramal deve conter apenas números.'); window.history.back();</script>",
+            status_code=400,
+        )
+
     unidade = db.query(Unidade).filter(Unidade.id == unit_id).first()
     if unidade:
         unidade.nome = nome
         unidade.sigla = sigla or None
-        unidade.responsavel = responsavel or None
-        unidade.ramal = ramal or None
+        unidade.responsavel = resp_clean or None
+        unidade.ramal = ramal_clean or None
         unidade.orgao_id = orgao_id
 
         db.commit()
