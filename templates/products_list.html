@@ -77,6 +77,22 @@
         </div>
     </div>
 
+    <div class="filtro-item">
+        <label>Unidade</label>
+        <div class="search-container" data-col="7" data-filter="unidade">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options">
+                {% for u in unidades %}
+                    <div class="option">
+                        <input type="checkbox" value="{{ u }}">
+                        <label>{{ u }}</label>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
     <div style="display:flex; align-items:center; margin-top:18px;">
         <button id="clear-filters" class="clear-btn">🧹 Limpar Filtros</button>
     </div>
@@ -127,9 +143,11 @@
                     {% endif %}
                 </td>
 
-                 <td>
-                    {% if p.items %}
-                        {{ p.items | map(attribute='unit.name') | select | join(', ') }}
+                <td>
+                    {% if p.unit %}
+                        {{ p.unit.nome }}
+                    {% elif p.items %}
+                        {{ p.items | map(attribute='unit.nome') | select | join(', ') }}
                     {% else %}
                         -
                     {% endif %}
@@ -270,6 +288,7 @@ $(document).ready(function() {
             case "marca":  colIndex = 4; break;
             case "estado": colIndex = 5; break;
             case "status": colIndex = 6; break;
+            case "unidade": colIndex = 7; break;
         }
 
         const searchValue = selecionados.map(v =>

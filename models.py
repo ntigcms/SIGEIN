@@ -110,9 +110,10 @@ class Product(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     
-    # ✅ ISOLAMENTO POR MUNICÍPIO
+    # ✅ ISOLAMENTO POR MUNICÍPIO / ÓRGÃO / UNIDADE
     municipio_id = Column(Integer, ForeignKey("municipios.id"), nullable=False)
-    orgao_id = Column(Integer, ForeignKey("orgaos.id"), nullable=False)  # ✅ rastreamento
+    orgao_id = Column(Integer, ForeignKey("orgaos.id"), nullable=False)
+    unidade_id = Column(Integer, ForeignKey("unidades.id"), nullable=True)  # unidade que “dona” do produto (relatórios/dashboard)
 
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     type_id = Column(Integer, ForeignKey("equipment_types.id"), nullable=False)
@@ -133,6 +134,7 @@ class Product(Base):
     # RELACIONAMENTOS
     municipio = relationship("Municipio")
     orgao = relationship("Orgao")
+    unit = relationship("Unidade", foreign_keys=[unidade_id])
     category = relationship("Category", back_populates="products")
     type = relationship("EquipmentType")
     brand = relationship("Brand")

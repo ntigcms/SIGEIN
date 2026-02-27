@@ -56,7 +56,7 @@
             <select id="unit_destino" name="unit_destino_id" required>
                 <option value="">-- Selecione --</option>
                 {% for u in units %}
-                    <option value="{{ u.id }}">{{ u.name }}</option>
+                    <option value="{{ u.id }}">{{ u.nome }}</option>
                 {% endfor %}
             </select>
         </div>

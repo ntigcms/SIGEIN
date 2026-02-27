@@ -3,18 +3,46 @@ from fastapi import APIRouter, Request, Form, Depends
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from models import Product, Unit, Category, Movement, User, Stock, Item
+from models import Product, Unidade, Category, Movement, User, Stock, Item
 from services.stock_service import StockService
 from database import get_db
 from datetime import datetime
 from dependencies import get_current_user, registrar_log
 from starlette.status import HTTP_302_FOUND
 from typing import Optional
+from sqlalchemy.orm import aliased
+from sqlalchemy import or_
 
 from routers import products
 
 router = APIRouter(prefix="/movements", tags=["Movimentações"])
 templates = Jinja2Templates(directory="templates")
+
+PERFIL_MASTER = "master"
+PERFIL_GESTOR_MUNICIPAL = "admin_municipal"
+
+def _scope_products(db: Session, user_obj: User):
+    if not user_obj:
+        return db.query(Product).filter(Product.id == -1).all()
+    perfil = getattr(user_obj, "perfil", None)
+    q = db.query(Product)
+    if perfil == PERFIL_MASTER:
+        return q.all()
+    if perfil == PERFIL_GESTOR_MUNICIPAL:
+        return q.filter(Product.municipio_id == user_obj.municipio_id).all()
+    return q.filter(or_(Product.unidade_id == user_obj.unidade_id, (Product.unidade_id.is_(None)) & (Product.orgao_id == user_obj.orgao_id))).all()
+
+def _scope_unidades(db: Session, user_obj: User):
+    q = db.query(Unidade).order_by(Unidade.nome)
+    if not user_obj:
+        return q.filter(Unidade.id == -1).all()
+    perfil = getattr(user_obj, "perfil", None)
+    if perfil == PERFIL_MASTER:
+        return q.all()
+    if perfil == PERFIL_GESTOR_MUNICIPAL:
+        from models import Orgao
+        return q.join(Orgao, Unidade.orgao_id == Orgao.id).filter(Orgao.municipio_id == user_obj.municipio_id).all()
+    return q.filter(Unidade.id == user_obj.unidade_id).all()
 
 
 # -------------------------------
@@ -26,7 +54,36 @@ def listar_movimentacoes(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    movements = db.query(Movement).order_by(Movement.data.desc()).all()
+    # escopo: master vê tudo; gestor municipal por município; demais por unidade (via produto do movimento)
+    user_obj = db.query(User).filter(User.email == user).first() if isinstance(user, str) else user
+    perfil = getattr(user_obj, "perfil", None) if user_obj else None
+
+    P1 = aliased(Product)
+    P2 = aliased(Product)
+
+    q = (
+        db.query(Movement)
+        .outerjoin(P1, Movement.product_id == P1.id)
+        .outerjoin(Item, Movement.item_id == Item.id)
+        .outerjoin(P2, Item.product_id == P2.id)
+        .order_by(Movement.data.desc())
+    )
+
+    if perfil == PERFIL_MASTER:
+        pass
+    elif perfil == PERFIL_GESTOR_MUNICIPAL:
+        q = q.filter(or_(P1.municipio_id == user_obj.municipio_id, P2.municipio_id == user_obj.municipio_id))
+    else:
+        q = q.filter(
+            or_(
+                P1.unidade_id == user_obj.unidade_id,
+                P2.unidade_id == user_obj.unidade_id,
+                (P1.unidade_id.is_(None)) & (P1.orgao_id == user_obj.orgao_id),
+                (P2.unidade_id.is_(None)) & (P2.orgao_id == user_obj.orgao_id),
+            )
+        )
+
+    movements = q.all()
 
     return templates.TemplateResponse(
         "movements_list.html",
@@ -46,46 +103,31 @@ def nova_movimentacao_form(
     if not user:
         return RedirectResponse("/login")
 
-    # Consulta produtos, unidades e categorias
-    products = db.query(Product).all()
-    units = db.query(Unit).all()
+    user_obj = db.query(User).filter(User.email == user).first() if isinstance(user, str) else user
+    products = _scope_products(db, user_obj)
+    units = _scope_unidades(db, user_obj)
     categories = db.query(Category).all()
-
     products_js = []
 
     for p in products:
         units_options = []
-
         if p.controla_por_serie:
-            # Produto com série: pega unidades dos itens existentes
             units_set = set()
             for item in p.items:
-                if item.unit_id and item.unit_id not in units_set:
-                    units_options.append({
-                        "unit_id": item.unit.id,
-                        "unit_name": item.unit.name
-                    })
+                if item.unit_id and item.unit_id not in units_set and item.unit:
+                    units_options.append({"unit_id": item.unit.id, "unit_name": item.unit.nome})
                     units_set.add(item.unit_id)
         else:
-            # Produto sem série: pega todas as unidades que possuem este produto
             units_set = set()
-            # Unidades com estoque
-            stocks = db.query(Stock).filter(
-                Stock.product_id == p.id,
-                Stock.quantidade > 0
-                ).all()
-            for s in stocks:
-                if s.unit_id and s.unit_id not in units_set:
-                    units_options.append({"unit_id": s.unit.id, "unit_name": s.unit.name})
+            for s in db.query(Stock).filter(Stock.product_id == p.id, Stock.quantidade > 0).all():
+                if s.unit_id and s.unit_id not in units_set and s.unit:
+                    units_options.append({"unit_id": s.unit.id, "unit_name": s.unit.nome})
                     units_set.add(s.unit_id)
-            # Unidades de itens existentes
-            items = db.query(Item).filter(Item.product_id == p.id).all()
-            for i in items:
-                if i.unit_id and i.unit_id not in units_set:
-                    units_options.append({"unit_id": i.unit.id, "unit_name": i.unit.name})
+            for i in db.query(Item).filter(Item.product_id == p.id).all():
+                if i.unit_id and i.unit_id not in units_set and i.unit:
+                    units_options.append({"unit_id": i.unit.id, "unit_name": i.unit.nome})
                     units_set.add(i.unit_id)
 
-        # Adiciona o produto ao JS
         products_js.append({
             "id": p.id,
             "name": p.name,
@@ -96,12 +138,11 @@ def nova_movimentacao_form(
             "units_options": units_options
         })
 
-    # Renderiza o template
     return templates.TemplateResponse(
         "movement_form.html",
         {
             "request": request,
-            "movimento": {},  # dict vazio para nova movimentação
+            "movimento": {},
             "products": products_js,
             "units": units,
             "categories": categories,
@@ -220,7 +261,7 @@ def editar_movimentacao_form(
         return {"error": "Movimentação não encontrada"}
 
     products = db.query(Product).all()
-    units = db.query(Unit).all()
+    units = db.query(Unidade).order_by(Unidade.nome).all()
     categories = db.query(Category).all()
 
     products_js = []
@@ -234,7 +275,7 @@ def editar_movimentacao_form(
                 if item.unit_id and item.unit_id not in units_set:
                     units_options.append({
                         "unit_id": item.unit.id,
-                        "unit_name": item.unit.name
+                        "unit_name": item.unit.nome
                     })
                     units_set.add(item.unit_id)
         else:
@@ -245,7 +286,7 @@ def editar_movimentacao_form(
             ).all()
             for s in stocks:
                 if s.unit_id and s.unit_id not in units_set:
-                    units_options.append({"unit_id": s.unit.id, "unit_name": s.unit.name})
+                    units_options.append({"unit_id": s.unit.id, "unit_name": s.unit.nome})
                     units_set.add(s.unit_id)
 
         products_js.append({
@@ -279,7 +320,7 @@ def editar_movimentacao_form(
             "tombo": movimento.item.tombo,
             "num": movimento.item.num_tombo_ou_serie,
             "unit_id": movimento.item.unit_id,
-            "unit_name": movimento.item.unit.name if movimento.item.unit else None
+            "unit_name": movimento.item.unit.nome if movimento.item.unit else None
         }
 
     return templates.TemplateResponse(
@@ -402,34 +443,30 @@ def get_product_stock(type_id: int, db: Session = Depends(get_db)):
     stocks = (
         db.query(Stock)
         .join(Product)
-        .join(Unit)
+        .join(Unidade, Unidade.id == Stock.unit_id)
         .filter(Product.type_id == type_id, Stock.quantidade > 0)
         .all()
     )
-
     for s in stocks:
         result.append({
             "unit_id": s.unit.id,
-            "unit_name": s.unit.name,
+            "unit_name": s.unit.nome,
             "quantidade": s.quantidade
         })
 
-    # 2️⃣ Itens físicos (Itens sem série e com série)
     items = (
-        db.query(Item.unit_id, Unit.name, func.count(Item.id).label("quantidade"))
+        db.query(Item.unit_id, Unidade.nome.label("unit_name"), func.count(Item.id).label("quantidade"))
         .join(Product)
-        .join(Unit, Item.unit_id == Unit.id)
+        .join(Unidade, Item.unit_id == Unidade.id)
         .filter(Product.type_id == type_id)
-        .group_by(Item.unit_id, Unit.name)
+        .group_by(Item.unit_id, Unidade.nome)
         .all()
     )
-
     for i in items:
-        # Se já existe no result (Stock), só somar quantidade? Ou ignorar duplicados
         if not any(r["unit_id"] == i.unit_id for r in result):
             result.append({
                 "unit_id": i.unit_id,
-                "unit_name": i.name,
+                "unit_name": i.unit_name,
                 "quantidade": i.quantidade
             })
         else:
@@ -449,18 +486,17 @@ def get_product_items(type_id: int, db: Session = Depends(get_db)):
     items = (
         db.query(Item)
         .join(Product)
-        .join(Unit)
+        .join(Unidade, Unidade.id == Item.unit_id)
         .filter(Product.type_id == type_id)
         .all()
     )
-
     for i in items:
         items_result.append({
             "id": i.id,
             "tombo": i.tombo,
             "num": i.num_tombo_ou_serie if i.num_tombo_ou_serie else f"Produto sem série - {i.product.name}",
             "unit_id": i.unit_id,
-            "unit_name": i.unit.name
+            "unit_name": i.unit.nome if i.unit else None
         })
 
     # 2️⃣ Produtos sem série que ainda não têm Item cadastrado
@@ -475,12 +511,13 @@ def get_product_items(type_id: int, db: Session = Depends(get_db)):
         item_exists = db.query(Item).filter(Item.product_id == p.id).first()
         if not item_exists:
             # Cria um registro “virtual” para mostrar no select
+            first_stock = db.query(Stock).filter(Stock.product_id == p.id).first()
             items_result.append({
-                "id": None,  # sem ID porque não existe Item
+                "id": None,
                 "tombo": False,
                 "num": f"Produto sem série - {p.name}",
-                "unit_id": 11,  # unidade GCM
-                "unit_name": "GCM"
+                "unit_id": first_stock.unit_id if first_stock else None,
+                "unit_name": first_stock.unit.nome if first_stock and first_stock.unit else "-"
             })
 
     return items_result
@@ -497,7 +534,7 @@ def search_items(
 
     items = (
         db.query(Item)
-        .join(Unit)
+        .join(Unidade, Unidade.id == Item.unit_id)
         .filter(
             Item.product_id == product_id,
             Item.tombo == is_tombo,
@@ -506,13 +543,12 @@ def search_items(
         .limit(20)
         .all()
     )
-
     return [
         {
             "id": i.id,
             "text": i.num_tombo_ou_serie,
             "unit_id": i.unit_id,
-            "unit_name": i.unit.name
+            "unit_name": i.unit.nome if i.unit else None
         }
         for i in items
     ]

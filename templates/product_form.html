@@ -6,7 +6,20 @@
     <h2>{{ 'Editar' if action == 'edit' else 'Cadastrar' }} Produto</h2>
 
     <form method="post" id="product-form">
-        
+
+        <!-- LOTACIÓN: Estado, Município, Órgão, Unidade (somente leitura) -->
+        {% if lotacao %}
+        <fieldset class="lotacao-fieldset">
+            <legend>Lotação (produto vinculado a)</legend>
+            <div class="form-row lotacao-readonly">
+                <div class="form-group"><label>Estado</label><span>{{ lotacao.estado }}</span></div>
+                <div class="form-group"><label>Município</label><span>{{ lotacao.municipio }}</span></div>
+                <div class="form-group"><label>Órgão</label><span>{{ lotacao.orgao }}</span></div>
+                <div class="form-group"><label>Unidade</label><span>{{ lotacao.unidade }}</span></div>
+            </div>
+        </fieldset>
+        {% endif %}
+
         <!-- DADOS BÁSICOS DO PRODUTO -->
 <fieldset>
     <legend>Dados Gerais</legend>
@@ -73,11 +86,12 @@
             <div class="form-row">
                 <div class="form-group">
                     <label for="unit_id">Unidade*</label>
-                    <select name="unit_id">
+                    <select name="unit_id" required>
                         <option value="">-- Selecione --</option>
                         {% for u in units %}
-                            <option value="{{ u.id }}" {% if item and item.unit_id == u.id %}selected{% endif %}>
-                                {{ u.name }}
+                            <option value="{{ u.id }}"
+                                    {% if item and item.unit_id == u.id %}selected{% elif default_unidade_id and default_unidade_id == u.id %}selected{% endif %}>
+                                {{ u.nome }}
                             </option>
                         {% endfor %}
                     </select>
@@ -85,12 +99,12 @@
 
                 <div class="form-group">
                     <label for="quantidade">Quantidade</label>
-                    <input type="number" name="quantidade" min="0" value="{{ item.quantidade if item else 0 }}">
+                    <input type="number" name="quantidade" min="0" value="{{ product.quantidade if product else (item.quantidade if item else 0) }}">
                 </div>
 
                 <div class="form-group">
                     <label for="quantidade_minima">Quantidade Mínima</label>
-                    <input type="number" name="quantidade_minima" min="0" value="{{ item.quantidade_minima if item else 0 }}">
+                    <input type="number" name="quantidade_minima" min="0" value="{{ product.quantidade_minima if product else (item.quantidade_minima if item else 0) }}">
                 </div>
             </div>
         </fieldset>
@@ -102,11 +116,12 @@
             <div class="form-row">
                 <div class="form-group">
                     <label for="unit_id_serie">Unidade*</label>
-                    <select name="unit_id_serie" id="unit_id_serie">
+                    <select name="unit_id_serie" id="unit_id_serie" required>
                         <option value="">-- Selecione --</option>
                         {% for u in units %}
-                            <option value="{{ u.id }}" {% if item and item.unit_id == u.id %}selected{% endif %}>
-                                {{ u.name }}
+                            <option value="{{ u.id }}"
+                                    {% if item and item.unit_id == u.id %}selected{% elif default_unidade_id and default_unidade_id == u.id %}selected{% endif %}>
+                                {{ u.nome }}
                             </option>
                         {% endfor %}
                     </select>
@@ -210,6 +225,9 @@ fieldset {
     margin-bottom: 20px;
     background: #fafafa;
 }
+.lotacao-fieldset { background: #e8f4fd; }
+.lotacao-readonly { display: flex; flex-wrap: wrap; gap: 15px; }
+.lotacao-readonly .form-group span { font-weight: 500; color: #0d6efd; }
 
 legend {
     font-weight: 600;
