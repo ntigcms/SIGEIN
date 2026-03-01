@@ -53,7 +53,7 @@
 
     <div class="form-group">
         <label for="description">Descrição</label>
-        <input type="text" name="description" value="{{ product.description if product else '' }}">
+        <input type="text" name="description" required value="{{ product.description if product else '' }}">
     </div>
 
     <div class="form-group">
@@ -69,61 +69,139 @@
         <!-- SEÇÃO: PRODUTOS SEM SÉRIE (QUANTIDADE) -->
         <fieldset id="secao-sem-serie" style="display:none;">
             <legend>Controle de Quantidade</legend>
-            
-            <div class="form-row">
+
+            {% if is_master and action == 'add' %}
+            <div class="form-row" id="row-lotacao-sem-serie">
                 <div class="form-group">
-                    <label for="unit_id">Unidade*</label>
-                    <select name="unit_id">
+                    <label for="lotacao_estado">Estado*</label>
+                    <select id="lotacao_estado" onchange="carregarMunicipiosLotacao('sem-serie')">
                         <option value="">-- Selecione --</option>
-                        {% for u in units %}
-                            <option value="{{ u.id }}" {% if item and item.unit_id == u.id %}selected{% endif %}>
-                                {{ u.name }}
-                            </option>
+                        {% for e in estados_geograficos %}
+                            <option value="{{ e.id }}">{{ e.nome }} ({{ e.uf }})</option>
                         {% endfor %}
                     </select>
                 </div>
-
                 <div class="form-group">
-                    <label for="quantidade">Quantidade</label>
-                    <input type="number" name="quantidade" min="0" value="{{ item.quantidade if item else 0 }}">
+                    <label for="lotacao_municipio">Município*</label>
+                    <select id="lotacao_municipio_sem_serie" disabled onchange="carregarOrgaosLotacao('sem-serie')">
+                        <option value="">-- Selecione o Estado --</option>
+                    </select>
                 </div>
-
                 <div class="form-group">
-                    <label for="quantidade_minima">Quantidade Mínima</label>
-                    <input type="number" name="quantidade_minima" min="0" value="{{ item.quantidade_minima if item else 0 }}">
+                    <label for="lotacao_orgao">Órgão*</label>
+                    <select id="lotacao_orgao_sem_serie" disabled onchange="carregarUnidadesLotacao('sem-serie')">
+                        <option value="">-- Selecione o Município --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="unit_id">Unidade*</label>
+                    <select name="unit_id" id="unit_id_sem_serie" disabled required>
+                        <option value="">-- Selecione o Órgão --</option>
+                    </select>
                 </div>
             </div>
+            {% else %}
+            {% if lotacao %}
+            <div class="form-row lotacao-readonly">
+                <div class="form-group"><label>Estado</label><span>{{ lotacao.estado }}</span></div>
+                <div class="form-group"><label>Município</label><span>{{ lotacao.municipio }}</span></div>
+                <div class="form-group"><label>Órgão</label><span>{{ lotacao.orgao }}</span></div>
+                <div class="form-group"><label>Unidade</label><span>{{ lotacao.unidade }}</span></div>
+            </div>
+            {% endif %}
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="unit_id">Unidade*</label>
+                    <select name="unit_id" id="unit_id">
+                        <option value="">-- Selecione --</option>
+                        {% for u in units %}
+                            <option value="{{ u.id }}" {% if default_unidade_id and default_unidade_id == u.id %}selected{% endif %}>{{ u.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="quantidade">Quantidade</label>
+                    <input type="number" name="quantidade" min="0" value="{{ product.quantidade if product else (item.quantidade if item else 0) }}">
+                </div>
+                <div class="form-group">
+                    <label for="quantidade_minima">Quantidade Mínima</label>
+                    <input type="number" name="quantidade_minima" min="0" value="{{ product.quantidade_minima if product else (item.quantidade_minima if item else 0) }}">
+                </div>
+            </div>
+            {% endif %}
+
+            {% if is_master and action == 'add' %}
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="quantidade">Quantidade</label>
+                    <input type="number" name="quantidade" id="quantidade" min="0" value="{{ product.quantidade if product else (item.quantidade if item else 0) }}">
+                </div>
+                <div class="form-group">
+                    <label for="quantidade_minima">Quantidade Mínima</label>
+                    <input type="number" name="quantidade_minima" min="0" value="{{ product.quantidade_minima if product else (item.quantidade_minima if item else 0) }}">
+                </div>
+            </div>
+            {% endif %}
         </fieldset>
 
         <!-- SEÇÃO: PRODUTOS COM SÉRIE (CADASTRO EM LOTE) -->
         <fieldset id="secao-com-serie" style="display:none;">
             <legend>Tombos/Séries</legend>
 
+            {% if is_master and action == 'add' %}
+            <div class="form-row" id="row-lotacao-serie">
+                <div class="form-group">
+                    <label for="lotacao_estado_serie">Estado*</label>
+                    <select id="lotacao_estado_serie" onchange="carregarMunicipiosLotacao('serie')">
+                        <option value="">-- Selecione --</option>
+                        {% for e in estados_geograficos %}
+                            <option value="{{ e.id }}">{{ e.nome }} ({{ e.uf }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="lotacao_municipio_serie">Município*</label>
+                    <select id="lotacao_municipio_serie" disabled onchange="carregarOrgaosLotacao('serie')">
+                        <option value="">-- Selecione o Estado --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="lotacao_orgao_serie">Órgão*</label>
+                    <select id="lotacao_orgao_serie" disabled onchange="carregarUnidadesLotacao('serie')">
+                        <option value="">-- Selecione o Município --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="unit_id_serie">Unidade*</label>
+                    <select name="unit_id_serie" id="unit_id_serie" disabled required>
+                        <option value="">-- Selecione o Órgão --</option>
+                    </select>
+                </div>
+            </div>
+            {% else %}
             <div class="form-row">
                 <div class="form-group">
                     <label for="unit_id_serie">Unidade*</label>
                     <select name="unit_id_serie" id="unit_id_serie">
                         <option value="">-- Selecione --</option>
                         {% for u in units %}
-                            <option value="{{ u.id }}" {% if item and item.unit_id == u.id %}selected{% endif %}>
-                                {{ u.name }}
-                            </option>
+                            <option value="{{ u.id }}" {% if default_unidade_id and default_unidade_id == u.id %}selected{% endif %}>{{ u.nome }}</option>
                         {% endfor %}
                     </select>
                 </div>
+            </div>
+            {% endif %}
 
+            <div class="form-row">
                 <div class="form-group">
-                    <label for="estado_id">Estado</label>
+                    <label for="estado_id">Estado (físico)</label>
                     <select name="estado_id" id="estado_id">
                         <option value="">-- Selecione --</option>
                         {% for estado in estados %}
-                            <option value="{{ estado.id }}" {% if item and item.estado_id == estado.id %}selected{% endif %}>
-                                {{ estado.nome }}
-                            </option>
+                            <option value="{{ estado.id }}" {% if item and item.estado_id == estado.id %}selected{% endif %}>{{ estado.nome }}</option>
                         {% endfor %}
                     </select>
                 </div>
-
                 <div class="form-group">
                     <label for="status">Status</label>
                     <select name="status" id="status">
@@ -191,7 +269,7 @@
 
             <div class="form-group">
                 <label for="observacao">Observação</label>
-                <textarea name="observacao" id="observacao" rows="3">{{ item.observacao if item else '' }}</textarea>
+                <textarea name="observacao" required id="observacao" rows="3">{{ item.observacao if item else '' }}</textarea>
             </div>
         </fieldset>
 
@@ -236,6 +314,9 @@ legend {
     color: #004080;
     margin-bottom: 5px;
 }
+
+.lotacao-readonly { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; }
+.lotacao-readonly .form-group span { font-weight: 500; color: #0d6efd; margin-left: 4px; }
 
 .form-group input,
 .form-group select,
@@ -428,6 +509,94 @@ async function carregarTipos() {
         console.error('Erro ao carregar tipos:', error);
         typeSelect.innerHTML = '<option value="">Erro ao carregar tipos</option>';
     }
+}
+
+// ---------- Lotação em cascata (perfil Master) ----------
+const LOTACAO_IDS = {
+    'sem-serie': {
+        estado: 'lotacao_estado',
+        municipio: 'lotacao_municipio_sem_serie',
+        orgao: 'lotacao_orgao_sem_serie',
+        unidade: 'unit_id_sem_serie'
+    },
+    'serie': {
+        estado: 'lotacao_estado_serie',
+        municipio: 'lotacao_municipio_serie',
+        orgao: 'lotacao_orgao_serie',
+        unidade: 'unit_id_serie'
+    }
+};
+
+async function carregarMunicipiosLotacao(section) {
+    const ids = LOTACAO_IDS[section];
+    if (!ids) return;
+    const estadoId = document.getElementById(ids.estado).value;
+    const munSelect = document.getElementById(ids.municipio);
+    const orgaoSelect = document.getElementById(ids.orgao);
+    const unidadeSelect = document.getElementById(ids.unidade);
+    munSelect.innerHTML = '<option value="">-- Selecione o Estado --</option>';
+    munSelect.disabled = true;
+    orgaoSelect.innerHTML = '<option value="">-- Selecione o Município --</option>';
+    orgaoSelect.disabled = true;
+    unidadeSelect.innerHTML = '<option value="">-- Selecione o Órgão --</option>';
+    unidadeSelect.disabled = true;
+    if (!estadoId) return;
+    try {
+        const r = await fetch(`/api/municipios/${estadoId}`);
+        const list = await r.json();
+        list.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.nome;
+            munSelect.appendChild(opt);
+        });
+        munSelect.disabled = false;
+    } catch (e) { console.error(e); }
+}
+
+async function carregarOrgaosLotacao(section) {
+    const ids = LOTACAO_IDS[section];
+    if (!ids) return;
+    const municipioId = document.getElementById(ids.municipio).value;
+    const orgaoSelect = document.getElementById(ids.orgao);
+    const unidadeSelect = document.getElementById(ids.unidade);
+    orgaoSelect.innerHTML = '<option value="">-- Selecione o Município --</option>';
+    orgaoSelect.disabled = true;
+    unidadeSelect.innerHTML = '<option value="">-- Selecione o Órgão --</option>';
+    unidadeSelect.disabled = true;
+    if (!municipioId) return;
+    try {
+        const r = await fetch(`/api/orgaos/${municipioId}`);
+        const list = await r.json();
+        list.forEach(o => {
+            const opt = document.createElement('option');
+            opt.value = o.id;
+            opt.textContent = o.sigla ? `${o.nome} (${o.sigla})` : o.nome;
+            orgaoSelect.appendChild(opt);
+        });
+        orgaoSelect.disabled = false;
+    } catch (e) { console.error(e); }
+}
+
+async function carregarUnidadesLotacao(section) {
+    const ids = LOTACAO_IDS[section];
+    if (!ids) return;
+    const orgaoId = document.getElementById(ids.orgao).value;
+    const unidadeSelect = document.getElementById(ids.unidade);
+    unidadeSelect.innerHTML = '<option value="">-- Selecione o Órgão --</option>';
+    unidadeSelect.disabled = true;
+    if (!orgaoId) return;
+    try {
+        const r = await fetch(`/api/unidades/${orgaoId}`);
+        const list = await r.json();
+        list.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.textContent = u.sigla ? `${u.nome} (${u.sigla})` : u.nome;
+            unidadeSelect.appendChild(opt);
+        });
+        unidadeSelect.disabled = false;
+    } catch (e) { console.error(e); }
 }
 
 // ✅ Carrega tipos ao abrir a página (modo edição)
