@@ -1,0 +1,52 @@
+{% extends "eprotocolo/eprotocolo_base.html" %}
+
+{% block title %}{{ 'Editar' if assunto else 'Cadastrar' }} Assunto - E-Protocolo{% endblock %}
+
+{% block eprotocolo_content %}
+<div class="admin-page">
+    <div class="nav-tabs">
+        <a href="/eprotocolo/administracao/grupos" class="nav-tab">Grupos</a>
+        <a href="/eprotocolo/administracao/assuntos" class="nav-tab active">Assuntos</a>
+        <a href="/eprotocolo/administracao/subassuntos" class="nav-tab">Subassuntos</a>
+    </div>
+    <div class="page-badge">{{ 'EDITAR' if assunto else 'CADASTRAR' }} ASSUNTO</div>
+
+    <form method="post" action="{% if assunto %}/eprotocolo/administracao/assuntos/{{ assunto.id }}/editar{% else %}/eprotocolo/administracao/assuntos/cadastrar{% endif %}" class="admin-form">
+        <div class="form-group">
+            <label for="grupo_id">GRUPO *</label>
+            <select id="grupo_id" name="grupo_id" required>
+                <option value="">SELECIONE</option>
+                {% for g in grupos %}
+                <option value="{{ g.id }}" {% if assunto and assunto.grupo_id == g.id %}selected{% endif %}>{{ g.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="nome">NOME *</label>
+            <input type="text" id="nome" name="nome" required value="{{ assunto.nome if assunto else '' }}" placeholder="Ex: Licitação">
+        </div>
+        <div class="form-actions">
+            <a href="/eprotocolo/administracao/assuntos" class="btn-cancelar">Cancelar</a>
+            <button type="submit" class="btn-salvar">SALVAR</button>
+        </div>
+    </form>
+</div>
+
+<style>
+.admin-page { padding: 24px; max-width: 600px; margin: 0 auto; }
+.page-badge { background: #0d6efd; color: white; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 24px; display: inline-block; }
+.admin-form { background: #f8f9fa; padding: 24px; border-radius: 8px; }
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: #333; }
+.form-group input, .form-group select { width: 100%; padding: 10px 12px; border: 1px solid #ced4da; border-radius: 6px; font-size: 14px; }
+.form-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+.btn-cancelar { padding: 10px 20px; color: #6c757d; text-decoration: none; }
+.btn-cancelar:hover { color: #333; }
+.btn-salvar { background: #0d6efd; color: white; border: none; padding: 10px 24px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-salvar:hover { background: #0b5ed7; }
+.nav-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+.nav-tab { padding: 8px 16px; background: #e9ecef; border-radius: 6px; text-decoration: none; color: #495057; font-size: 14px; }
+.nav-tab:hover { background: #dee2e6; }
+.nav-tab.active { background: #0d6efd; color: white; }
+</style>
+{% endblock %}
