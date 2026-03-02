@@ -6,7 +6,6 @@ import re
 
 from database import get_db
 from dependencies import get_current_user, registrar_log
-from fastapi.templating import Jinja2Templates
 from models import (
     User,           # ✅ Para verificar permissões
     Unit,           # ✅ Modelo legado (se ainda usar)
@@ -15,9 +14,9 @@ from models import (
     Municipio,      # ✅ Para relacionamentos
     Estado          # ✅ Para relacionamentos
 )
+from shared_templates import templates
 
 router = APIRouter(prefix="/units", tags=["Unidades Administrativas"])
-templates = Jinja2Templates(directory="templates")
 
 
 # LISTAR UNIDADES ADMINISTRATIVAS (tabela 'unidades')

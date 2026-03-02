@@ -3,11 +3,10 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Category
-from fastapi.templating import Jinja2Templates
+from shared_templates import templates
 from starlette.status import HTTP_302_FOUND
 
 router = APIRouter(prefix="/categories", tags=["Categorias"])
-templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/")

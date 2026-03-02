@@ -7,6 +7,20 @@
 <div class="container">
     <h2>{{ 'Editar' if action == 'edit' else 'Cadastrar' }} Usuário</h2>
 
+    {% if errors %}
+    <div class="alert alert-error" role="alert">
+        <div class="alert-icon"><i class="fas fa-exclamation-circle"></i></div>
+        <div class="alert-body">
+            <strong>Corrija os erros abaixo antes de continuar:</strong>
+            <ul>
+            {% for msg in errors %}
+                <li>{{ msg }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+
     <form method="post" id="user-form">
         
         <!-- DADOS PESSOAIS -->
@@ -17,14 +31,14 @@
                 <div class="form-group">
                     <label for="nome">Nome Completo*</label>
                     <input type="text" name="nome" id="nome" required 
-                           value="{{ user.nome if user else '' }}"
+                           value="{{ form_data.nome if form_data else (user.nome if user else '') }}"
                            placeholder="Digite o nome completo">
                 </div>
                 
                 <div class="form-group">
                     <label for="cpf">CPF*</label>
                     <input type="text" name="cpf" id="cpf" required 
-                           value="{{ user.cpf if user else '' }}"
+                           value="{{ form_data.cpf if form_data else (user.cpf if user else '') }}"
                            placeholder="000.000.000-00"
                            maxlength="14">
                 </div>
@@ -33,7 +47,7 @@
             <div class="form-group">
                 <label for="email">E-mail*</label>
                 <input type="email" name="email" id="email" required 
-                       value="{{ user.email if user else '' }}"
+                       value="{{ form_data.email if form_data else (user.email if user else '') }}"
                        placeholder="usuario@exemplo.com">
             </div>
         </fieldset>
@@ -85,24 +99,12 @@
                     <label for="perfil">Perfil*</label>
                     <select name="perfil" id="perfil" required onchange="mostrarDescricaoPerfil()">
                         <option value="">-- Selecione --</option>
-                        <option value="master" {% if user and user.perfil == 'master' %}selected{% endif %}>
-                            MASTER - Acesso Total ao Sistema
-                        </option>
-                        <option value="admin_municipal" {% if user and user.perfil == 'admin_municipal' %}selected{% endif %}>
-                            ADMIN MUNICIPAL - Gerencia Município Completo
-                        </option>
-                        <option value="gestor_estoque" {% if user and user.perfil == 'gestor_estoque' %}selected{% endif %}>
-                            GESTOR DE ESTOQUE - Gerencia Inventário
-                        </option>
-                        <option value="gestor_protocolo" {% if user and user.perfil == 'gestor_protocolo' %}selected{% endif %}>
-                            GESTOR DE PROTOCOLO - Gerencia E-Protocolo
-                        </option>
-                        <option value="gestor_geral" {% if user and user.perfil == 'gestor_geral' %}selected{% endif %}>
-                            GESTOR GERAL - Estoque + Protocolo
-                        </option>
-                        <option value="operador" {% if user and user.perfil == 'operador' %}selected{% endif %}>
-                            OPERADOR - Acesso Básico
-                        </option>
+                        <option value="master" {% if (form_data and form_data.perfil == 'master') or (user and user.perfil == 'master') %}selected{% endif %}>MASTER - Acesso Total ao Sistema</option>
+                        <option value="admin_municipal" {% if (form_data and form_data.perfil == 'admin_municipal') or (user and user.perfil == 'admin_municipal') %}selected{% endif %}>ADMIN MUNICIPAL - Gerencia Município Completo</option>
+                        <option value="gestor_estoque" {% if (form_data and form_data.perfil == 'gestor_estoque') or (user and user.perfil == 'gestor_estoque') %}selected{% endif %}>GESTOR DE ESTOQUE - Gerencia Inventário</option>
+                        <option value="gestor_protocolo" {% if (form_data and form_data.perfil == 'gestor_protocolo') or (user and user.perfil == 'gestor_protocolo') %}selected{% endif %}>GESTOR DE PROTOCOLO - Gerencia E-Protocolo</option>
+                        <option value="gestor_geral" {% if (form_data and form_data.perfil == 'gestor_geral') or (user and user.perfil == 'gestor_geral') %}selected{% endif %}>GESTOR GERAL - Estoque + Protocolo</option>
+                        <option value="operador" {% if (form_data and form_data.perfil == 'operador') or (user and user.perfil == 'operador') %}selected{% endif %}>OPERADOR - Acesso Básico</option>
                     </select>
                 </div>
 
@@ -110,18 +112,10 @@
                     <label for="status">Status*</label>
                     <select name="status" id="status" required>
                         <option value="">-- Selecione --</option>
-                        <option value="ativo" {% if user and user.status == 'ativo' %}selected{% endif %}>
-                            Ativo
-                        </option>
-                        <option value="inativo" {% if user and user.status == 'inativo' %}selected{% endif %}>
-                            Inativo
-                        </option>
-                        <option value="bloqueado" {% if user and user.status == 'bloqueado' %}selected{% endif %}>
-                            Bloqueado
-                        </option>
-                        <option value="pendente" {% if user and user.status == 'pendente' %}selected{% endif %}>
-                            Pendente Aprovação
-                        </option>
+                        <option value="ativo" {% if (form_data and form_data.status == 'ativo') or (user and user.status == 'ativo') %}selected{% endif %}>Ativo</option>
+                        <option value="inativo" {% if (form_data and form_data.status == 'inativo') or (user and user.status == 'inativo') %}selected{% endif %}>Inativo</option>
+                        <option value="bloqueado" {% if (form_data and form_data.status == 'bloqueado') or (user and user.status == 'bloqueado') %}selected{% endif %}>Bloqueado</option>
+                        <option value="pendente" {% if (form_data and form_data.status == 'pendente') or (user and user.status == 'pendente') %}selected{% endif %}>Pendente Aprovação</option>
                     </select>
                 </div>
             </div>
@@ -178,6 +172,32 @@
 </div>
 
 <style>
+/* Alerta de erros de validação */
+.alert {
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+.alert-error {
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+.alert-error .alert-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+.alert-error .alert-icon i { color: #dc2626; }
+.alert-body { flex: 1; }
+.alert-body strong { display: block; margin-bottom: 6px; }
+.alert-body ul {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
 fieldset {
     border: 1px solid #dee2e6;
     border-radius: 8px;
@@ -319,19 +339,7 @@ document.getElementById('cpf').addEventListener('input', function(e) {
     e.target.value = value;
 });
 
-// ========================================
-// VALIDAÇÃO DE SENHAS
-// ========================================
-document.getElementById('user-form').addEventListener('submit', function(e) {
-    const senha = document.getElementById('senha').value;
-    const confirmar = document.getElementById('confirmar_senha').value;
-    
-    if (senha && senha !== confirmar) {
-        e.preventDefault();
-        alert('As senhas não coincidem!');
-        return false;
-    }
-});
+// Validação de senha no submit: erros são exibidos na própria página após o retorno do servidor.
 
 // ========================================
 // CARREGAR MUNICÍPIOS
@@ -482,33 +490,46 @@ async function carregarEstados() {
 }
 
 // ========================================
+// RESTAURAR SELECTS APÓS ERRO DE VALIDAÇÃO (form_data)
+// ========================================
+{% if form_data and (form_data.estado_id or form_data.municipio_id) %}
+window.__formDataRestore = {
+    estado_id: {{ form_data.estado_id if form_data.estado_id else 'null' }},
+    municipio_id: {{ form_data.municipio_id if form_data.municipio_id else 'null' }},
+    orgao_id: {{ form_data.orgao_id if form_data.orgao_id else 'null' }},
+    unidade_id: {{ form_data.unidade_id if form_data.unidade_id else 'null' }}
+};
+{% endif %}
+
+// ========================================
 // MODO EDIÇÃO - PREENCHER DADOS
 // ========================================
 async function carregarModoEdicao() {
-    {% if user and action == 'edit' %}
-        // Carrega estados primeiro
+    if (window.__formDataRestore) {
+        // Reexibir formulário após erro de validação: restaurar Estado → Município → Órgão → Unidade
         await carregarEstados();
-        
-        // Busca o estado do município do usuário
+        const r = window.__formDataRestore;
+        if (r.estado_id) document.getElementById('estado').value = r.estado_id;
+        await carregarMunicipios();
+        if (r.municipio_id) document.getElementById('municipio_id').value = r.municipio_id;
+        await carregarOrgaos();
+        if (r.orgao_id) document.getElementById('orgao_id').value = r.orgao_id;
+        await carregarUnidades();
+        if (r.unidade_id) document.getElementById('unidade_id').value = r.unidade_id;
+        mostrarDescricaoPerfil();
+        return;
+    }
+    {% if user and action == 'edit' %}
+        await carregarEstados();
         const response = await fetch(`/api/estado-do-municipio/{{ user.municipio_id }}`);
         const data = await response.json();
-        
-        // Seleciona estado
         document.getElementById('estado').value = data.estado_id;
-        
-        // Carrega municípios e seleciona
         await carregarMunicipios();
         document.getElementById('municipio_id').value = {{ user.municipio_id }};
-        
-        // Carrega órgãos e seleciona
         await carregarOrgaos();
         document.getElementById('orgao_id').value = {{ user.orgao_id }};
-        
-        // Carrega unidades e seleciona
         await carregarUnidades();
         document.getElementById('unidade_id').value = {{ user.unidade_id }};
-        
-        // Mostra descrição do perfil
         mostrarDescricaoPerfil();
     {% else %}
         carregarEstados();
@@ -516,7 +537,12 @@ async function carregarModoEdicao() {
 }
 
 // Inicializa
-document.addEventListener('DOMContentLoaded', carregarModoEdicao);
+document.addEventListener('DOMContentLoaded', function() {
+    carregarModoEdicao();
+    {% if errors %}
+    document.querySelector('.alert-error').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    {% endif %}
+});
 </script>
 
 <script src="https://kit.fontawesome.com/a076d05399.js"></script>

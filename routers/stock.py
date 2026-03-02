@@ -8,11 +8,9 @@ from services.audit_service import AuditService
 from database import get_db
 from dependencies import get_current_user, registrar_log
 from models import EquipmentType, Stock, Product, Unit, Item
-from fastapi.templating import Jinja2Templates
-
+from shared_templates import templates
 
 router = APIRouter(prefix="/stock", tags=["Stock"])
-templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/")

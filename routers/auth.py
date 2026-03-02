@@ -1,18 +1,15 @@
 from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_302_FOUND
 from database import get_db
 import models
 from dependencies import registrar_log
+from shared_templates import templates
 from security import verify_password, hash_password  # ✅ Nosso módulo de hash seguro
 from models import StatusUsuarioEnum
 
-
-
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
 
 # ✅ ADICIONE ESTA ROTA (GET) - Exibe o formulário de login
 @router.get("/login")

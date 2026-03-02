@@ -35,14 +35,9 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ========================================
-# 4. TEMPLATES
+# 4. TEMPLATES (compartilhados; nome do usuário no layout)
 # ========================================
-templates = Jinja2Templates(directory="templates")
-
-def get_logged_user(request: Request):
-    return request.session.get("user")
-
-templates.env.globals["get_logged_user"] = get_logged_user
+from shared_templates import templates
 app.state.templates = templates
 
 # ========================================
