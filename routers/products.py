@@ -122,6 +122,8 @@ def add_product_form(request: Request, db: Session = Depends(get_db), user: str 
             "default_unidade_id": user_obj.unidade_id if not is_master else None,
             "product": None,
             "item": None,
+            "stock": None,
+            "product_items": [],
             "user": user,
         }
     )
@@ -165,9 +167,11 @@ async def add_product(
         return RedirectResponse("/login")
 
     form_data = await request.form()
-    # Listas de tombos/séries: o form envia nome "numero[]" e "tipo_numero[]" (vários valores)
+    # Listas de tombos/séries: o form envia numero[], tipo_numero[], estado_id[] e status[] (por linha)
     numero = form_data.getlist("numero[]") or form_data.getlist("numero")
     tipo_numero = form_data.getlist("tipo_numero[]") or form_data.getlist("tipo_numero")
+    estado_id_list = form_data.getlist("estado_id[]")
+    status_list = form_data.getlist("status[]")
 
     category_id = _parse_int(form_data.get("category_id"))
     type_id = _parse_int(form_data.get("type_id")) or 0
@@ -264,6 +268,8 @@ async def add_product(
                 continue
             tipo_val = (tipo_numero[i] if i < len(tipo_numero) else "tombo")
             is_tombo = (str(tipo_val).lower() == "tombo")
+            estado_i = _parse_int(estado_id_list[i]) if i < len(estado_id_list) else estado_id
+            status_i = (status_list[i] or "Disponível") if i < len(status_list) else status
             item = Item(
                 product_id=product.id,
                 municipio_id=municipio_id,
@@ -271,8 +277,8 @@ async def add_product(
                 unit_id=unidade.id,
                 tombo=is_tombo,
                 num_tombo_ou_serie=num_str,
-                estado_id=estado_id,
-                status=status,
+                estado_id=estado_i,
+                status=status_i,
                 data_aquisicao=data_aq,
                 valor_aquisicao=valor_aquisicao,
                 garantia_ate=garantia_dt,
@@ -339,10 +345,14 @@ def edit_product_form(product_id: int, request: Request, db: Session = Depends(g
 
     product = db.query(Product).options(
         joinedload(Product.orgao).joinedload(Orgao.municipio).joinedload(Municipio.estado),
+        joinedload(Product.items),
+        joinedload(Product.stocks),
     ).filter(Product.id == product_id).first()
     if not product:
         return RedirectResponse("/products")
     item = db.query(Item).filter(Item.product_id == product_id).first()
+    product_items = list(product.items) if product.items else []
+    stock = db.query(Stock).filter(Stock.product_id == product_id).first() if not product_items else None
 
     is_master = getattr(user_obj, "perfil", None) == "master"
     lotacao = None
@@ -355,6 +365,10 @@ def edit_product_form(product_id: int, request: Request, db: Session = Depends(g
         }
     if item and item.unit:
         lotacao["unidade"] = item.unit.nome if lotacao else "-"
+    elif stock and stock.unit_id and lotacao:
+        un = db.query(Unidade).filter(Unidade.id == stock.unit_id).first()
+        if un:
+            lotacao["unidade"] = un.nome
 
     # Unidades do órgão do produto (sempre do órgão ao qual o produto pertence)
     units = (
@@ -364,7 +378,7 @@ def edit_product_form(product_id: int, request: Request, db: Session = Depends(g
         .all()
     )
     estados_geograficos = db.query(Estado).order_by(Estado.nome).all() if is_master else []
-    default_unidade_id = item.unit_id if item else None
+    default_unidade_id = (item.unit_id if item else None) or (stock.unit_id if stock else None)
 
     categorias = db.query(Category).order_by(Category.nome).all()
     tipos = db.query(EquipmentType).all()
@@ -387,6 +401,8 @@ def edit_product_form(product_id: int, request: Request, db: Session = Depends(g
             "default_unidade_id": default_unidade_id,
             "product": product,
             "item": item,
+            "product_items": product_items,
+            "stock": stock,
             "user": user,
         }
     )
@@ -394,29 +410,11 @@ def edit_product_form(product_id: int, request: Request, db: Session = Depends(g
 
 # ----------------- EDIT PRODUCT -----------------
 @router.post("/edit/{product_id}")
-def edit_product(
+async def edit_product(
     product_id: int,
     request: Request,
-    category_id: int = Form(None),
-    type_id: int = Form(...),
-    brand_id: int = Form(...),
-    model: str = Form(...),
-    estado_id: str = Form(None),
-    status: str = Form(None),
-    unit_id: str = Form(None),
-    data_aquisicao: str = Form(None),
-    valor_aquisicao: str = Form(None),
-    description: str = Form(...),
-    controla_por_serie: bool = Form(False),
-    tombo: str = Form(None),
-    num_tombo: str = Form(None),
-    num_serie: str = Form(None),
-    garantia_ate: str = Form(None),
-    observacao: str = Form(None),
-    quantidade: str = Form("0"),
-    quantidade_minima: str = Form("0"),
     db: Session = Depends(get_db),
-    user: str = Depends(get_current_user)
+    user: str = Depends(get_current_user),
 ):
     if not user:
         return RedirectResponse("/login")
@@ -425,15 +423,33 @@ def edit_product(
     if not user_obj:
         return RedirectResponse("/login")
 
+    form_data = await request.form()
+
     # --- Produto ---
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         return RedirectResponse("/products")
 
-    # ✅ Gera nome automaticamente
+    category_id = form_data.get("category_id")
+    type_id = _parse_int(form_data.get("type_id")) or 0
+    brand_id = _parse_int(form_data.get("brand_id")) or 0
+    model = form_data.get("model") or ""
+    description = form_data.get("description") or ""
+    controla_por_serie = form_data.get("controla_por_serie") in ("true", "on", "1", "sim", "yes")
+    unit_id = form_data.get("unit_id")
+    unit_id_serie = form_data.get("unit_id_serie")
+    estado_id = form_data.get("estado_id")
+    status = form_data.get("status") or "Disponível"
+    data_aquisicao = form_data.get("data_aquisicao")
+    valor_aquisicao = form_data.get("valor_aquisicao")
+    garantia_ate = form_data.get("garantia_ate")
+    observacao = form_data.get("observacao")
+    quantidade = _parse_int(form_data.get("quantidade"), 0) or 0
+    quantidade_minima = _parse_int(form_data.get("quantidade_minima"), 0) or 0
+
+    # Nome do produto
     tipo = db.query(EquipmentType).filter(EquipmentType.id == type_id).first()
     marca = db.query(Brand).filter(Brand.id == brand_id).first()
-    
     nome_partes = []
     if tipo:
         nome_partes.append(tipo.nome)
@@ -441,80 +457,140 @@ def edit_product(
         nome_partes.append(marca.nome)
     if model:
         nome_partes.append(model)
-    
     product.name = " ".join(nome_partes) if nome_partes else "Produto sem nome"
     product.category_id = int(category_id) if category_id else None
-    product.type_id = int(type_id)
-    product.brand_id = int(brand_id)
+    product.type_id = type_id
+    product.brand_id = brand_id
     product.model = model
     product.description = description
     product.controla_por_serie = controla_por_serie
-
     if not controla_por_serie:
-        product.quantidade = int(quantidade or 0)
-        product.quantidade_minima = int(quantidade_minima or 0)
+        product.quantidade = quantidade
+        product.quantidade_minima = quantidade_minima
 
-    # --- Item físico ---
-    item = db.query(Item).filter(Item.product_id == product.id).first()
-    unit_id_int = int(unit_id) if unit_id else None
-
-    if not item:
-        # Se não existe item ainda, precisamos de unidade para criar um novo
-        if not unit_id_int:
-            return HTMLResponse(
-                content="<script>alert('Selecione a Unidade antes de salvar o produto.'); history.back();</script>",
-                status_code=400,
-            )
-        item = Item(
-            product_id=product.id,
-            municipio_id=product.municipio_id,
-            orgao_id=product.orgao_id,
-            unit_id=unit_id_int,
-        )
-    else:
-        # Garante que campos NOT NULL sejam sempre preenchidos
-        if not item.municipio_id:
-            item.municipio_id = product.municipio_id
-        if not item.orgao_id:
-            item.orgao_id = product.orgao_id
-        if unit_id_int:
-            item.unit_id = unit_id_int
-        if not item.unit_id:
-            return HTMLResponse(
-                content="<script>alert('Item associado ao produto está sem Unidade. Defina uma Unidade e tente novamente.'); history.back();</script>",
-                status_code=400,
-            )
-
-    is_tombo = (tombo == "Sim")
-
-    item.tombo = is_tombo if controla_por_serie else False
-    item.num_tombo_ou_serie = (num_tombo if is_tombo else num_serie) if controla_por_serie else None
-    item.estado_id = int(estado_id) if estado_id else None
-    item.unit_id = int(unit_id) if unit_id else None
-    item.status = status or "Disponível"
-
+    unit_id_int = _parse_int(unit_id) or _parse_int(unit_id_serie)
+    data_aq = None
     if data_aquisicao:
         try:
-            item.data_aquisicao = datetime.strptime(data_aquisicao, "%Y-%m-%d").date()
-        except:
-            item.data_aquisicao = None
-    else:
-        item.data_aquisicao = None
-
+            data_aq = datetime.strptime(data_aquisicao, "%Y-%m-%d").date()
+        except (ValueError, TypeError):
+            pass
+    valor_float = None
     if valor_aquisicao:
-        valor_clean = valor_aquisicao.replace("R$", "").replace(".", "").replace(",", ".").strip()
+        valor_clean = str(valor_aquisicao).replace("R$", "").replace(".", "").replace(",", ".").strip()
+        valor_float = _parse_float(valor_clean)
+    garantia_dt = None
+    if garantia_ate:
         try:
-            item.valor_aquisicao = float(valor_clean)
-        except:
-            item.valor_aquisicao = None
+            garantia_dt = datetime.strptime(garantia_ate, "%Y-%m-%d").date()
+        except (ValueError, TypeError):
+            pass
+    estado_int = _parse_int(estado_id)
+    status_val = status or "Disponível"
+
+    if controla_por_serie:
+        numeros = form_data.getlist("numero[]") or form_data.getlist("numero")
+        tipo_numeros = form_data.getlist("tipo_numero[]") or form_data.getlist("tipo_numero")
+        estado_id_list = form_data.getlist("estado_id[]")
+        status_list = form_data.getlist("status[]")
+
+        if not unit_id_int:
+            return HTMLResponse(
+                content="<script>alert('Selecione a Unidade antes de salvar.'); history.back();</script>",
+                status_code=400,
+            )
+
+        existing_items = db.query(Item).filter(Item.product_id == product.id).order_by(Item.id).all()
+        pares = []
+        for i, num in enumerate(numeros):
+            num_str = (num if isinstance(num, str) else str(num or "")).strip()
+            if not num_str:
+                continue
+            tipo_val = tipo_numeros[i] if i < len(tipo_numeros) else "tombo"
+            is_tombo = str(tipo_val).lower() == "tombo"
+            pares.append((is_tombo, num_str))
+
+        # Primeiro libera num_tombo_ou_serie nos itens existentes (evita UniqueViolation ao trocar ordem)
+        for idx in range(min(len(pares), len(existing_items))):
+            existing_items[idx].num_tombo_ou_serie = None
+        db.flush()
+
+        for idx, (is_tombo, num_str) in enumerate(pares):
+            estado_idx = _parse_int(estado_id_list[idx]) if idx < len(estado_id_list) else estado_int
+            status_idx = (status_list[idx] or "Disponível") if idx < len(status_list) else status_val
+            if idx < len(existing_items):
+                it = existing_items[idx]
+                it.tombo = is_tombo
+                it.num_tombo_ou_serie = num_str
+                it.unit_id = unit_id_int
+                it.municipio_id = product.municipio_id
+                it.orgao_id = product.orgao_id
+                it.estado_id = estado_idx
+                it.status = status_idx
+                it.data_aquisicao = data_aq
+                it.valor_aquisicao = valor_float
+                it.garantia_ate = garantia_dt
+                it.observacao = observacao or None
+                db.add(it)
+            else:
+                novo = Item(
+                    product_id=product.id,
+                    municipio_id=product.municipio_id,
+                    orgao_id=product.orgao_id,
+                    unit_id=unit_id_int,
+                    tombo=is_tombo,
+                    num_tombo_ou_serie=num_str,
+                    estado_id=estado_idx,
+                    status=status_idx,
+                    data_aquisicao=data_aq,
+                    valor_aquisicao=valor_float,
+                    garantia_ate=garantia_dt,
+                    observacao=observacao or None,
+                )
+                db.add(novo)
+
+        if len(pares) < len(existing_items):
+            for it in existing_items[len(pares):]:
+                db.delete(it)
+
+        db.commit()
     else:
-        item.valor_aquisicao = None
+        item = db.query(Item).filter(Item.product_id == product.id).first()
+        if not item:
+            if not unit_id_int:
+                return HTMLResponse(
+                    content="<script>alert('Selecione a Unidade antes de salvar o produto.'); history.back();</script>",
+                    status_code=400,
+                )
+            item = Item(
+                product_id=product.id,
+                municipio_id=product.municipio_id,
+                orgao_id=product.orgao_id,
+                unit_id=unit_id_int,
+            )
+        else:
+            if not item.municipio_id:
+                item.municipio_id = product.municipio_id
+            if not item.orgao_id:
+                item.orgao_id = product.orgao_id
+            if unit_id_int is not None:
+                item.unit_id = unit_id_int
+            if not item.unit_id:
+                return HTMLResponse(
+                    content="<script>alert('Item associado ao produto está sem Unidade. Defina uma Unidade e tente novamente.'); history.back();</script>",
+                    status_code=400,
+                )
 
-    item.garantia_ate = garantia_ate or None
-    item.observacao = observacao or None
-
-    db.add(item)
-    db.commit()
+        item.tombo = False
+        item.num_tombo_ou_serie = None
+        item.estado_id = estado_int
+        item.status = status_val
+        item.data_aquisicao = data_aq
+        item.valor_aquisicao = valor_float
+        item.garantia_ate = garantia_dt
+        item.observacao = observacao or None
+        db.add(item)
+        db.commit()
 
     registrar_log(db, usuario=user, acao=f"Editou produto: {product.name}", ip=request.client.host)
     return RedirectResponse("/products", status_code=HTTP_302_FOUND)

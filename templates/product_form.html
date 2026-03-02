@@ -121,11 +121,31 @@
                 </div>
                 <div class="form-group">
                     <label for="quantidade">Quantidade</label>
-                    <input type="number" name="quantidade" min="0" value="{{ product.quantidade if product else (item.quantidade if item else 0) }}">
+                    <input type="number" name="quantidade" min="0" value="{{ (stock.quantidade if stock else (product.quantidade if product else (item.quantidade if item else 0))) }}">
                 </div>
                 <div class="form-group">
                     <label for="quantidade_minima">Quantidade Mínima</label>
-                    <input type="number" name="quantidade_minima" min="0" value="{{ product.quantidade_minima if product else (item.quantidade_minima if item else 0) }}">
+                    <input type="number" name="quantidade_minima" min="0" value="{{ (stock.quantidade_minima if stock else (product.quantidade_minima if product else (item.quantidade_minima if item else 0))) }}">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="estado_id_sem_serie">Estado (físico)</label>
+                    <select name="estado_id" id="estado_id_sem_serie">
+                        <option value="">-- Selecione --</option>
+                        {% for estado in estados %}
+                            <option value="{{ estado.id }}" {% if item and item.estado_id == estado.id %}selected{% endif %}>{{ estado.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="status_sem_serie">Status</label>
+                    <select name="status" id="status_sem_serie">
+                        <option value="Disponível" {% if item and item.status == 'Disponível' %}selected{% endif %}>Disponível</option>
+                        <option value="Em Uso" {% if item and item.status == 'Em Uso' %}selected{% endif %}>Em Uso</option>
+                        <option value="Manutenção" {% if item and item.status == 'Manutenção' %}selected{% endif %}>Manutenção</option>
+                        <option value="Bloqueado" {% if item and item.status == 'Bloqueado' %}selected{% endif %}>Bloqueado</option>
+                    </select>
                 </div>
             </div>
             {% endif %}
@@ -139,6 +159,26 @@
                 <div class="form-group">
                     <label for="quantidade_minima">Quantidade Mínima</label>
                     <input type="number" name="quantidade_minima" min="0" value="{{ product.quantidade_minima if product else (item.quantidade_minima if item else 0) }}">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="estado_id_sem_serie_add">Estado (físico)</label>
+                    <select name="estado_id" id="estado_id_sem_serie_add">
+                        <option value="">-- Selecione --</option>
+                        {% for estado in estados %}
+                            <option value="{{ estado.id }}">{{ estado.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="status_sem_serie_add">Status</label>
+                    <select name="status" id="status_sem_serie_add">
+                        <option value="Disponível" selected>Disponível</option>
+                        <option value="Em Uso">Em Uso</option>
+                        <option value="Manutenção">Manutenção</option>
+                        <option value="Bloqueado">Bloqueado</option>
+                    </select>
                 </div>
             </div>
             {% endif %}
@@ -192,50 +232,98 @@
             </div>
             {% endif %}
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="estado_id">Estado (físico)</label>
-                    <select name="estado_id" id="estado_id">
-                        <option value="">-- Selecione --</option>
-                        {% for estado in estados %}
-                            <option value="{{ estado.id }}" {% if item and item.estado_id == estado.id %}selected{% endif %}>{{ estado.nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="status">Status</label>
-                    <select name="status" id="status">
-                        <option value="Disponível" {% if item and item.status == 'Disponível' %}selected{% endif %}>Disponível</option>
-                        <option value="Em Uso" {% if item and item.status == 'Em Uso' %}selected{% endif %}>Em Uso</option>
-                        <option value="Manutenção" {% if item and item.status == 'Manutenção' %}selected{% endif %}>Manutenção</option>
-                        <option value="Bloqueado" {% if item and item.status == 'Bloqueado' %}selected{% endif %}>Bloqueado</option>
-                    </select>
-                </div>
+            <!-- Template para opções de Estado (usado pelo JS ao adicionar linha) -->
+            <div id="estado-options-template" style="display:none;">
+                <option value="">-- Selecione --</option>
+                {% for estado in estados %}
+                <option value="{{ estado.id }}">{{ estado.nome }}</option>
+                {% endfor %}
             </div>
 
-            <!-- ✅ LISTA DE TOMBOS/SÉRIES -->
+            <!-- ✅ LISTA DE TOMBOS/SÉRIES – cada linha com Tipo, Número, Estado (físico) e Status -->
             <div id="lista-numeros">
-                <!-- Primeiro item sempre visível -->
+                {% if action == 'edit' and product_items %}
+                    {% for it in product_items %}
+                <div class="numero-item" data-index="{{ loop.index0 }}">
+                    <div class="form-row flex-wrap">
+                        <div class="form-group" style="flex: 0 0 120px;">
+                            <label>Tipo*</label>
+                            <select name="tipo_numero[]" class="tipo-numero" onchange="toggleCampoNumero(this)">
+                                <option value="tombo" {% if it.tombo %}selected{% endif %}>Tombo</option>
+                                <option value="serie" {% if not it.tombo %}selected{% endif %}>Série</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 1; min-width: 140px;">
+                            <label class="label-numero">{{ 'Número do Tombo*' if it.tombo else 'Número de Série*' }}</label>
+                            <input type="text" name="numero[]" class="input-numero" required placeholder="{{ 'Digite o número do tombo' if it.tombo else 'Digite o número de série' }}" value="{{ it.num_tombo_ou_serie or '' }}">
+                        </div>
+                        <div class="form-group" style="flex: 0 0 130px;">
+                            <label>Estado (físico)</label>
+                            <select name="estado_id[]">
+                                <option value="">-- Selecione --</option>
+                                {% for estado in estados %}
+                                <option value="{{ estado.id }}" {% if it.estado_id == estado.id %}selected{% endif %}>{{ estado.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 0 0 120px;">
+                            <label>Status</label>
+                            <select name="status[]">
+                                <option value="Disponível" {% if it.status == 'Disponível' %}selected{% endif %}>Disponível</option>
+                                <option value="Em Uso" {% if it.status == 'Em Uso' %}selected{% endif %}>Em Uso</option>
+                                <option value="Manutenção" {% if it.status == 'Manutenção' %}selected{% endif %}>Manutenção</option>
+                                <option value="Bloqueado" {% if it.status == 'Bloqueado' %}selected{% endif %}>Bloqueado</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 0 0 50px; align-self: flex-end;">
+                            <button type="button" class="btn-remove" onclick="removerNumero(this)" {% if loop.first and product_items|length <= 1 %}style="display:none;"{% endif %}>
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                    {% endfor %}
+                {% else %}
+                <!-- Primeiro item (cadastro novo) -->
                 <div class="numero-item" data-index="0">
-                    <div class="form-row">
-                        <div class="form-group" style="flex: 0 0 150px;">
+                    <div class="form-row flex-wrap">
+                        <div class="form-group" style="flex: 0 0 120px;">
                             <label>Tipo*</label>
                             <select name="tipo_numero[]" class="tipo-numero" onchange="toggleCampoNumero(this)">
                                 <option value="tombo">Tombo</option>
                                 <option value="serie">Série</option>
                             </select>
                         </div>
-                        <div class="form-group" style="flex: 1;">
+                        <div class="form-group" style="flex: 1; min-width: 140px;">
                             <label class="label-numero">Número do Tombo*</label>
                             <input type="text" name="numero[]" class="input-numero" required placeholder="Digite o número">
                         </div>
-                        <div class="form-group" style="flex: 0 0 100px; align-self: flex-end;">
+                        <div class="form-group" style="flex: 0 0 130px;">
+                            <label>Estado (físico)</label>
+                            <select name="estado_id[]">
+                                <option value="">-- Selecione --</option>
+                                {% for estado in estados %}
+                                <option value="{{ estado.id }}">{{ estado.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 0 0 120px;">
+                            <label>Status</label>
+                            <select name="status[]">
+                                <option value="Disponível" selected>Disponível</option>
+                                <option value="Em Uso">Em Uso</option>
+                                <option value="Manutenção">Manutenção</option>
+                                <option value="Bloqueado">Bloqueado</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 0 0 50px; align-self: flex-end;">
                             <button type="button" class="btn-remove" onclick="removerNumero(this)" style="display:none;">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </div>
                 </div>
+                {% endif %}
             </div>
 
             <button type="button" class="btn-add-numero" onclick="adicionarNumero()">
@@ -404,7 +492,7 @@ legend {
 </style>
 
 <script>
-let numeroIndex = 1;
+let numeroIndex = {% if action == 'edit' and product_items %}{{ product_items|length }}{% else %}1{% endif %};
 
 function toggleControles() {
     const controlaSerie = document.getElementById('controla_por_serie').checked;
@@ -441,24 +529,39 @@ function toggleCampoNumero(select) {
 
 function adicionarNumero() {
     const container = document.getElementById('lista-numeros');
+    const estadoTpl = document.getElementById('estado-options-template');
+    const estadoOpts = estadoTpl ? estadoTpl.innerHTML : '<option value="">-- Selecione --</option>';
     const novoItem = document.createElement('div');
     novoItem.className = 'numero-item';
     novoItem.dataset.index = numeroIndex;
     
     novoItem.innerHTML = `
-        <div class="form-row">
-            <div class="form-group" style="flex: 0 0 150px;">
+        <div class="form-row flex-wrap">
+            <div class="form-group" style="flex: 0 0 120px;">
                 <label>Tipo*</label>
                 <select name="tipo_numero[]" class="tipo-numero" onchange="toggleCampoNumero(this)">
                     <option value="tombo">Tombo</option>
                     <option value="serie">Série</option>
                 </select>
             </div>
-            <div class="form-group" style="flex: 1;">
+            <div class="form-group" style="flex: 1; min-width: 140px;">
                 <label class="label-numero">Número do Tombo*</label>
                 <input type="text" name="numero[]" class="input-numero" required placeholder="Digite o número">
             </div>
-            <div class="form-group" style="flex: 0 0 100px; align-self: flex-end;">
+            <div class="form-group" style="flex: 0 0 130px;">
+                <label>Estado (físico)</label>
+                <select name="estado_id[]">${estadoOpts}</select>
+            </div>
+            <div class="form-group" style="flex: 0 0 120px;">
+                <label>Status</label>
+                <select name="status[]">
+                    <option value="Disponível" selected>Disponível</option>
+                    <option value="Em Uso">Em Uso</option>
+                    <option value="Manutenção">Manutenção</option>
+                    <option value="Bloqueado">Bloqueado</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex: 0 0 50px; align-self: flex-end;">
                 <button type="button" class="btn-remove" onclick="removerNumero(this)">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -599,11 +702,17 @@ async function carregarUnidadesLotacao(section) {
     } catch (e) { console.error(e); }
 }
 
-// ✅ Carrega tipos ao abrir a página (modo edição)
+// ✅ Carrega tipos ao abrir a página (modo edição) e seleciona o tipo do produto
 document.addEventListener('DOMContentLoaded', function() {
     const categoryId = document.getElementById('category_id').value;
+    const productTypeId = '{{ product.type_id if product else "" }}';
     if (categoryId) {
-        carregarTipos();
+        carregarTipos().then(function() {
+            if (productTypeId) {
+                const typeSelect = document.getElementById('type_id');
+                if (typeSelect) typeSelect.value = productTypeId;
+            }
+        });
     }
     toggleControles();
 });
