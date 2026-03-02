@@ -1,0 +1,22 @@
+{% extends "eprotocolo/eprotocolo_base.html" %}
+
+{% block title %}Administrar Usuários - E-Protocolo{% endblock %}
+
+{% block eprotocolo_content %}
+<div class="admin-page">
+    <h1>Administrar Usuários</h1>
+    <p class="subtitle">Gestão de usuários do E-Protocolo.</p>
+    <div class="placeholder-content">
+        <p>Você pode acessar o cadastro completo de usuários pelo menu principal.</p>
+        <a href="/users" class="btn-link">Ir para Usuários</a>
+    </div>
+</div>
+<style>
+.admin-page { padding: 24px; }
+.admin-page h1 { margin: 0 0 8px 0; font-size: 24px; }
+.admin-page .subtitle { color: #6c757d; margin-bottom: 24px; }
+.placeholder-content { background: #f8f9fa; padding: 40px; border-radius: 8px; text-align: center; color: #6c757d; }
+.btn-link { display: inline-block; margin-top: 16px; padding: 10px 20px; background: #0d6efd; color: white !important; text-decoration: none; border-radius: 6px; }
+.btn-link:hover { background: #0b5ed7; color: white !important; }
+</style>
+{% endblock %}

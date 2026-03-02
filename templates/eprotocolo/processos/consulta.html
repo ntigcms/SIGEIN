@@ -1,0 +1,316 @@
+{% extends "eprotocolo/eprotocolo_base.html" %}
+
+{% block title %}Consulta - E-Protocolo{% endblock %}
+
+{% block eprotocolo_content %}
+<div class="consulta-page">
+    <div class="page-badge">CONSULTA</div>
+
+    <form method="get" action="/eprotocolo/processos/consulta" class="consulta-form" id="form-consulta">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="numero">N° INTERNO</label>
+                <input type="text" id="numero" name="numero" value="{{ numero or '' }}" placeholder="">
+            </div>
+            <div class="form-group">
+                <label for="ano">ANO</label>
+                <input type="text" id="ano" name="ano" value="{{ ano or '' }}" placeholder="">
+            </div>
+            <div class="form-group">
+                <label for="codigo">CÓDIGO</label>
+                <input type="text" id="codigo" name="codigo" value="{{ codigo or '' }}" placeholder="">
+            </div>
+            <div class="form-group">
+                <label for="numero_externo">N° DOC EXTERNO</label>
+                <input type="text" id="numero_externo" name="numero_externo" value="{{ numero_externo or '' }}" placeholder="">
+            </div>
+            <div class="form-group">
+                <label for="status">STATUS</label>
+                <select id="status" name="status">
+                    <option value="">SELECIONE</option>
+                    <option value="Em tramitação" {% if status == 'Em tramitação' %}selected{% endif %}>Em tramitação</option>
+                    <option value="Recebido" {% if status == 'Recebido' %}selected{% endif %}>Recebido</option>
+                    <option value="Assinado" {% if status == 'Assinado' %}selected{% endif %}>Assinado</option>
+                    <option value="Em edição" {% if status == 'Em edição' %}selected{% endif %}>Em edição</option>
+                    <option value="Arquivado" {% if status == 'Arquivado' %}selected{% endif %}>Arquivado</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="cpf_cnpj">CPF/CNPJ</label>
+                <input type="text" id="cpf_cnpj" name="cpf_cnpj" value="{{ cpf_cnpj or '' }}" placeholder="">
+            </div>
+            <div class="form-group flex-grow">
+                <label for="nome">NOME/RAZÃO SOCIAL</label>
+                <input type="text" id="nome" name="nome" value="{{ nome or '' }}" placeholder="">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="grupo">GRUPO</label>
+                <select id="grupo" name="grupo">
+                    <option value="">SELECIONE</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="assunto">ASSUNTO</label>
+                <select id="assunto" name="assunto">
+                    <option value="">SELECIONE</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="subassunto">SUBASSUNTO</label>
+                <select id="subassunto" name="subassunto">
+                    <option value="">SELECIONE</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row destinatario-row">
+            <div class="form-group">
+                <label for="consulta_estado">ESTADO</label>
+                <select id="consulta_estado" name="estado_id">
+                    <option value="">Selecione</option>
+                    {% for e in estados %}
+                    <option value="{{ e.id }}" {% if estado_id == e.id %}selected{% endif %}>{{ e.nome }} ({{ e.uf }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="consulta_municipio">MUNICÍPIO</label>
+                <select id="consulta_municipio" name="municipio_id" disabled>
+                    <option value="">Selecione</option>
+                    {% for m in municipios %}
+                    <option value="{{ m.id }}" {% if municipio_id == m.id %}selected{% endif %}>{{ m.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="orgao_id">ÓRGÃO DE CRIAÇÃO</label>
+                <select id="orgao_id" name="orgao_id" disabled>
+                    <option value="">Selecione</option>
+                    {% for o in orgaos %}
+                    <option value="{{ o.id }}" {% if orgao_id == o.id %}selected{% endif %}>{{ o.nome }}{% if o.sigla %} ({{ o.sigla }}){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="unidade_id">UNIDADE DE CRIAÇÃO</label>
+                <select id="unidade_id" name="unidade_id" disabled>
+                    <option value="">Selecione</option>
+                    {% for u in unidades %}
+                    <option value="{{ u.id }}" {% if unidade_id == u.id %}selected{% endif %}>{{ u.nome }}{% if u.sigla %} ({{ u.sigla }}){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="data_de">A PARTIR DE</label>
+                <input type="text" id="data_de" name="data_de" value="{{ data_de or '' }}" placeholder="dd/mm/aaaa">
+            </div>
+            <div class="form-group">
+                <label for="data_ate">ATÉ O DIA</label>
+                <input type="text" id="data_ate" name="data_ate" value="{{ data_ate or '' }}" placeholder="dd/mm/aaaa">
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-buscar">
+                <i class="fas fa-search"></i> BUSCAR
+            </button>
+            <button type="button" class="btn-limpar" onclick="limparConsulta()">
+                <i class="fas fa-broom"></i> LIMPAR
+            </button>
+        </div>
+    </form>
+
+    {% if mostra_resultados %}
+    <div class="resultados-section">
+        <h3>Resultados ({{ total }})</h3>
+        {% if processos %}
+        <div class="lista-processos">
+            {% for p in processos %}
+            <div class="processo-card">
+                <div class="processo-main">
+                    <div class="processo-numero">
+                        <a href="/eprotocolo/processos/{{ p.id }}" class="numero-link">{{ p.numero }}</a>
+                    </div>
+                    <div class="processo-info">
+                        <div class="processo-assunto">{{ p.assunto or 'Sem assunto' }}</div>
+                        <div class="processo-detalhes">
+                            <span>Requerente: {{ p.requerente or '-' }}</span>
+                            <span>Status: {{ p.status }}</span>
+                        </div>
+                    </div>
+                    <div class="processo-acoes">
+                        <a href="/eprotocolo/processos/{{ p.id }}" class="acao-btn" title="Visualizar"><i class="fas fa-eye"></i></a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-result">Nenhum processo encontrado com os critérios informados.</p>
+        {% endif %}
+    </div>
+    {% else %}
+    <p class="info-busca">Informe os critérios de busca e clique em <strong>BUSCAR</strong>.</p>
+    {% endif %}
+</div>
+
+<style>
+.consulta-page { padding: 24px; max-width: 1000px; margin: 0 auto; }
+.page-badge {
+    background: #0d6efd;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 24px;
+    display: inline-block;
+}
+.consulta-form {
+    background: #f8f9fa;
+    padding: 24px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+.form-row { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 16px; }
+.form-group { display: flex; flex-direction: column; min-width: 120px; }
+.form-group.flex-grow { flex: 1; min-width: 200px; }
+.form-group label { font-size: 12px; font-weight: 600; margin-bottom: 6px; color: #333; }
+.form-group input, .form-group select {
+    padding: 10px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+}
+.form-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
+.btn-buscar {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #0d6efd;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.btn-buscar:hover { background: #0b5ed7; }
+.btn-limpar {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #17a2b8;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.btn-limpar:hover { background: #138496; }
+.resultados-section { margin-top: 24px; }
+.resultados-section h3 { margin: 0 0 16px 0; font-size: 18px; }
+.lista-processos { display: flex; flex-direction: column; gap: 12px; }
+.processo-card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 16px;
+}
+.processo-main { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.numero-link { font-size: 18px; font-weight: 700; color: #0d6efd; text-decoration: none; }
+.numero-link:hover { text-decoration: underline; }
+.processo-assunto { font-weight: 600; margin-bottom: 4px; }
+.processo-detalhes { font-size: 13px; color: #6c757d; }
+.empty-result { color: #6c757d; padding: 24px; text-align: center; }
+.info-busca { color: #6c757d; padding: 24px; text-align: center; }
+</style>
+
+<script>
+function limparConsulta() {
+    document.getElementById('form-consulta').reset();
+    window.location = '/eprotocolo/processos/consulta';
+}
+
+// Cascata Estado -> Município -> Órgão -> Unidade (igual à tela de criação)
+document.addEventListener('DOMContentLoaded', function() {
+    const consultaEstado = document.getElementById('consulta_estado');
+    const consultaMunicipio = document.getElementById('consulta_municipio');
+    const orgaoSelect = document.getElementById('orgao_id');
+    const unidadeSelect = document.getElementById('unidade_id');
+
+    function resetCascata(apos) {
+        const sel = { estado: consultaEstado, municipio: consultaMunicipio, orgao: orgaoSelect, unidade: unidadeSelect };
+        const keys = ['estado', 'municipio', 'orgao', 'unidade'];
+        const idx = keys.indexOf(apos);
+        for (let i = idx + 1; i < keys.length; i++) {
+            const s = sel[keys[i]];
+            s.innerHTML = '<option value="">Selecione</option>';
+            s.disabled = true;
+        }
+    }
+
+    consultaEstado.addEventListener('change', async function() {
+        const id = this.value;
+        resetCascata('estado');
+        consultaMunicipio.disabled = !id;
+        if (!id) return;
+        const res = await fetch('/api/municipios/' + id);
+        const data = await res.json();
+        data.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.nome;
+            consultaMunicipio.appendChild(opt);
+        });
+        consultaMunicipio.disabled = false;
+    });
+
+    consultaMunicipio.addEventListener('change', async function() {
+        const id = this.value;
+        resetCascata('municipio');
+        orgaoSelect.disabled = !id;
+        if (!id) return;
+        const res = await fetch('/api/orgaos/' + id);
+        const data = await res.json();
+        data.forEach(o => {
+            const opt = document.createElement('option');
+            opt.value = o.id;
+            opt.textContent = o.nome + (o.sigla ? ' (' + o.sigla + ')' : '');
+            orgaoSelect.appendChild(opt);
+        });
+        orgaoSelect.disabled = false;
+    });
+
+    orgaoSelect.addEventListener('change', async function() {
+        const id = this.value;
+        resetCascata('orgao');
+        unidadeSelect.disabled = !id;
+        if (!id) return;
+        const res = await fetch('/api/unidades/' + id);
+        const data = await res.json();
+        data.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.textContent = u.nome + (u.sigla ? ' (' + u.sigla + ')' : '');
+            unidadeSelect.appendChild(opt);
+        });
+        unidadeSelect.disabled = false;
+    });
+
+    // Habilitar selects pré-preenchidos ao carregar (ex: retorno da busca)
+    if (consultaEstado.value) consultaMunicipio.disabled = false;
+    if (consultaMunicipio.value) orgaoSelect.disabled = false;
+    if (orgaoSelect.value) unidadeSelect.disabled = false;
+});
+</script>
+{% endblock %}

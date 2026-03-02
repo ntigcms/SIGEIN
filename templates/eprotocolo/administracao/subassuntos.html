@@ -1,0 +1,133 @@
+{% extends "eprotocolo/eprotocolo_base.html" %}
+
+{% block title %}Administrar Subassuntos - E-Protocolo{% endblock %}
+
+{% block eprotocolo_content %}
+<div class="admin-page">
+    <div class="nav-tabs">
+        <a href="/eprotocolo/administracao/grupos" class="nav-tab">Grupos</a>
+        <a href="/eprotocolo/administracao/assuntos" class="nav-tab">Assuntos</a>
+        <a href="/eprotocolo/administracao/subassuntos" class="nav-tab active">Subassuntos</a>
+    </div>
+    <div class="page-badge">SUBASSUNTOS (Categoria)</div>
+    <p class="page-desc">Subassuntos pertencem a um Assunto. Ex.: Assunto "Licitação" → Subassunto "Pregão Eletrônico".</p>
+
+    <div class="form-card">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="grupo_id">GRUPO</label>
+                <select id="grupo_id" name="grupo_id" class="form-control" onchange="carregarAssuntos()">
+                    <option value="">TODOS</option>
+                    {% for g in grupos %}
+                    <option value="{{ g.id }}" {% if grupo_id == g.id %}selected{% endif %}>{{ g.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="assunto_id">ASSUNTO</label>
+                <select id="assunto_id" name="assunto_id" class="form-control">
+                    <option value="">TODOS</option>
+                    {% for a in assuntos %}
+                    <option value="{{ a.id }}" {% if assunto_id == a.id %}selected{% endif %}>{{ a.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group flex-grow">
+                <label for="nome">NOME</label>
+                <input type="text" id="nome" name="nome" class="form-control" value="{{ nome_filtro }}" placeholder="Filtrar por nome">
+            </div>
+            <a href="/eprotocolo/administracao/subassuntos/cadastrar" class="btn-cadastrar">CADASTRAR</a>
+        </div>
+        <div class="form-row">
+            <button type="button" class="btn-buscar" onclick="buscar()">
+                <i class="fas fa-search"></i> BUSCAR
+            </button>
+        </div>
+    </div>
+
+    <div class="resultados-section">
+        {% if subassuntos %}
+        <table class="table-resultados">
+            <thead>
+                <tr>
+                    <th>Grupo</th>
+                    <th>Assunto</th>
+                    <th>Subassunto</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in subassuntos %}
+                <tr>
+                    <td>{{ s.assunto.grupo.nome }}</td>
+                    <td>{{ s.assunto.nome }}</td>
+                    <td>{{ s.nome }}</td>
+                    <td>
+                        <a href="/eprotocolo/administracao/subassuntos/{{ s.id }}/editar" class="btn-action">Editar</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-result">Nenhum subassunto encontrado. Cadastre um novo subassunto.</p>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.admin-page { padding: 24px; max-width: 900px; margin: 0 auto; }
+.page-badge { background: #0d6efd; color: white; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 8px; display: inline-block; }
+.page-desc { color: #6c757d; font-size: 13px; margin: 0 0 24px 0; }
+.form-card { background: #f8f9fa; padding: 24px; border-radius: 8px; margin-bottom: 24px; }
+.form-row { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 16px; }
+.form-row:last-of-type { margin-bottom: 0; }
+.form-group { display: flex; flex-direction: column; }
+.form-group label { font-size: 12px; font-weight: 600; margin-bottom: 6px; color: #333; }
+.form-control { padding: 10px 12px; border: 1px solid #ced4da; border-radius: 6px; font-size: 14px; min-width: 180px; }
+.form-group.flex-grow { flex: 1; min-width: 200px; }
+.btn-cadastrar { margin-bottom: 21px; background: #0d6efd; color: white !important; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.btn-cadastrar:hover { background: #0b5ed7; color: white !important; }
+.btn-buscar { display: inline-flex; align-items: center; gap: 8px; background: #0d6efd; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-buscar:hover { background: #0b5ed7; }
+.table-resultados { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
+.table-resultados th, .table-resultados td { padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6; }
+.table-resultados th { background: #f8f9fa; font-size: 13px; font-weight: 600; }
+.btn-action { color: #0d6efd; text-decoration: none; font-size: 13px; }
+.btn-action:hover { text-decoration: underline; }
+.empty-result { color: #6c757d; padding: 24px; text-align: center; }
+.nav-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+.nav-tab { padding: 8px 16px; background: #e9ecef; border-radius: 6px; text-decoration: none; color: #495057; font-size: 14px; }
+.nav-tab:hover { background: #dee2e6; }
+.nav-tab.active { background: #0d6efd; color: white; }
+</style>
+
+<script>
+async function carregarAssuntos() {
+    const grupoId = document.getElementById('grupo_id').value;
+    const sel = document.getElementById('assunto_id');
+    sel.innerHTML = '<option value="">TODOS</option>';
+    if (!grupoId) return;
+    const res = await fetch('/api/assuntos/' + grupoId);
+    const data = await res.json();
+    data.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.id;
+        opt.textContent = a.nome;
+        sel.appendChild(opt);
+    });
+}
+
+function buscar() {
+    const params = new URLSearchParams();
+    const grupoId = document.getElementById('grupo_id').value;
+    const assuntoId = document.getElementById('assunto_id').value;
+    const nome = document.getElementById('nome').value.trim();
+    if (grupoId) params.set('grupo_id', grupoId);
+    if (assuntoId) params.set('assunto_id', assuntoId);
+    if (nome) params.set('nome', nome);
+    window.location = '/eprotocolo/administracao/subassuntos?' + params.toString();
+}
+document.getElementById('nome').addEventListener('keypress', function(e) { if (e.key === 'Enter') buscar(); });
+</script>
+{% endblock %}

@@ -406,7 +406,70 @@ class CircularDestinatario(Base):
     arquivado = Column(Boolean, default=False)
     
     circular = relationship("Circular", back_populates="destinatarios")
+
+
+class Requerente(Base):
+    """Requerentes para processos do E-Protocolo"""
+    __tablename__ = "requerentes"
     
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(200), nullable=False)
+    tipo_documento = Column(String(20), nullable=False)  # CPF, CNPJ, RG
+    numero_documento = Column(String(20), nullable=False)
+    email = Column(String(200))
+    cep = Column(String(10), nullable=False)
+    endereco = Column(String(300), nullable=False)
+    numero_endereco = Column(String(20), nullable=False)
+    bairro = Column(String(100), nullable=False)
+    complemento = Column(String(100))
+    cidade = Column(String(200), nullable=False)
+    uf = Column(String(2), nullable=False)
+    telefone1 = Column(String(20))
+    telefone2 = Column(String(20))
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# =====================================================
+# CATEGORIA (GRUPO > ASSUNTO > SUBASSUNTO)
+# =====================================================
+
+class Grupo(Base):
+    """Grupo de categorização (nível superior)"""
+    __tablename__ = "grupos"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(200), nullable=False)
+    ativo = Column(Boolean, default=True)
+    
+    assuntos = relationship("Assunto", back_populates="grupo")
+
+
+class Assunto(Base):
+    """Assunto vinculado a um Grupo"""
+    __tablename__ = "assuntos"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    grupo_id = Column(Integer, ForeignKey("grupos.id"), nullable=False)
+    nome = Column(String(200), nullable=False)
+    ativo = Column(Boolean, default=True)
+    
+    grupo = relationship("Grupo", back_populates="assuntos")
+    subassuntos = relationship("Subassunto", back_populates="assunto")
+
+
+class Subassunto(Base):
+    """Subassunto vinculado a um Assunto"""
+    __tablename__ = "subassuntos"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    assunto_id = Column(Integer, ForeignKey("assuntos.id"), nullable=False)
+    nome = Column(String(200), nullable=False)
+    ativo = Column(Boolean, default=True)
+    
+    assunto = relationship("Assunto", back_populates="subassuntos")
+
+
 # =====================================================
 # HIERARQUIA GEOGRÁFICA/ADMINISTRATIVA
 # =====================================================
