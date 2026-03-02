@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Categoria{% endblock %}
+{% block title %}{{ 'Editar' if action == 'edit' else 'Cadastrar' }} Categoria{% endblock %}
 
 {% block content %}
 <div class="form-container">
@@ -21,43 +21,39 @@
             <legend>Informações da Categoria</legend>
 
             <div class="form-grid">
-
-                <!-- Nome da Categoria -->
                 <div class="form-group full">
                     <label for="nome">Nome da Categoria *</label>
-                    <input type="text"
-                           id="nome"
-                           name="nome"
-                           placeholder="Ex: Informática, Periféricos"
+                    <input type="text" id="nome" name="nome" required
                            value="{% if action == 'edit' %}{{ category.nome }}{% endif %}"
-                           required>
+                           placeholder="Ex: Informática, Periféricos">
                 </div>
-
-                <!-- Descrição -->
                 <div class="form-group full">
                     <label for="descricao">Descrição</label>
-                    <textarea id="descricao"
-                              name="descricao"
-                              placeholder="Descrição opcional">{% if action == 'edit' %}{{ category.descricao }}{% endif %}</textarea>
+                    <textarea id="descricao" name="descricao" rows="3" placeholder="Descrição opcional"
+                              style="padding: 8px 12px; border: 1px solid #aaa; border-radius: 6px; font-size: 14px;">{% if action == 'edit' %}{{ category.descricao or '' }}{% endif %}</textarea>
                 </div>
-
             </div>
         </fieldset>
 
-        <!-- Ações -->
         <div class="form-actions">
             <button type="submit" class="btn-primary">
-                {% if action == "edit" %}
-                    Salvar Alterações
-                {% else %}
-                    Cadastrar
-                {% endif %}
+                {% if action == "edit" %}Atualizar{% else %}Cadastrar{% endif %}
             </button>
-
             <a href="/categories" class="btn-secondary">Cancelar</a>
         </div>
 
     </form>
 
 </div>
+
+<style>
+.form-card fieldset { border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin-bottom: 20px; background: #fafafa; }
+.form-card legend { font-weight: 600; color: #0d6efd; padding: 0 10px; font-size: 16px; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
+.form-group { display: flex; flex-direction: column; }
+.form-group.full { grid-column: 1 / -1; }
+.form-group label { font-size: 13px; font-weight: 600; color: #004080; margin-bottom: 5px; }
+.form-group input, .form-group textarea { padding: 8px 12px; border: 1px solid #aaa; border-radius: 6px; font-size: 14px; }
+.form-actions { margin-top: 20px; display: flex; gap: 10px; }
+</style>
 {% endblock %}

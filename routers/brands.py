@@ -16,7 +16,7 @@ def list_brands(request: Request, db: Session = Depends(get_db), user: str = Dep
     if not user:
         return RedirectResponse("/login")
 
-    brands = db.query(Brand).all()
+    brands = db.query(Brand).order_by(Brand.nome).all()
     return templates.TemplateResponse(
         "brands.html",
         {"request": request, "brands": brands, "user": user}
