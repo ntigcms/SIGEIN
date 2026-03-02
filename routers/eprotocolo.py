@@ -3,10 +3,9 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import get_current_user
-from fastapi.templating import Jinja2Templates
+from shared_templates import templates
 
 router = APIRouter(prefix="/eprotocolo", tags=["E-Protocolo"])
-templates = Jinja2Templates(directory="templates")
 
 
 # ========================================

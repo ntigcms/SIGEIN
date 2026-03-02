@@ -5,10 +5,9 @@ from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import get_current_user, registrar_log
 from models import Brand
-from fastapi.templating import Jinja2Templates
+from shared_templates import templates
 
 router = APIRouter(prefix="/brands", tags=["Brands"])
-templates = Jinja2Templates(directory="templates")
 
 
 # LISTAR MARCAS

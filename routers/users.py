@@ -1,17 +1,16 @@
 from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
-from fastapi.templating import Jinja2Templates
 from starlette.status import HTTP_302_FOUND
 from database import get_db
 from dependencies import get_current_user, registrar_log
 from models import User, Municipio, Orgao, Unidade
+from shared_templates import templates
 from typing import Optional
 import re
 import hashlib
 
 router = APIRouter(prefix="/users", tags=["Users"])
-templates = Jinja2Templates(directory="templates")
 
 
 # ========================================
@@ -53,6 +52,26 @@ def hash_senha(senha: str) -> str:
 def limpar_cpf(cpf: str) -> str:
     """Remove formatação do CPF"""
     return re.sub(r'\D', '', cpf)
+
+
+def _form_data_from_request(nome, cpf, email, municipio_id, orgao_id, unidade_id, perfil, status, db: Session):
+    """Monta dict para reexibir o formulário com valores preenchidos."""
+    estado_id = None
+    if municipio_id and db:
+        m = db.query(Municipio).filter(Municipio.id == municipio_id).first()
+        if m:
+            estado_id = m.estado_id
+    return {
+        "nome": nome or "",
+        "cpf": cpf or "",
+        "email": email or "",
+        "municipio_id": municipio_id or "",
+        "orgao_id": orgao_id or "",
+        "unidade_id": unidade_id or "",
+        "estado_id": estado_id or "",
+        "perfil": perfil or "",
+        "status": status or "",
+    }
 
 
 # ========================================
@@ -163,19 +182,39 @@ def add_user(
     cpf_limpo = limpar_cpf(cpf)
 
     if not validar_cpf(cpf_limpo):
-        return HTMLResponse("<script>alert('CPF inválido!'); window.history.back();</script>", status_code=400)
+        form_data = _form_data_from_request(nome, cpf, email, municipio_id, orgao_id, unidade_id, perfil, status, db)
+        return templates.TemplateResponse("user_form.html", {
+            "request": request, "user": None, "action": "add", "current_user": current_user,
+            "form_data": form_data, "errors": ["CPF inválido. Verifique o número digitado."]
+        })
 
     if senha != confirmar_senha:
-        return HTMLResponse("<script>alert('As senhas não coincidem!'); window.history.back();</script>", status_code=400)
+        form_data = _form_data_from_request(nome, cpf, email, municipio_id, orgao_id, unidade_id, perfil, status, db)
+        return templates.TemplateResponse("user_form.html", {
+            "request": request, "user": None, "action": "add", "current_user": current_user,
+            "form_data": form_data, "errors": ["As senhas não coincidem."]
+        })
 
     if len(senha) < 6:
-        return HTMLResponse("<script>alert('A senha deve ter no mínimo 6 caracteres!'); window.history.back();</script>", status_code=400)
+        form_data = _form_data_from_request(nome, cpf, email, municipio_id, orgao_id, unidade_id, perfil, status, db)
+        return templates.TemplateResponse("user_form.html", {
+            "request": request, "user": None, "action": "add", "current_user": current_user,
+            "form_data": form_data, "errors": ["A senha deve ter no mínimo 6 caracteres."]
+        })
 
     if db.query(User).filter(User.cpf == cpf_limpo).first():
-        return HTMLResponse("<script>alert('CPF já cadastrado!'); window.history.back();</script>", status_code=400)
+        form_data = _form_data_from_request(nome, cpf, email, municipio_id, orgao_id, unidade_id, perfil, status, db)
+        return templates.TemplateResponse("user_form.html", {
+            "request": request, "user": None, "action": "add", "current_user": current_user,
+            "form_data": form_data, "errors": ["Este CPF já está cadastrado."]
+        })
 
     if db.query(User).filter(User.email == email).first():
-        return HTMLResponse("<script>alert('E-mail já cadastrado!'); window.history.back();</script>", status_code=400)
+        form_data = _form_data_from_request(nome, cpf, email, municipio_id, orgao_id, unidade_id, perfil, status, db)
+        return templates.TemplateResponse("user_form.html", {
+            "request": request, "user": None, "action": "add", "current_user": current_user,
+            "form_data": form_data, "errors": ["Este e-mail já está cadastrado."]
+        })
 
     if user_obj.perfil == "admin_municipal" and municipio_id != user_obj.municipio_id:
         raise HTTPException(status_code=403, detail="Você só pode criar usuários do seu município")
@@ -295,47 +334,48 @@ def edit_user(
     
     # ✅ Validações
     cpf_limpo = limpar_cpf(cpf)
-    
+    form_data = _form_data_from_request(nome, cpf, email, municipio_id, orgao_id, unidade_id, perfil, status, db)
+
     if not validar_cpf(cpf_limpo):
-        return HTMLResponse(
-            "<script>alert('CPF inválido!'); window.history.back();</script>",
-            status_code=400
-        )
-    
+        return templates.TemplateResponse("user_form.html", {
+            "request": request, "user": user, "action": "edit", "current_user": current_user,
+            "form_data": form_data, "errors": ["CPF inválido. Verifique o número digitado."]
+        })
+
     # ✅ Verifica se CPF já existe (exceto o próprio usuário)
     cpf_existe = db.query(User).filter(
         User.cpf == cpf_limpo,
         User.id != user_id
     ).first()
     if cpf_existe:
-        return HTMLResponse(
-            "<script>alert('CPF já cadastrado por outro usuário!'); window.history.back();</script>",
-            status_code=400
-        )
-    
+        return templates.TemplateResponse("user_form.html", {
+            "request": request, "user": user, "action": "edit", "current_user": current_user,
+            "form_data": form_data, "errors": ["Este CPF já está cadastrado para outro usuário."]
+        })
+
     # ✅ Verifica se email já existe (exceto o próprio usuário)
     email_existe = db.query(User).filter(
         User.email == email,
         User.id != user_id
     ).first()
     if email_existe:
-        return HTMLResponse(
-            "<script>alert('E-mail já cadastrado por outro usuário!'); window.history.back();</script>",
-            status_code=400
-        )
-    
+        return templates.TemplateResponse("user_form.html", {
+            "request": request, "user": user, "action": "edit", "current_user": current_user,
+            "form_data": form_data, "errors": ["Este e-mail já está cadastrado para outro usuário."]
+        })
+
     # ✅ Valida senha (se fornecida)
     if senha:
         if senha != confirmar_senha:
-            return HTMLResponse(
-                "<script>alert('As senhas não coincidem!'); window.history.back();</script>",
-                status_code=400
-            )
+            return templates.TemplateResponse("user_form.html", {
+                "request": request, "user": user, "action": "edit", "current_user": current_user,
+                "form_data": form_data, "errors": ["As senhas não coincidem."]
+            })
         if len(senha) < 6:
-            return HTMLResponse(
-                "<script>alert('A senha deve ter no mínimo 6 caracteres!'); window.history.back();</script>",
-                status_code=400
-            )
+            return templates.TemplateResponse("user_form.html", {
+                "request": request, "user": user, "action": "edit", "current_user": current_user,
+                "form_data": form_data, "errors": ["A senha deve ter no mínimo 6 caracteres."]
+            })
     
     # ✅ ATUALIZA CAMPOS
     user.nome = nome

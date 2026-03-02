@@ -8,11 +8,10 @@ from models import (
     Product, EquipmentType, Brand, Category, EquipmentState,
     Item, Movement, Stock, User, Unidade, Orgao, Municipio, Estado,
 )
-from fastapi.templating import Jinja2Templates
+from shared_templates import templates
 from datetime import datetime
 
 router = APIRouter(prefix="/products", tags=["Products"])
-templates = Jinja2Templates(directory="templates")
 
 
 def _user_obj(db: Session, user: str):

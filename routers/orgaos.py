@@ -5,11 +5,10 @@ from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
 from dependencies import get_current_user, registrar_log
-from fastapi.templating import Jinja2Templates
 from models import User, Orgao, Municipio, Estado
+from shared_templates import templates
 
 router = APIRouter(prefix="/orgaos", tags=["Órgãos"])
-templates = Jinja2Templates(directory="templates")
 
 
 # LISTAR ÓRGÃOS
