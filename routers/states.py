@@ -16,7 +16,7 @@ def list_states(request: Request, db: Session = Depends(get_db), user: str = Dep
     if not user:
         return RedirectResponse("/login")
 
-    states = db.query(EquipmentState).all()
+    states = db.query(EquipmentState).order_by(EquipmentState.nome).all()
     return templates.TemplateResponse(
         "states.html",
         {"request": request, "states": states, "user": user}

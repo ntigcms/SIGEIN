@@ -22,7 +22,7 @@ def list_equipment_types(request: Request, db: Session = Depends(get_db), user: 
     if not user:
         return RedirectResponse("/login")
 
-    tipos = db.query(EquipmentType).all()
+    tipos = db.query(EquipmentType).order_by(EquipmentType.nome).all()
     return templates.TemplateResponse(
         "equipment_types.html",
         {"request": request, "equipment_types": tipos, "user": user}
