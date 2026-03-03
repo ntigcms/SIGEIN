@@ -325,14 +325,21 @@ class Processo(Base):
     orgao_atual_id = Column(Integer, ForeignKey("orgaos.id"), nullable=False)
     unidade_atual_id = Column(Integer, ForeignKey("unidades.id"), nullable=False)
     
+    # Status: Em tramitação | Recebido | Em edição | Assinado
     status = Column(String(50), default="Em tramitação")
     urgente = Column(Boolean, default=False)
     nivel_acesso = Column(String(20), default="Público")  # Público/Restrito
+    
+    # Controle de leitura (aba "Lidos" / "Não lidos")
+    lido_at = Column(DateTime, nullable=True)
+    # Atribuição (aba "Não atribuídos" / "Atribuídos")
+    atribuido_to_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(Integer, ForeignKey("users.id"))
     
     # Relacionamentos
+    atribuido_to = relationship("User", foreign_keys=[atribuido_to_id])
     municipio_origem = relationship("Municipio", foreign_keys=[municipio_origem_id])
     municipio_atual = relationship("Municipio", foreign_keys=[municipio_atual_id])
     orgao_origem = relationship("Orgao", foreign_keys=[orgao_origem_id])
@@ -341,7 +348,20 @@ class Processo(Base):
     unidade_atual = relationship("Unidade", foreign_keys=[unidade_atual_id])
     
     tramites = relationship("Tramite", back_populates="processo")
-    creator = relationship("User")
+    assinantes = relationship("ProcessoAssinante", back_populates="processo")
+    creator = relationship("User", foreign_keys=[created_by])
+
+
+class ProcessoAssinante(Base):
+    """Assinantes do processo (usuários que devem assinar)"""
+    __tablename__ = "processo_assinantes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    processo_id = Column(Integer, ForeignKey("processos.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    processo = relationship("Processo", back_populates="assinantes")
+    user = relationship("User")
 
 
 class Tramite(Base):
@@ -369,6 +389,10 @@ class Tramite(Base):
     
     processo = relationship("Processo", back_populates="tramites")
     usuario = relationship("User")
+    orgao_origem = relationship("Orgao", foreign_keys=[orgao_origem_id])
+    unidade_origem = relationship("Unidade", foreign_keys=[unidade_origem_id])
+    orgao_destino = relationship("Orgao", foreign_keys=[orgao_destino_id])
+    unidade_destino = relationship("Unidade", foreign_keys=[unidade_destino_id])
 
 
 class Circular(Base):

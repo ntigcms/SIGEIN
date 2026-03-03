@@ -41,8 +41,9 @@ from shared_templates import templates
 app.state.templates = templates
 
 # ========================================
-# 5. DATABASE
+# 5. DATABASE (import models para registrar todas as tabelas)
 # ========================================
+import models  # noqa: F401 - registra modelos no Base.metadata
 Base.metadata.create_all(bind=engine)
 
 # ========================================
