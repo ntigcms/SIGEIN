@@ -77,7 +77,7 @@
         </div>
     </div>
 
-    <div style="display:flex; align-items:center; margin-top:18px;">
+    <div style="display:flex; align-items:center; ">
         <button id="clear-filters" class="clear-btn">🧹 Limpar Filtros</button>
     </div>
 
@@ -107,12 +107,12 @@
         <tr>
             <td>{{ m.id }}</td>
             <td>{{ m.product.type.nome if m.product else '-' }}</td>
-            <td>{{ m.unit_origem.name if m.unit_origem else '-' }}</td>
-            <td>{{ m.unit_destino.name if m.unit_destino else '-' }}</td>
+            <td>{{ m.unit_origem.nome if m.unit_origem else '-' }}</td>
+            <td>{{ m.unit_destino.nome if m.unit_destino else '-' }}</td>
             <td>{{ m.item.num_tombo_ou_serie if m.item and not m.item.tombo else '-' }}</td>
             <td>{{ m.item.num_tombo_ou_serie if m.item and m.item.tombo else '-' }}</td>
             <td>{{ m.tipo }}</td>
-            <td>{{ m.user.username }}</td>
+            <td>{{ m.user.nome if m.user else '-' }}</td>
             <td class="data-utc" data-utc="{{ m.data.isoformat() }}">
                 {{ m.data.strftime('%d/%m/%Y %H:%M') }}
             </td>
@@ -174,7 +174,10 @@ function toggleAll(source) {
 $(document).ready(function() {
     var table = $('#movementsTable').DataTable({
         order: [[8, "desc"]],
-        columnDefs: [{ orderable: false, targets: [0,9] }],
+        columnDefs: [
+                { orderable: false, targets: [0,9] },
+                { visible: false, targets: [0] }
+            ],
         language: {
             emptyTable: "Nenhuma movimentação encontrada",
             info: "Mostrando _START_ a _END_ de _TOTAL_",

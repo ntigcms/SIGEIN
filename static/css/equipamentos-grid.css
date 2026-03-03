@@ -39,7 +39,7 @@
 
 .search-container .options {
     position: absolute;
-    top:55px; left:0; right:0;
+    top:44px; left:0; right:0;
     margin-top: 2px;
     width: 100%;
     max-height: 200px;
@@ -141,12 +141,13 @@
     background-color: #cc0000;
     color: #ffffff;
     border: none;
-    padding: 8px 15px;
+    padding: 12px 15px;
     border-radius: 6px;
     cursor: pointer;
     font-size: 13px;
     font-weight: bold;
     transition: background-color 0.3s;
+    margin-bottom: 10px;
 }
 
 .clear-btn:hover {

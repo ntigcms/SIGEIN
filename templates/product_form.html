@@ -335,19 +335,17 @@
         <fieldset>
             <legend>Informações Adicionais</legend>
             
-            <div class="form-row">
+            <div class="form-row form-row-three">
                 <div class="form-group">
                     <label for="data_aquisicao">Data de Aquisição</label>
                     <input type="date" name="data_aquisicao" id="data_aquisicao"
                            value="{{ item.data_aquisicao if item and item.data_aquisicao else '' }}">
                 </div>
-
                 <div class="form-group">
-                    <label>Valor</label>
+                    <label for="valor_aquisicao">Valor</label>
                     <input type="text" name="valor_aquisicao" id="valor_aquisicao" placeholder="R$ 0,00"
-                    value="{{ 'R$ {:,.2f}'.format(item.valor_aquisicao).replace(',', 'X').replace('.', ',').replace('X', '.') if item and item.valor_aquisicao }}">
+                           value="{{ 'R$ {:,.2f}'.format(item.valor_aquisicao).replace(',', 'X').replace('.', ',').replace('X', '.') if item and item.valor_aquisicao }}">
                 </div>
-
                 <div class="form-group">
                     <label for="garantia_ate">Garantia até</label>
                     <input type="date" name="garantia_ate" id="garantia_ate"
@@ -387,8 +385,21 @@ legend {
 .form-row {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+    align-items: end;
+}
+.form-row-three {
+    grid-template-columns: repeat(3, 1fr);
     gap: 15px;
     margin-bottom: 15px;
+    align-items: start;
+}
+.form-row-three .form-group {
+    min-height: 100%;
+}
+.form-row-three .form-group input {
+    height: 38px;
+    box-sizing: border-box;
 }
 
 .form-group {
@@ -451,6 +462,7 @@ legend {
     border-radius: 6px;
     cursor: pointer;
     width: 100%;
+    margin-bottom: 20px;
 }
 
 .btn-remove:hover {
