@@ -38,31 +38,31 @@
     <div class="tabs">
         {% set tab_params = 'por_pagina=' ~ por_pagina %}
         <a href="?aba=todos&{{ tab_params }}" class="tab {% if aba == 'todos' %}active{% endif %}">
-            Todos <span class="badge">{{ cnt_todos }}</span>
+            Todos {% if cnt_todos > 0 %}<span class="badge">{{ cnt_todos }}</span>{% endif %}
         </a>
         <a href="?aba=assinados&{{ tab_params }}" class="tab {% if aba == 'assinados' %}active{% endif %}">
-            Assinados
+            Assinados {% if cnt_assinados > 0 %}<span class="badge">{{ cnt_assinados }}</span>{% endif %}
         </a>
         <a href="?aba=a_assinar&{{ tab_params }}" class="tab {% if aba == 'a_assinar' %}active{% endif %}">
-            A assinar
+            A assinar {% if cnt_a_assinar > 0 %}<span class="badge">{{ cnt_a_assinar }}</span>{% endif %}
         </a>
         <a href="?aba=recebidos&{{ tab_params }}" class="tab {% if aba == 'recebidos' %}active{% endif %}">
-            Recebidos
+            Recebidos {% if cnt_recebidos > 0 %}<span class="badge">{{ cnt_recebidos }}</span>{% endif %}
         </a>
         <a href="?aba=em_edicao&{{ tab_params }}" class="tab {% if aba == 'em_edicao' %}active{% endif %}">
-            Em edição
+            Em edição {% if cnt_em_edicao > 0 %}<span class="badge">{{ cnt_em_edicao }}</span>{% endif %}
         </a>
         <a href="?aba=urgentes&{{ tab_params }}" class="tab {% if aba == 'urgentes' %}active{% endif %}">
-            Urgentes <span class="badge">{{ cnt_urgentes }}</span>
+            Urgentes {% if cnt_urgentes > 0 %}<span class="badge">{{ cnt_urgentes }}</span>{% endif %}
         </a>
         <a href="?aba=nao_lidos&{{ tab_params }}" class="tab {% if aba == 'nao_lidos' %}active{% endif %}">
-            Não lidos
+            Não lidos {% if cnt_nao_lidos > 0 %}<span class="badge">{{ cnt_nao_lidos }}</span>{% endif %}
         </a>
         <a href="?aba=lidos&{{ tab_params }}" class="tab {% if aba == 'lidos' %}active{% endif %}">
-            Lidos
+            Lidos {% if cnt_lidos > 0 %}<span class="badge">{{ cnt_lidos }}</span>{% endif %}
         </a>
         <a href="?aba=nao_atribuidos&{{ tab_params }}" class="tab {% if aba == 'nao_atribuidos' %}active{% endif %}">
-            Não atribuídos
+            Não atribuídos {% if cnt_nao_atribuidos > 0 %}<span class="badge">{{ cnt_nao_atribuidos }}</span>{% endif %}
         </a>
     </div>
 
@@ -71,7 +71,8 @@
         <div class="processo-card">
             <div class="processo-main">
                 <div class="processo-numero">
-                    <a href="/eprotocolo/processos/{{ p.id }}" class="numero-link">{{ p.numero }}</a>
+                    <a href="/eprotocolo/processos/{{ p.id }}/visualizar" class="numero-link">{{ p.numero }}</a>
+                    <span class="processo-status-badge">{{ p.status or 'Em tramitação' }}</span>
                     <button type="button" class="btn-expandir" title="Expandir"><i class="fas fa-plus"></i></button>
                 </div>
                 <div class="processo-info">
@@ -83,12 +84,12 @@
                     <div class="processo-meta">
                         <span class="badge-tempo">{{ p.created_at | tempo_recebido }}</span>
                         <span>Enviado por: {{ p.creator.nome if p.creator else '-' }}</span>
-                        <span class="assinaturas"><i class="fas fa-pen"></i> Assinaturas: -</span>
+                        <span class="assinaturas"><i class="fas fa-pen"></i> Assinaturas: {% if p.assinantes %}{% for a in p.assinantes %}{{ a.user.nome if a.user else '-' }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}-{% endif %}</span>
                     </div>
                 </div>
                 <div class="processo-acoes">
                     <button type="button" class="acao-btn" title="Mensagens"><i class="fas fa-envelope"></i></button>
-                    <button type="button" class="acao-btn" title="Visualizar"><i class="fas fa-eye"></i></button>
+                    <a href="/eprotocolo/processos/{{ p.id }}/visualizar" class="acao-btn" title="Visualizar"><i class="fas fa-eye"></i></a>
                     <button type="button" class="acao-btn" title="Tramitar"><i class="fas fa-arrow-right"></i></button>
                     <button type="button" class="acao-btn" title="Urgente"><i class="fas fa-exclamation-triangle"></i></button>
                     <a href="#" class="link-previsao">Pré-visualizar</a>
@@ -118,7 +119,7 @@
 
 <style>
 .caixa-processos {
-    max-width: 1100px;
+    max-width: 1600px;
     margin: 0 auto;
     padding: 24px;
     background: #fff;
@@ -152,9 +153,20 @@
     cursor: pointer;
     font-size: 14px;
     border-radius: 4px;
+    color: #1a1a1a;
 }
 
 .font-btn:hover { background: #e0e0e0; }
+
+.font-btn.active {
+    background: #0d6efd;
+    color: white;
+    border-color: #0d6efd;
+}
+
+.caixa-processos.font-size-1 { font-size: 13px; }
+.caixa-processos.font-size-2 { font-size: 14px; }
+.caixa-processos.font-size-3 { font-size: 16px; }
 
 .toolbar {
     display: flex;
@@ -189,7 +201,8 @@
     border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
-    color: black
+    color: black;
+    margin-bottom: 11px;
 }
 
 .btn-atualizar:hover { 
@@ -278,9 +291,9 @@
 
 .processo-main {
     display: grid;
-    grid-template-columns: 120px 1fr auto;
-    gap: 20px;
-    align-items: flex-start;
+    grid-template-columns: 140px 1fr minmax(220px, auto);
+    gap: 24px;
+    align-items: center;
 }
 
 .processo-numero {
@@ -297,6 +310,19 @@
 }
 
 .numero-link:hover { text-decoration: underline; }
+
+.processo-status-badge {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-radius: 6px;
+    background: #e7f1ff;
+    color: #0d6efd;
+}
 
 .btn-expandir {
     background: none;
@@ -344,9 +370,11 @@
 
 .processo-acoes {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 8px;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
 }
 
 .acao-btn {
@@ -354,16 +382,20 @@
     border: none;
     color: #6c757d;
     cursor: pointer;
-    padding: 8px;
+    padding: 8px 10px;
     font-size: 16px;
 }
 
 .acao-btn:hover { color: #0d6efd; }
 
+a.acao-btn { text-decoration: none; }
+
 .link-previsao {
     font-size: 13px;
     color: #0d6efd;
     text-decoration: none;
+    white-space: nowrap;
+    margin-left: 8px;
 }
 
 .link-previsao:hover { text-decoration: underline; }
@@ -417,7 +449,7 @@
 
 @media (max-width: 768px) {
     .processo-main { grid-template-columns: 1fr; }
-    .processo-acoes { flex-direction: row; align-self: flex-end; }
+    .processo-acoes { flex-wrap: wrap; justify-content: flex-start; }
 }
 </style>
 
@@ -428,5 +460,28 @@ function atualizarPorPagina(val) {
     url.searchParams.set('pagina', '1');
     window.location = url;
 }
+
+(function() {
+    const container = document.querySelector('.caixa-processos');
+    const storageKey = 'caixa-font-size';
+    var currentSize = localStorage.getItem(storageKey) || '2';
+
+    function applySize(size) {
+        container.classList.remove('font-size-1', 'font-size-2', 'font-size-3');
+        container.classList.add('font-size-' + size);
+        document.querySelectorAll('.font-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.getAttribute('data-size') === size);
+        });
+        localStorage.setItem(storageKey, size);
+    }
+
+    document.querySelectorAll('.font-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            applySize(this.getAttribute('data-size'));
+        });
+    });
+
+    applySize(currentSize);
+})();
 </script>
 {% endblock %}

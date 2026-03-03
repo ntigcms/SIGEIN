@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Request, Depends, Query
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi import Form
 from models import Requerente
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 from database import get_db
 from dependencies import get_current_user
 from shared_templates import templates
-from models import Estado, Municipio, User, Processo, Orgao, Unidade, Grupo, Assunto, Subassunto
+from models import Estado, Municipio, User, Processo, ProcessoAssinante, Tramite, Orgao, Unidade, Grupo, Assunto, Subassunto
 from datetime import datetime
 
 router = APIRouter(prefix="/eprotocolo", tags=["E-Protocolo"])
@@ -60,25 +61,57 @@ def processos_criar(
     )
 
 
+PERFIS_ASSINANTES = ("master", "admin_municipal", "gestor_protocolo", "gestor_geral")
+
+
+@router.get("/api/assinantes-elegiveis")
+def api_assinantes_elegiveis(
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    """Retorna usuários do mesmo órgão/unidade do usuário logado com perfil Master, Admin Municipal, Gestor de Protocolo ou Gestor Geral (para seleção como assinantes)."""
+    if not user:
+        return JSONResponse({"error": "Não autorizado"}, status_code=401)
+    u = db.query(User).filter(User.email == user).first()
+    if not u:
+        return JSONResponse({"error": "Não autorizado"}, status_code=401)
+    usuarios = (
+        db.query(User)
+        .filter(
+            User.orgao_id == u.orgao_id,
+            User.unidade_id == u.unidade_id,
+            User.perfil.in_(PERFIS_ASSINANTES),
+            User.status == "ativo",
+        )
+        .order_by(User.nome)
+        .all()
+    )
+    return JSONResponse(
+        [{"id": x.id, "nome": x.nome, "perfil": x.perfil} for x in usuarios]
+    )
+
+
 @router.post("/processos/criar")
 async def processos_criar_post(
     request: Request,
     db: Session = Depends(get_db),
     user: str = Depends(get_current_user),
-    assunto: str = Form(None),
-    requerente: str = Form(""),
-    conteudo: str = Form(""),
-    numero_externo: str = Form(None),
-    orgao_destino_id: str = Form(""),
-    unidade_destino_id: str = Form(""),
-    municipio_destino_id: str = Form(""),
-    nivel_acesso: str = Form("Público"),
 ):
     if not user:
         return RedirectResponse("/login")
     u = db.query(User).filter(User.email == user).first()
     if not u:
         return RedirectResponse("/login")
+    form = await request.form()
+    assunto = form.get("assunto") or ""
+    requerente = form.get("requerente") or ""
+    conteudo = form.get("conteudo") or ""
+    numero_externo = form.get("numero_externo")
+    orgao_destino_id = form.get("orgao_destino_id") or ""
+    unidade_destino_id = form.get("unidade_destino_id") or ""
+    municipio_destino_id = form.get("municipio_destino_id") or ""
+    nivel_acesso = form.get("nivel_acesso") or "Público"
+    assinante_ids = form.getlist("assinante_ids[]")
     try:
         oid = int(orgao_destino_id) if orgao_destino_id else None
         uid = int(unidade_destino_id) if unidade_destino_id else None
@@ -87,30 +120,38 @@ async def processos_criar_post(
         oid = uid = mid = None
     if not all([oid, uid, mid]):
         return RedirectResponse("/eprotocolo/processos/criar?erro=destinatario", status_code=303)
-    # Gerar número do protocolo incremental no padrão NN/AAAA (ex: 01/2026, 1345/2026, 9999/2027)
     ano = datetime.now().year
     count = db.query(Processo).filter(Processo.ano == ano).count()
     seq = count + 1
-    numero = f"{seq:02d}/{ano}"  # 01/2026, 1345/2026, 9999/2027
+    numero = f"{seq:02d}/{ano}"
     p = Processo(
         numero=numero,
         ano=ano,
-        assunto=assunto or "",
-        requerente=requerente or "",
-        conteudo=conteudo or "",
+        assunto=assunto,
+        requerente=requerente,
+        conteudo=conteudo,
         municipio_origem_id=u.municipio_id,
         orgao_origem_id=u.orgao_id,
         unidade_origem_id=u.unidade_id,
         municipio_atual_id=mid,
         orgao_atual_id=oid,
         unidade_atual_id=uid,
-        nivel_acesso=nivel_acesso or "Público",
+        nivel_acesso=nivel_acesso,
         status="Em tramitação",
         created_by=u.id,
     )
     db.add(p)
     db.commit()
-    # TODO: salvar anexos em disco e vincular ao processo
+    db.refresh(p)
+    for aid_str in assinante_ids:
+        try:
+            aid = int(aid_str)
+        except (ValueError, TypeError):
+            continue
+        if db.query(User).filter(User.id == aid).first():
+            pa = ProcessoAssinante(processo_id=p.id, user_id=aid)
+            db.add(pa)
+    db.commit()
     return RedirectResponse("/eprotocolo/processos/caixa", status_code=303)
 
 
@@ -128,17 +169,36 @@ def processos_caixa(
     u = db.query(User).filter(User.email == user).first()
     if not u:
         return RedirectResponse("/login")
-    # Processos na caixa da unidade do usuário (unidade_atual = unidade do usuário)
-    q = db.query(Processo).filter(Processo.unidade_atual_id == u.unidade_id)
-    # Filtro por aba
+    # Base: processos na unidade atual OU criados pela unidade do usuário
+    base_filter = or_(
+        Processo.unidade_atual_id == u.unidade_id,
+        Processo.unidade_origem_id == u.unidade_id,
+    )
+    q_base = db.query(Processo).filter(base_filter)
+
+    # Filtro por aba (status e demais critérios da caixa)
+    q = q_base
     if aba == "urgentes":
         q = q.filter(Processo.urgente == True)
     elif aba == "assinados":
         q = q.filter(Processo.status == "Assinado")
+    elif aba == "a_assinar":
+        # Processos em que o usuário é assinante e ainda não estão assinados
+        q = q.filter(
+            Processo.assinantes.any(ProcessoAssinante.user_id == u.id),
+            Processo.status != "Assinado",
+        )
     elif aba == "recebidos":
         q = q.filter(Processo.status.in_(["Recebido", "Em tramitação"]))
     elif aba == "em_edicao":
         q = q.filter(Processo.status == "Em edição")
+    elif aba == "nao_lidos":
+        q = q.filter(Processo.lido_at == None)
+    elif aba == "lidos":
+        q = q.filter(Processo.lido_at != None)
+    elif aba == "nao_atribuidos":
+        q = q.filter(Processo.atribuido_to_id == None)
+
     total = q.count()
     offset = (pagina - 1) * por_pagina
     processos = (
@@ -146,16 +206,28 @@ def processos_caixa(
             joinedload(Processo.orgao_origem),
             joinedload(Processo.unidade_origem),
             joinedload(Processo.creator),
+            joinedload(Processo.assinantes).joinedload(ProcessoAssinante.user),
         )
         .order_by(Processo.created_at.desc())
         .offset(offset)
         .limit(por_pagina)
         .all()
     )
-    # Contagens por aba (simplificado)
-    q_base = db.query(Processo).filter(Processo.unidade_atual_id == u.unidade_id)
+
+    # Contagens por aba (para badges)
     cnt_todos = q_base.count()
     cnt_urgentes = q_base.filter(Processo.urgente == True).count()
+    cnt_assinados = q_base.filter(Processo.status == "Assinado").count()
+    cnt_a_assinar = q_base.filter(
+        Processo.assinantes.any(ProcessoAssinante.user_id == u.id),
+        Processo.status != "Assinado",
+    ).count()
+    cnt_recebidos = q_base.filter(Processo.status.in_(["Recebido", "Em tramitação"])).count()
+    cnt_em_edicao = q_base.filter(Processo.status == "Em edição").count()
+    cnt_nao_lidos = q_base.filter(Processo.lido_at == None).count()
+    cnt_lidos = q_base.filter(Processo.lido_at != None).count()
+    cnt_nao_atribuidos = q_base.filter(Processo.atribuido_to_id == None).count()
+
     return templates.TemplateResponse(
         "eprotocolo/processos/caixa.html",
         {
@@ -168,6 +240,59 @@ def processos_caixa(
             "aba": aba,
             "cnt_todos": cnt_todos,
             "cnt_urgentes": cnt_urgentes,
+            "cnt_assinados": cnt_assinados,
+            "cnt_a_assinar": cnt_a_assinar,
+            "cnt_recebidos": cnt_recebidos,
+            "cnt_em_edicao": cnt_em_edicao,
+            "cnt_nao_lidos": cnt_nao_lidos,
+            "cnt_lidos": cnt_lidos,
+            "cnt_nao_atribuidos": cnt_nao_atribuidos,
+        },
+    )
+
+
+@router.get("/processos/{processo_id:int}/visualizar")
+def processo_visualizar(
+    request: Request,
+    processo_id: int,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    """Exibe o processo em modo somente leitura, estilo documento/paginado, com histórico de trâmites."""
+    if not user:
+        return RedirectResponse("/login")
+    u = db.query(User).filter(User.email == user).first()
+    if not u:
+        return RedirectResponse("/login")
+    processo = (
+        db.query(Processo)
+        .options(
+            joinedload(Processo.orgao_origem),
+            joinedload(Processo.unidade_origem),
+            joinedload(Processo.orgao_atual),
+            joinedload(Processo.unidade_atual),
+            joinedload(Processo.creator),
+            joinedload(Processo.assinantes).joinedload(ProcessoAssinante.user),
+            joinedload(Processo.tramites).joinedload(Tramite.usuario),
+            joinedload(Processo.tramites).joinedload(Tramite.orgao_origem),
+            joinedload(Processo.tramites).joinedload(Tramite.unidade_origem),
+            joinedload(Processo.tramites).joinedload(Tramite.orgao_destino),
+            joinedload(Processo.tramites).joinedload(Tramite.unidade_destino),
+        )
+        .filter(Processo.id == processo_id)
+        .first()
+    )
+    if not processo:
+        return RedirectResponse("/eprotocolo/processos/caixa", status_code=303)
+    # Ordenar trâmites por data (mais antigo primeiro)
+    tramites_ordenados = sorted(processo.tramites, key=lambda t: t.created_at or datetime.min)
+    return templates.TemplateResponse(
+        "eprotocolo/processos/visualizar.html",
+        {
+            "request": request,
+            "user": user,
+            "processo": processo,
+            "tramites": tramites_ordenados,
         },
     )
 
