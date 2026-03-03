@@ -3,11 +3,10 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Category
-from fastapi.templating import Jinja2Templates
+from shared_templates import templates
 from starlette.status import HTTP_302_FOUND
 
 router = APIRouter(prefix="/categories", tags=["Categorias"])
-templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/")
@@ -23,7 +22,7 @@ def list_categories(request: Request, db: Session = Depends(get_db)):
 def add_category_form(request: Request):
     return templates.TemplateResponse(
         "category_form.html",
-        {"request": request, "action": "add"}
+        {"request": request, "action": "add", "category": None}
     )
 
 
@@ -36,4 +35,46 @@ def add_category(
     category = Category(nome=nome, descricao=descricao)
     db.add(category)
     db.commit()
+    return RedirectResponse("/categories", status_code=HTTP_302_FOUND)
+
+
+@router.get("/edit/{category_id}")
+def edit_category_form(
+    category_id: int,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    category = db.query(Category).filter(Category.id == category_id).first()
+    if not category:
+        return RedirectResponse("/categories")
+    return templates.TemplateResponse(
+        "category_form.html",
+        {"request": request, "action": "edit", "category": category}
+    )
+
+
+@router.post("/edit/{category_id}")
+def edit_category(
+    category_id: int,
+    nome: str = Form(...),
+    descricao: str = Form(None),
+    db: Session = Depends(get_db)
+):
+    category = db.query(Category).filter(Category.id == category_id).first()
+    if category:
+        category.nome = nome
+        category.descricao = descricao
+        db.commit()
+    return RedirectResponse("/categories", status_code=HTTP_302_FOUND)
+
+
+@router.get("/delete/{category_id}")
+def delete_category(
+    category_id: int,
+    db: Session = Depends(get_db)
+):
+    category = db.query(Category).filter(Category.id == category_id).first()
+    if category:
+        db.delete(category)
+        db.commit()
     return RedirectResponse("/categories", status_code=HTTP_302_FOUND)

@@ -26,10 +26,15 @@
             </select>
         </div>
 
+        <!-- Bloco único para itens com série/tombo: filtro + Número de Série e/ou Número do Tombo -->
+        <div class="form-group" id="itens-fisicos-wrapper" style="display:none;">
+            <label>Buscar (filtrar lista)</label>
+            <input type="text" id="item-filtro" class="form-control" placeholder="Digite para filtrar tombos ou séries..." autocomplete="off">
+        </div>
         <!-- Número de Série -->
         <div class="form-group" id="serie-container" style="display:none;">
             <label for="serie-select">Número de Série</label>
-            <select id="serie-select">
+            <select id="serie-select" size="8">
                 <option value="">-- Selecione --</option>
             </select>
         </div>
@@ -37,7 +42,7 @@
         <!-- Número do Tombo -->
         <div class="form-group" id="tombo-container" style="display:none;">
             <label for="tombo-select">Número do Tombo</label>
-            <select id="tombo-select">
+            <select id="tombo-select" size="8">
                 <option value="">-- Selecione --</option>
             </select>
         </div>
@@ -56,7 +61,7 @@
             <select id="unit_destino" name="unit_destino_id" required>
                 <option value="">-- Selecione --</option>
                 {% for u in units %}
-                    <option value="{{ u.id }}">{{ u.name }}</option>
+                    <option value="{{ u.id }}">{{ u.nome }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -104,6 +109,8 @@
 </div>
 
 <style>
+    #itens-fisicos-wrapper input.form-control { margin-bottom: 10px; }
+    #serie-select, #tombo-select { width: 100%; max-height: 200px; }
     .btn-cancel {
     padding: 11px 24px;
     border-radius: 8px;
@@ -233,10 +240,15 @@ productSelect.addEventListener("change", async () => {
 });
 
 /* ---------------- TOMBO / SÉRIE ---------------- */
+const itensFisicosWrapper = document.getElementById("itens-fisicos-wrapper");
+const itemFiltroInput = document.getElementById("item-filtro");
+
 async function carregarItensFisicos(type_id) {
     serieSelect.innerHTML = '<option value="">-- Selecione --</option>';
     tomboSelect.innerHTML = '<option value="">-- Selecione --</option>';
+    if (itemFiltroInput) itemFiltroInput.value = '';
 
+    itensFisicosWrapper.style.display = 'none';
     serieContainer.style.display = 'none';
     tomboContainer.style.display = 'none';
     itemIdInput.value = '';
@@ -263,7 +275,8 @@ async function carregarItensFisicos(type_id) {
             opt.dataset.unitName = i.unit_name;
             serieSelect.appendChild(opt);
         });
-    } else if (temTombo) {
+    }
+    if (temTombo) {
         tomboContainer.style.display = "block";
         itensNormalizados.filter(i => i.isTombo).forEach(i => {
             const opt = document.createElement("option");
@@ -274,8 +287,25 @@ async function carregarItensFisicos(type_id) {
             tomboSelect.appendChild(opt);
         });
     }
+    if (temSerie || temTombo) {
+        itensFisicosWrapper.style.display = "block";
+        aplicarFiltroItem();
+    }
+}
 
-    // NÃO preenche a unidade automaticamente para produtos que controlam série/tombo
+function aplicarFiltroItem() {
+    const filtro = (itemFiltroInput && itemFiltroInput.value) ? itemFiltroInput.value.trim().toLowerCase() : '';
+    [serieSelect, tomboSelect].forEach(select => {
+        for (let i = 0; i < select.options.length; i++) {
+            const opt = select.options[i];
+            if (!opt.value) continue;
+            const show = !filtro || (opt.text && opt.text.toLowerCase().indexOf(filtro) !== -1);
+            opt.style.display = show ? '' : 'none';
+        }
+    });
+}
+if (itemFiltroInput) {
+    itemFiltroInput.addEventListener('input', aplicarFiltroItem);
 }
 
 /* ---------------- ITEM → UNIDADE AUTOMÁTICA ---------------- */
@@ -295,6 +325,8 @@ tomboSelect.addEventListener("change", () => {
 
 /* ---------------- HELPERS ---------------- */
 function resetItems() {
+    itensFisicosWrapper.style.display = 'none';
+    if (itemFiltroInput) itemFiltroInput.value = '';
     serieContainer.style.display = 'none';
     tomboContainer.style.display = 'none';
     serieSelect.innerHTML = '<option value="">-- Selecione --</option>';

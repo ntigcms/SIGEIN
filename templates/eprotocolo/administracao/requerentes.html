@@ -1,0 +1,154 @@
+{% extends "eprotocolo/eprotocolo_base.html" %}
+
+{% block title %}Administrar Requerente - E-Protocolo{% endblock %}
+
+{% block eprotocolo_content %}
+<div class="requerente-admin-page">
+    <div class="page-badge">ADMINISTRAÇÃO DE REQUERENTE</div>
+
+    <div class="requerente-form-card">
+        <div class="form-row">
+            <div class="form-group flex-grow">
+                <label for="nome">NOME</label>
+                <input type="text" id="nome" name="nome" class="form-control" value="{{ nome_filtro }}">
+            </div>
+            <a href="/eprotocolo/administracao/requerentes/cadastrar" class="btn-cadastrar">CADASTRAR</a>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="tipo_documento">TIPO DE DOCUMENTO</label>
+                <select id="tipo_documento" name="tipo_documento" class="form-control">
+                    <option value="">SELECIONE</option>
+                    <option value="CPF" {% if tipo_filtro == 'CPF' %}selected{% endif %}>CPF</option>
+                    <option value="CNPJ" {% if tipo_filtro == 'CNPJ' %}selected{% endif %}>CNPJ</option>
+                    <option value="RG" {% if tipo_filtro == 'RG' %}selected{% endif %}>RG</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="numero_documento">NÚMERO</label>
+                <input type="text" id="numero_documento" name="numero_documento" class="form-control" value="{{ numero_filtro }}">
+            </div>
+            <button type="button" class="btn-buscar" onclick="buscarRequerentes()">
+                <i class="fas fa-search"></i> BUSCAR
+            </button>
+        </div>
+        <p class="validation-msg" id="validation-msg" style="display: none;">O TIPO DEVE SER INFORMADO JUNTAMENTE COM O NOME OU DOCUMENTO.</p>
+    </div>
+
+    <div class="resultados-section" id="resultados-section">
+        {% if requerentes %}
+        <table class="table-resultados">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Tipo</th>
+                    <th>Documento</th>
+                    <th>E-mail</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in requerentes %}
+                <tr>
+                    <td>{{ r.nome }}</td>
+                    <td>{{ r.tipo_documento }}</td>
+                    <td>{{ r.numero_documento }}</td>
+                    <td>{{ r.email or '-' }}</td>
+                    <td>
+                        <a href="/eprotocolo/administracao/requerentes/{{ r.id }}/editar" class="btn-action">Editar</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-result">Nenhum requerente encontrado. Use os filtros acima ou cadastre um novo.</p>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.requerente-admin-page { padding: 24px; max-width: 900px; margin: 0 auto; }
+.page-badge {
+    background: #0d6efd;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 24px;
+    display: inline-block;
+}
+.requerente-form-card {
+    background: #f8f9fa;
+    padding: 24px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+.form-row { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 16px; }
+.form-row:last-of-type { margin-bottom: 0; }
+.form-group { display: flex; flex-direction: column; }
+.form-group label { font-size: 12px; font-weight: 600; margin-bottom: 6px; color: #333; }
+.form-control { padding: 10px 12px; border: 1px solid #ced4da; border-radius: 6px; font-size: 14px; min-width: 140px; }
+.form-group.flex-grow { flex: 1; min-width: 200px; }
+.btn-cadastrar {
+    background: #0d6efd;
+    color: white !important;
+    padding: 12px 24px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    margin-bottom: 21px;
+}
+.btn-cadastrar:hover { background: #0b5ed7; color: white !important; }
+.btn-buscar {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #0d6efd;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 21px;
+}
+.btn-buscar:hover { background: #0b5ed7; }
+.validation-msg { color: #dc3545; font-size: 13px; margin: 12px 0 0 0; }
+.table-resultados { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
+.table-resultados th, .table-resultados td { padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6; }
+.table-resultados th { background: #f8f9fa; font-size: 13px; font-weight: 600; }
+.btn-action { color: #0d6efd; text-decoration: none; font-size: 13px; }
+.btn-action:hover { text-decoration: underline; }
+.empty-result { color: #6c757d; padding: 24px; text-align: center; }
+</style>
+
+<script>
+function buscarRequerentes() {
+    const nome = document.getElementById('nome').value.trim();
+    const tipo = document.getElementById('tipo_documento').value;
+    const numero = document.getElementById('numero_documento').value.trim();
+    if ((nome || numero) && !tipo) {
+        document.getElementById('validation-msg').style.display = 'block';
+        return;
+    }
+    document.getElementById('validation-msg').style.display = 'none';
+    const params = new URLSearchParams();
+    if (nome) params.set('nome', nome);
+    if (tipo) params.set('tipo_documento', tipo);
+    if (numero) params.set('numero_documento', numero);
+    window.location = '/eprotocolo/administracao/requerentes?' + params.toString();
+}
+document.getElementById('nome').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') buscarRequerentes();
+});
+document.getElementById('numero_documento').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') buscarRequerentes();
+});
+</script>
+{% endblock %}

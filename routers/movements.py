@@ -1,20 +1,19 @@
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi import APIRouter, Request, Form, Depends
-from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
-from models import Product, Unit, Category, Movement, User, Stock, Item
+from models import Product, Unit, Category, Movement, User, Stock, Item, Unidade
 from services.stock_service import StockService
 from database import get_db
 from datetime import datetime
 from dependencies import get_current_user, registrar_log
 from starlette.status import HTTP_302_FOUND
 from typing import Optional
+from shared_templates import templates
 
 from routers import products
 
 router = APIRouter(prefix="/movements", tags=["Movimentações"])
-templates = Jinja2Templates(directory="templates")
 
 
 # -------------------------------
@@ -26,7 +25,18 @@ def listar_movimentacoes(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    movements = db.query(Movement).order_by(Movement.data.desc()).all()
+    movements = (
+        db.query(Movement)
+        .options(
+            joinedload(Movement.user),
+            joinedload(Movement.product).joinedload(Product.type),
+            joinedload(Movement.item),
+            joinedload(Movement.unit_origem),
+            joinedload(Movement.unit_destino),
+        )
+        .order_by(Movement.data.desc())
+        .all()
+    )
 
     return templates.TemplateResponse(
         "movements_list.html",
@@ -46,9 +56,9 @@ def nova_movimentacao_form(
     if not user:
         return RedirectResponse("/login")
 
-    # Consulta produtos, unidades e categorias
+    # Consulta produtos, unidades (Unidade = tabela unidades) e categorias
     products = db.query(Product).all()
-    units = db.query(Unit).all()
+    units = db.query(Unidade).order_by(Unidade.nome).all()
     categories = db.query(Category).all()
 
     products_js = []
@@ -63,7 +73,7 @@ def nova_movimentacao_form(
                 if item.unit_id and item.unit_id not in units_set:
                     units_options.append({
                         "unit_id": item.unit.id,
-                        "unit_name": item.unit.name
+                        "unit_name": item.unit.nome
                     })
                     units_set.add(item.unit_id)
         else:
@@ -76,13 +86,13 @@ def nova_movimentacao_form(
                 ).all()
             for s in stocks:
                 if s.unit_id and s.unit_id not in units_set:
-                    units_options.append({"unit_id": s.unit.id, "unit_name": s.unit.name})
+                    units_options.append({"unit_id": s.unit.id, "unit_name": s.unit.nome})
                     units_set.add(s.unit_id)
             # Unidades de itens existentes
             items = db.query(Item).filter(Item.product_id == p.id).all()
             for i in items:
                 if i.unit_id and i.unit_id not in units_set:
-                    units_options.append({"unit_id": i.unit.id, "unit_name": i.unit.name})
+                    units_options.append({"unit_id": i.unit.id, "unit_name": i.unit.nome})
                     units_set.add(i.unit_id)
 
         # Adiciona o produto ao JS
@@ -130,7 +140,7 @@ def movimentacoes_submit(
     if not username:
         return RedirectResponse("/login")
 
-    user = db.query(User).filter(User.username == username).first()
+    user = db.query(User).filter(User.email == username).first()
     if not user:
         return {"error": "Usuário não encontrado"}
 
@@ -192,7 +202,7 @@ def movimentacoes_submit(
 
     registrar_log(
         db=db,
-        usuario=user.username,
+        usuario=user.email,
         acao=f"Registrou movimentação {tipo} do produto {product.name}",
         ip=request.client.host
     )
@@ -220,7 +230,7 @@ def editar_movimentacao_form(
         return {"error": "Movimentação não encontrada"}
 
     products = db.query(Product).all()
-    units = db.query(Unit).all()
+    units = db.query(Unidade).order_by(Unidade.nome).all()
     categories = db.query(Category).all()
 
     products_js = []
@@ -234,7 +244,7 @@ def editar_movimentacao_form(
                 if item.unit_id and item.unit_id not in units_set:
                     units_options.append({
                         "unit_id": item.unit.id,
-                        "unit_name": item.unit.name
+                        "unit_name": item.unit.nome
                     })
                     units_set.add(item.unit_id)
         else:
@@ -245,7 +255,7 @@ def editar_movimentacao_form(
             ).all()
             for s in stocks:
                 if s.unit_id and s.unit_id not in units_set:
-                    units_options.append({"unit_id": s.unit.id, "unit_name": s.unit.name})
+                    units_options.append({"unit_id": s.unit.id, "unit_name": s.unit.nome})
                     units_set.add(s.unit_id)
 
         products_js.append({
@@ -279,7 +289,7 @@ def editar_movimentacao_form(
             "tombo": movimento.item.tombo,
             "num": movimento.item.num_tombo_ou_serie,
             "unit_id": movimento.item.unit_id,
-            "unit_name": movimento.item.unit.name if movimento.item.unit else None
+            "unit_name": movimento.item.unit.nome if movimento.item.unit else None
         }
 
     return templates.TemplateResponse(
@@ -320,7 +330,7 @@ def movimentacoes_update(
     if not movimento:
         return {"error": "Movimentação não encontrada"}
 
-    user = db.query(User).filter(User.username == username).first()
+    user = db.query(User).filter(User.email == username).first()
     if not user:
         return {"error": "Usuário não encontrado"}
 
@@ -363,7 +373,7 @@ def movimentacoes_update(
 
     registrar_log(
         db=db,
-        usuario=user.username,
+        usuario=user.email,
         acao=f"Editou movimentação {tipo} do produto {product.name}",
         ip=request.client.host
     )
@@ -410,7 +420,7 @@ def get_product_stock(type_id: int, db: Session = Depends(get_db)):
     for s in stocks:
         result.append({
             "unit_id": s.unit.id,
-            "unit_name": s.unit.name,
+            "unit_name": s.unit.nome,
             "quantidade": s.quantidade
         })
 
@@ -449,7 +459,6 @@ def get_product_items(type_id: int, db: Session = Depends(get_db)):
     items = (
         db.query(Item)
         .join(Product)
-        .join(Unit)
         .filter(Product.type_id == type_id)
         .all()
     )
@@ -460,7 +469,7 @@ def get_product_items(type_id: int, db: Session = Depends(get_db)):
             "tombo": i.tombo,
             "num": i.num_tombo_ou_serie if i.num_tombo_ou_serie else f"Produto sem série - {i.product.name}",
             "unit_id": i.unit_id,
-            "unit_name": i.unit.name
+            "unit_name": i.unit.nome
         })
 
     # 2️⃣ Produtos sem série que ainda não têm Item cadastrado
@@ -497,7 +506,6 @@ def search_items(
 
     items = (
         db.query(Item)
-        .join(Unit)
         .filter(
             Item.product_id == product_id,
             Item.tombo == is_tombo,
@@ -512,7 +520,7 @@ def search_items(
             "id": i.id,
             "text": i.num_tombo_ou_serie,
             "unit_id": i.unit_id,
-            "unit_name": i.unit.name
+            "unit_name": i.unit.nome
         }
         for i in items
     ]

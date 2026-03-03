@@ -1,13 +1,12 @@
-from fastapi.templating import Jinja2Templates
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from dependencies import get_current_user
 from database import get_db
+from shared_templates import templates
 from services.audit_service import AuditService
-from models import Stock, Movement, Product
+from models import Stock, Movement, Product, User
 from datetime import datetime, timedelta
 
-templates = Jinja2Templates(directory="templates")
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 @router.get("/")
@@ -15,6 +14,10 @@ def dashboard_overview(request: Request, db: Session = Depends(get_db), user: st
 
     if not user:
         return {}
+
+    # Nome do usuário para exibir no layout (base.html)
+    user_obj = db.query(User).filter(User.email == user).first()
+    user_display = user_obj.nome if user_obj else user
 
     # Total de produtos
     total_products = db.query(Product).count()
@@ -53,6 +56,7 @@ def dashboard_overview(request: Request, db: Session = Depends(get_db), user: st
         "dashboard.html",
         {
             "request": request,
+            "user": user_display,
             "total_products": total_products,
             "critical_products": critical_products,
             "zero_stock_products": zero_stock_products,

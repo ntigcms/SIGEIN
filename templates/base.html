@@ -160,7 +160,7 @@
             padding: 30px 40px;
             border-radius: 10px;
             box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-            max-width: 600px;
+            max-width: 1600px;
             margin: auto;
         }
 
@@ -224,26 +224,73 @@
         }
 
         /* =========================
-           MENU DO USUÁRIO (TOPO)
-        ========================== */
-        .user-menu { position: fixed; top: 10px; right: 20px; z-index: 1000; } 
-        .user-btn { background: none; border: none; font-size: 1rem; cursor: pointer; color: #0077cc; } 
-        .user-icon i { font-size: 1rem; color: #0077cc; border-radius: 50%; vertical-align: middle; } 
-        .user-name { margin-left: 8px; font-weight: bold; color: #0077cc; } 
-        .dropdown { 
-            display: none; 
-            position: absolute; 
-            right: 0; top: 100%; 
-            background-color: white; 
-            min-width: 150px; 
-            box-shadow: 0px 2px 5px rgba(0,0,0,0.2); 
-            border-radius: 5px; 
-            overflow: hidden; 
-        } 
-        .dropdown a { display: block; padding: 10px; text-decoration: none; color: #333; transition: 0.2s; } 
-        .dropdown a:hover { background-color: #f0f0f0; } 
-        .user-menu:hover .dropdown { display: block; }
+   MENU DO USUÁRIO (TOPO)
+========================== */
+.user-menu {
+    position: fixed;
+    top: 10px;
+    right: 20px;
+    z-index: 1000;
 
+    display: flex;
+    align-items: center;  /* Alinha verticalmente ícone e nome */
+    gap: 8px;
+    cursor: pointer;
+}
+
+.user-icon {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    overflow: hidden;
+    background-color: #eaeaea; /* Fundo neutro para avatar */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.user-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.user-name {
+    font-weight: bold;
+    color: #0077cc;
+    margin: 0; /* remove margem se for <span> ou <p> */
+    user-select: none; /* opcional: evita seleção de texto ao clicar */
+}
+
+.dropdown {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    background-color: white;
+    min-width: 150px;
+    box-shadow: 0px 2px 5px rgba(0,0,0,0.2);
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.dropdown a {
+    display: block;
+    padding: 10px;
+    text-decoration: none;
+    color: #333;
+    transition: 0.2s;
+}
+
+.dropdown a:hover {
+    background-color: #f0f0f0;
+}
+
+.user-menu:hover .dropdown {
+    display: block;
+}
         /* =========================
            CAMPOS DE FORMULÁRIO
         ========================== */
@@ -254,7 +301,7 @@
         select {
             width: 100%;
             padding: 12px 15px;
-            margin: 10px 0 20px 0;
+            margin: 0px 0 20px 0;
             border: 1px solid #ccc;
             border-radius: 5px;
             font-size: 1rem;
@@ -307,6 +354,30 @@
             .form-grid { grid-template-columns: 1fr; }
         }
 
+        /* =========================
+           E-PROTOCOLO - BOTÃO VOLTAR
+        ========================== */
+        .btn-voltar-eprotocolo {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #6c757d;
+            color: white !important;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .btn-voltar-eprotocolo:hover {
+            background: #5a6268;
+            color: white !important;
+        }
+        .eprotocolo-page-top {
+            margin-bottom: 16px;
+        }
+
     </style>
 
     <!-- ================= CSS EXTERNOS ================= -->
@@ -345,6 +416,7 @@
         <a href="/brands"><img width="32" height="32" src="https://img.icons8.com/color/48/test-failed.png" alt="test-failed"/> Marca</a>
         <a href="/states"><img width="32" height="32" src="https://img.icons8.com/external-filled-color-icons-papa-vector/78/external-Eye-contact-RGB-color-icon-charisma-development-filled-color-icons-papa-vector.png" alt="external-Eye-contact-RGB-color-icon-charisma-development-filled-color-icons-papa-vector"/> Estado</a>
         <a href="/categories"><img width="32" height="32" src="https://img.icons8.com/?size=100&id=bRP0fqzTploE&format=png&color=000000" alt="Categorias"/>Categorias</a>
+        <a href="/orgaos"><img width="32" height="32" src="https://img.icons8.com/3d-fluency/94/place-marker.png" alt="Órgãos"/>Órgãos</a>
 
     </div>
 </div>
@@ -389,9 +461,8 @@
 
         <!-- Menu do usuário (canto superior direito) -->
         <div class="user-menu">
-            <span class="user-icon"><i class="fas fa-user-circle"></i></span>
-            <!-- Aqui deve exibir o nome do usuário logado -->
-            <span class="user-name">{{ user }}</span>
+            <span class="user-icon"><img src="https://img.icons8.com/?size=100&id=tZuAOUGm9AuS&format=png&color=000000" alt="Usuário" width="32" height="32"></span>
+            <span class="user-name">{{ get_user_display_name(request) }}</span>
             <div class="dropdown">
                 <a href="/meus-dados"><i class="fas fa-id-card"></i> Meus Dados</a>
                 <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>

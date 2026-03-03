@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}Órgãos{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 20px;">
+    <h2>Órgãos</h2>
+    <a href="/orgaos/add"><button class="animated-btn">Cadastrar Novo</button></a>
+</div>
+
+<!-- FILTROS -->
+<div class="filtros-container">
+    <div class="filtro-item">
+        <label>Estado</label>
+        <div class="search-container" data-col="2">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options" style="display:none;"></div>
+        </div>
+    </div>
+    <div class="filtro-item">
+        <label>Município</label>
+        <div class="search-container" data-col="3">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options" style="display:none;"></div>
+        </div>
+    </div>
+    <div class="filtro-item">
+        <label>Nome</label>
+        <div class="search-container" data-col="4">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options" style="display:none;"></div>
+        </div>
+    </div>
+    <div class="filtro-item">
+        <label>Sigla</label>
+        <div class="search-container" data-col="5">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options" style="display:none;"></div>
+        </div>
+    </div>
+    <div class="filtro-item">
+        <label>Responsável</label>
+        <div class="search-container" data-col="6">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options" style="display:none;"></div>
+        </div>
+    </div>
+    <div style="display:flex; align-items:center;">
+        <button id="clear-filters" class="clear-btn">🧹 Limpar Filtros</button>
+    </div>
+</div>
+
+<div class="table-section">
+    <h4>Lista de Órgãos</h4>
+    <table id="orgaosTable" style="width:100%; border-collapse: collapse; text-align:left;">
+        <thead>
+            <tr style="background-color: #0d6efd; color:white;">
+                <th><input type="checkbox" id="select-all" onclick="toggleAll(this)"></th>
+                <th>ID</th>
+                <th>Estado</th>
+                <th>Município</th>
+                <th>Nome</th>
+                <th>Sigla</th>
+                <th>Responsável</th>
+                <th>Email</th>
+                <th>Telefone</th>
+                <th>Ativo</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for orgao in orgaos %}
+            <tr>
+                <td><input type="checkbox" class="select-item"></td>
+                <td>{{ orgao.id }}</td>
+                <td>{{ orgao.estado }}</td>
+                <td>{{ orgao.municipio }}</td>
+                <td>{{ orgao.nome }}</td>
+                <td>{{ orgao.sigla }}</td>
+                <td>{{ orgao.responsavel }}</td>
+                <td>{{ orgao.email }}</td>
+                <td>{{ orgao.telefone }}</td>
+                <td>{{ orgao.ativo }}</td>
+                <td>
+                    <a href="/orgaos/edit/{{ orgao.id }}" title="Editar">
+                        <i class="fas fa-pen" style="color:#ffaa00; font-size: 18px; margin-right: 10px; cursor:pointer;"></i></a>
+                    <form class="delete-form" data-id="{{ orgao.id }}" method="post" style="display:inline;">
+                        <button type="submit" style="background:none; border:none; padding:0; cursor:pointer;">
+                            <i class="fas fa-trash" style="color:#cc0000; font-size:18px;"></i>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="11" style="text-align:center; padding:20px; color:#666;">
+                    Nenhum órgão cadastrado.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<style>
+.dataTables_length label { display: flex; align-items: center; gap: 6px; }
+.dataTables_length select { width: auto; display: inline-block; }
+.filtro-item { display: flex; flex-direction: column; min-width: 180px; flex: 1; }
+.filtro-item label { font-size: 13px; font-weight: 600; color: #004080; margin-bottom: 5px; }
+.search-container { position: relative; width: 100%; }
+.filter-search { width: 100%; padding: 8px 28px 8px 8px; border: 1px solid #aaa; border-radius: 6px; font-size: 13px; }
+.arrow { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 14px; color: #666; pointer-events: none; }
+.arrow.open { transform: translateY(-50%) rotate(180deg); }
+.options { position: absolute; top: 36px; left: 0; right: 0; border: 1px solid #ccc; background: white; max-height: 200px; overflow-y: auto; z-index: 10; box-shadow: 0 2px 6px rgba(0,0,0,0.15); border-radius: 6px; }
+.option { display: flex; align-items: center; padding: 6px 10px; cursor: pointer; font-size: 13px; }
+.option:hover { background-color: #f0f0f0; }
+.clear-btn { background-color: #cc0000; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; }
+.clear-btn:hover { background-color: #a00000; }
+#orgaosTable tbody tr:nth-child(even) { background-color: #f2f2f2; }
+#orgaosTable tbody tr:hover { background-color: #d9e6f2; }
+#orgaosTable, #orgaosTable th, #orgaosTable td { border: 1px solid #ccc; padding: 10px; }
+.swal2-container { z-index: 99999 !important; }
+</style>
+
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="{{ request.url_for('static', path='css/equipamentos-grid.css') }}">
+
+<script>
+function toggleAll(source) {
+    document.querySelectorAll('.select-item').forEach(cb => cb.checked = source.checked);
+}
+
+$(document).ready(function() {
+    var table = $('#orgaosTable').DataTable({
+        order: [[1, "asc"]],
+        columnDefs: [
+            { orderable: false, targets: [0, 10] },
+            { visible: false, targets: [0, 1] }
+        ],
+        language: {
+            emptyTable: "Nenhum órgão encontrado",
+            info: "Mostrando _START_ a _END_ de _TOTAL_",
+            infoEmpty: "Mostrando 0 a 0 de 0",
+            lengthMenu: "Mostrar registros _MENU_",
+            zeroRecords: "Nenhum órgão encontrado",
+            paginate: { first: "Primeiro", last: "Último", next: "Próximo", previous: "Anterior" }
+        },
+        pageLength: 10,
+        dom: 'rt<"bottom"l<"info-wrapper"ip>><"clear">'
+    });
+
+    $('.search-container').each(function() {
+        const container = $(this);
+        const input = container.find('.filter-search');
+        const optionsDiv = container.find('.options');
+        const arrow = container.find('.arrow');
+        const colIndex = container.data('col');
+        const column = table.column(colIndex);
+        let selecionados = [];
+        const valores = column.data().unique().sort().toArray().filter(v => v);
+
+        function renderOptions(lista) {
+            optionsDiv.empty();
+            lista.forEach(v => {
+                const checked = selecionados.includes(v) ? 'checked' : '';
+                optionsDiv.append(`<div class="option"><input type="checkbox" value="${v}" ${checked}><label>${v}</label></div>`);
+            });
+            optionsDiv.show();
+            arrow.addClass('open');
+        }
+
+        input.on("click", function(e) {
+            e.stopPropagation();
+            $('.search-container').not(container).find('.options').hide();
+            if (optionsDiv.is(":visible")) {
+                optionsDiv.hide();
+                arrow.removeClass('open');
+            } else {
+                renderOptions(valores);
+            }
+        });
+
+        input.on('input', function() {
+            const query = input.val().toLowerCase();
+            renderOptions(valores.filter(v => v.toLowerCase().includes(query)));
+        });
+
+        optionsDiv.on('change', 'input[type="checkbox"]', function() {
+            const val = $(this).val();
+            if (this.checked) selecionados.push(val);
+            else selecionados = selecionados.filter(v => v !== val);
+            input.val(selecionados.join(', '));
+            if (selecionados.length > 0) {
+                const regex = selecionados.map(v => '^' + $.fn.dataTable.util.escapeRegex(v) + '$').join('|');
+                column.search(regex, true, false).draw();
+            } else {
+                column.search('').draw();
+            }
+        });
+
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest(container).length) {
+                optionsDiv.hide();
+                arrow.removeClass('open');
+            }
+        });
+
+        container.data('reset', function() {
+            selecionados = [];
+            input.val('');
+            column.search('').draw();
+            optionsDiv.hide();
+            arrow.removeClass('open');
+        });
+    });
+
+    $('#clear-filters').on('click', function() {
+        $('.search-container').each(function() {
+            const resetFn = $(this).data('reset');
+            if (typeof resetFn === 'function') resetFn();
+        });
+    });
+});
+
+$(document).on("submit", ".delete-form", function(e) {
+    e.preventDefault();
+    const form = $(this);
+    const orgaoId = form.data("id");
+
+    Swal.fire({
+        title: 'Tem certeza?',
+        text: "Essa ação não poderá ser desfeita.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#cc0000',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sim, excluir',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/orgaos/delete/${orgaoId}`, { method: "POST" })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({ icon: 'success', title: 'Excluído!', text: 'Órgão removido com sucesso.', timer: 1500, showConfirmButton: false })
+                            .then(() => location.reload());
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Não permitido', text: data.message });
+                    }
+                });
+        }
+    });
+});
+</script>
+{% endblock %}

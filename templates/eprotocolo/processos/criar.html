@@ -1,0 +1,1416 @@
+{% extends "eprotocolo/eprotocolo_base.html" %}
+
+{% block title %}Novo Processo - E-Protocolo{% endblock %}
+
+{% block eprotocolo_content %}
+<div class="processo-criar-page">
+    {% if request.query_params.get('erro') == 'destinatario' %}
+    <div class="alert alert-warning">
+        Por favor, selecione o destinatário (Estado, Município, Órgão e Unidade).
+    </div>
+    {% endif %}
+    <div class="page-header">
+        <h1>Novo Processo</h1>
+        <div class="font-size-controls">
+            <button type="button" class="font-btn" data-size="1" title="Texto menor">A</button>
+            <button type="button" class="font-btn" data-size="2" title="Texto normal">A</button>
+            <button type="button" class="font-btn" data-size="3" title="Texto maior">A+</button>
+        </div>
+    </div>
+
+    <form method="post" action="/eprotocolo/processos/criar" id="processo-form" enctype="multipart/form-data">
+        
+        <!-- CATEGORIA -->
+        <section class="form-section">
+            <div class="section-header">Categoria</div>
+            <div class="section-body">
+                <div class="form-group categoria-pesquisa categoria-pesquisa-wrapper">
+                    <input type="text" id="categoria_pesquisa" class="form-control input-pesquisa" 
+                           placeholder="Pesquisar grupo, assunto ou subassunto" autocomplete="off">
+                    <div id="categoria_pesquisa_dropdown" class="categoria-dropdown" style="display: none;"></div>
+                </div>
+                <div class="categoria-selects-row">
+                    <div class="form-group">
+                        <label for="categoria_grupo">Grupo</label>
+                        <select id="categoria_grupo" name="grupo_id" class="form-control">
+                            <option value="">Selecione</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="categoria_assunto">Assunto</label>
+                        <select id="categoria_assunto" name="assunto_id" class="form-control">
+                            <option value="">Selecione</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="categoria_subassunto">Subassunto</label>
+                        <select id="categoria_subassunto" name="subassunto_id" class="form-control">
+                            <option value="">Selecione</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="categoria-divider"></div>
+                <input type="hidden" name="assunto" id="assunto-hidden">
+            </div>
+        </section>
+
+        <!-- REQUERENTE -->
+        <section class="form-section">
+            <div class="section-header">Requerente</div>
+            <div class="section-body">
+                <div class="empty-box" id="requerentes-box">
+                    <span id="requerentes-text">Nenhum requerente adicionado.</span>
+                    <div id="requerentes-list"></div>
+                </div>
+                <input type="hidden" name="requerente" id="requerente-hidden" value="">
+                <a href="#" class="link-add" id="btn-adicionar-requerente">+ Adicionar requerente</a>
+                <p class="info-warning">Para tramitar ou arquivar o processo, é preciso informar ao menos um requerente.</p>
+            </div>
+        </section>
+
+        <!-- NÚMERO EXTERNO -->
+        <section class="form-section">
+            <div class="section-header">Número externo</div>
+            <div class="section-body">
+                <div class="form-group">
+                    <input type="text" name="numero_externo" id="numero_externo" class="form-control" 
+                           placeholder="Número externo (opcional)">
+                </div>
+            </div>
+        </section>
+
+        <!-- CONTEÚDO -->
+        <section class="form-section">
+            <div class="section-header">Conteúdo</div>
+            <div class="section-body">
+                <div class="editor-toolbar">
+                    <button type="button" class="toolbar-btn" data-cmd="bold" title="Negrito"><b>B</b></button>
+                    <button type="button" class="toolbar-btn" data-cmd="italic" title="Itálico"><i>I</i></button>
+                    <button type="button" class="toolbar-btn" data-cmd="underline" title="Sublinhado"><u>U</u></button>
+                    <button type="button" class="toolbar-btn" data-cmd="strikeThrough" title="Riscado"><s>S</s></button>
+                    <span class="toolbar-sep"></span>
+                    <button type="button" class="toolbar-btn" data-cmd="justifyLeft" title="Alinhar à esquerda"><i class="fas fa-align-left"></i></button>
+                    <button type="button" class="toolbar-btn" data-cmd="justifyCenter" title="Centralizar"><i class="fas fa-align-center"></i></button>
+                    <button type="button" class="toolbar-btn" data-cmd="justifyRight" title="Alinhar à direita"><i class="fas fa-align-right"></i></button>
+                    <button type="button" class="toolbar-btn" data-cmd="justifyFull" title="Justificar"><i class="fas fa-align-justify"></i></button>
+                    <span class="toolbar-sep"></span>
+                    <button type="button" class="toolbar-btn" data-cmd="insertUnorderedList" title="Lista com marcadores"><i class="fas fa-list-ul"></i></button>
+                    <button type="button" class="toolbar-btn" data-cmd="insertOrderedList" title="Lista numerada"><i class="fas fa-list-ol"></i></button>
+                    <span class="toolbar-sep"></span>
+                    <button type="button" class="toolbar-btn" data-cmd="outdent" title="Diminuir recuo"><i class="fas fa-outdent"></i></button>
+                    <button type="button" class="toolbar-btn" data-cmd="indent" title="Aumentar recuo"><i class="fas fa-indent"></i></button>
+                    <span class="toolbar-sep"></span>
+                    <button type="button" class="toolbar-btn" data-cmd="createLink" title="Link"><i class="fas fa-link"></i></button>
+                    <button type="button" class="toolbar-btn" data-cmd="undo" title="Desfazer"><i class="fas fa-undo"></i></button>
+                    <button type="button" class="toolbar-btn" data-cmd="redo" title="Refazer"><i class="fas fa-redo"></i></button>
+                </div>
+                <div class="editor-wrapper">
+                    <div id="conteudo-editor" contenteditable="true" class="editor-content" maxlength="10000"></div>
+                </div>
+                <input type="hidden" name="conteudo" id="conteudo-hidden">
+                <div class="char-count">Contagem de caracteres: <span id="char-count">0</span>/10000</div>
+            </div>
+        </section>
+
+        <!-- ANEXOS -->
+        <section class="form-section">
+            <div class="section-header">Anexos</div>
+            <div class="section-body">
+                <div class="dropzone" id="dropzone">
+                    <p>Arraste para esta área ou clique aqui para incluir documentos que atendem aos seguintes requisitos:</p>
+                    <ul>
+                        <li>Arquivos PDF (Portable Document Format);</li>
+                        <li>Tamanho máximo de 10MB;</li>
+                    </ul>
+                    <p class="dropzone-obs"><strong>Obs.</strong> Ao salvar o trâmite não será mais possível modificar a ordem dos anexos.</p>
+                </div>
+                <input type="file" id="file-input" name="anexos" accept=".pdf" multiple style="display:none">
+                <a href="#" class="link-add" id="btn-incluir-anexos">+ Incluir anexos</a>
+            </div>
+        </section>
+
+        <!-- DESTINATÁRIO -->
+        <section class="form-section">
+            <div class="section-header">Destinatário</div>
+            <div class="section-body">
+                <div class="destinatario-row">
+                    <div class="form-group">
+                        <label for="dest_estado">Estado</label>
+                        <select id="dest_estado" class="form-control">
+                            <option value="">Selecione</option>
+                            {% for e in estados %}
+                            <option value="{{ e.id }}">{{ e.nome }} ({{ e.uf }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="dest_municipio">Município</label>
+                        <select id="dest_municipio" class="form-control" disabled>
+                            <option value="">Selecione</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="dest_orgao">Órgão</label>
+                        <select id="dest_orgao" name="orgao_destino_id" class="form-control" disabled>
+                            <option value="">Selecione</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="dest_unidade">Unidade</label>
+                        <input type="hidden" name="municipio_destino_id" id="municipio_destino_id">
+                        <select id="dest_unidade" name="unidade_destino_id" class="form-control" disabled>
+                            <option value="">Selecione</option>
+                        </select>
+                    </div>
+                    <div class="form-group natureza-group">
+                        <label>Natureza</label>
+                        <div class="natureza-toggle">
+                            <button type="button" class="natureza-btn active" data-value="Público">PÚBLICO</button>
+                            <button type="button" class="natureza-btn" data-value="Restrito"><i class="fas fa-lock"></i> RESTRITO</button>
+                        </div>
+                        <input type="hidden" name="nivel_acesso" id="nivel_acesso" value="Público">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ASSINATURAS -->
+        <section class="form-section">
+            <div class="section-header">Assinaturas</div>
+            <div class="section-body">
+                <div class="empty-box" id="assinaturas-box">
+                    <span id="assinaturas-text">Nenhuma assinatura selecionada.</span>
+                    <div id="assinaturas-list"></div>
+                </div>
+                <div id="assinantes-hidden-container"></div>
+                <a href="#" class="link-add" id="btn-selecionar-assinantes">+ Selecionar assinantes</a>
+                <p class="info-warning">Para tramitar ou arquivar o processo, todas as assinaturas selecionadas devem estar validadas.</p>
+            </div>
+        </section>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-salvar">
+                <i class="fas fa-save"></i> Salvar
+            </button>
+        </div>
+    </form>
+
+    <!-- MODAL: ADICIONAR REQUERENTE -->
+    <div id="modal-requerente" class="sigein-modal" style="display:none;">
+        <div class="sigein-modal-backdrop" data-close="1"></div>
+        <div class="sigein-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modal-requerente-title">
+            <div class="sigein-modal-header">
+                <div class="sigein-modal-title" id="modal-requerente-title">Adicionar Requerente</div>
+                <button type="button" class="sigein-modal-close" id="modal-requerente-close" aria-label="Fechar">×</button>
+            </div>
+            <div class="sigein-modal-tabs">
+                <button type="button" class="sigein-tab-btn active" data-tab="ua">Unidade Administrativa</button>
+                <button type="button" class="sigein-tab-btn" data-tab="pf">Pessoa Física</button>
+                <button type="button" class="sigein-tab-btn" data-tab="pj">Pessoa Jurídica</button>
+            </div>
+            <div class="sigein-modal-body">
+                <div class="sigein-tab-panel active" data-panel="ua">
+                    <div class="sigein-modal-grid three">
+                        <div class="form-group">
+                            <label for="req_ua_orgao">Órgão</label>
+                            <input type="text" id="req_ua_orgao" class="form-control" placeholder=""
+                                   value="{% if user_obj and user_obj.orgao %}{% if user_obj.orgao.sigla %}{{ user_obj.orgao.sigla }} - {% endif %}{{ user_obj.orgao.nome }}{% endif %}"
+                                   readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="req_ua_unidade">Unidade</label>
+                            <input type="text" id="req_ua_unidade" class="form-control" placeholder=""
+                                   value="{% if user_obj and user_obj.unidade %}{% if user_obj.unidade.sigla %}{{ user_obj.unidade.sigla }} - {% endif %}{{ user_obj.unidade.nome }}{% endif %}"
+                                   readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="req_ua_criado_por">Criado por</label>
+                            <input type="text" id="req_ua_criado_por" class="form-control" placeholder=""
+                                   value="{% if user_obj %}{{ user_obj.nome }}{% endif %}"
+                                   readonly>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sigein-tab-panel" data-panel="pf">
+                    <div class="sigein-modal-grid two">
+                        <div class="form-group">
+                            <label for="req_pf_tipo">Tipo</label>
+                            <select id="req_pf_tipo" class="form-control">
+                                <option value="Cidadão(a)">Cidadão(a)</option>
+                                <option value="Estrangeiro(a)">Estrangeiro(a)</option>
+                                <option value="Advogado(a)">Advogado(a)</option>
+                                <option value="Servidor(a)">Servidor(a)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="req_pf_cpf">CPF</label>
+                            <input type="text" id="req_pf_cpf" required class="form-control" 
+                            value="{{ form_data.cpf if form_data else (user.cpf if user else '') }}"
+                            placeholder="000.000.000-00"
+                            maxlength="14">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sigein-tab-panel" data-panel="pj">
+                    <div class="sigein-modal-grid two">
+                        <div class="form-group">
+                            <label for="req_pj_cnpj">CNPJ</label>
+                            <input type="text" id="req_pj_cnpj" class="form-control" placeholder="">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="sigein-modal-footer">
+                <button type="button" class="sigein-btn-cancel" id="modal-requerente-cancelar">Cancelar</button>
+                <button type="button" class="sigein-btn-primary" id="modal-requerente-adicionar">Adicionar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: SELECIONAR ASSINANTES -->
+    <div id="modal-assinantes" class="sigein-modal" style="display:none;">
+        <div class="sigein-modal-backdrop" data-close="modal-assinantes"></div>
+        <div class="sigein-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modal-assinantes-title">
+            <div class="sigein-modal-header">
+                <div class="sigein-modal-title" id="modal-assinantes-title">Selecionar assinantes</div>
+                <button type="button" class="sigein-modal-close modal-assinantes-close" aria-label="Fechar">×</button>
+            </div>
+            <div class="sigein-modal-body">
+                <p class="modal-assinantes-info">Usuários do mesmo órgão/unidade com perfil Master, Admin Municipal, Gestor de Protocolo ou Gestor Geral.</p>
+                <div class="form-group">
+                    <label for="assinantes-multiselect">Selecione um ou mais assinantes</label>
+                    <select id="assinantes-multiselect" class="form-control" multiple size="10">
+                        <option value="">Carregando...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="sigein-modal-footer">
+                <button type="button" class="sigein-btn-cancel modal-assinantes-cancelar">Cancelar</button>
+                <button type="button" class="sigein-btn-primary" id="modal-assinantes-confirmar">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.processo-criar-page {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 24px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+}
+
+.page-header h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.font-size-controls {
+    display: flex;
+    gap: 4px;
+}
+
+.font-btn {
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 14px;
+    border-radius: 4px;
+    color: hsl(0, 0%, 0%);
+}
+
+.font-btn:hover {
+    background: #e0e0e0;
+}
+
+.font-btn.active {
+    background: #0d6efd;
+    color: white;
+    border-color: #0d6efd;
+}
+
+.processo-criar-page.font-size-1 { font-size: 13px; }
+.processo-criar-page.font-size-2 { font-size: 14px; }
+.processo-criar-page.font-size-3 { font-size: 16px; }
+
+.form-section {
+    margin-bottom: 24px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.section-header {
+    background: #0d6efd;
+    color: white;
+    padding: 12px 16px;
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.section-body {
+    padding: 20px;
+    background: #fafafa;
+    border: 1px solid #000000;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group:last-child {
+    margin-bottom: 16;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+}
+
+.btn-select {
+    background: #0d6efd;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 8px;
+}
+
+.btn-select:hover {
+    background: #0b5ed7;
+}
+
+/* Categoria - pesquisa e selects */
+.categoria-pesquisa {
+    margin-bottom: 16px;
+}
+
+.categoria-pesquisa-wrapper {
+    position: relative;
+}
+
+.categoria-pesquisa .input-pesquisa {
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+}
+
+.categoria-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 220px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 100;
+}
+
+.categoria-dropdown-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.categoria-dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.categoria-dropdown-item:hover {
+    background: #e7f1ff;
+}
+
+.categoria-selects-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    align-items: end;
+}
+
+.categoria-selects-row .form-group {
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.categoria-selects-row .form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #333;
+}
+
+.categoria-selects-row .form-control {
+    min-height: 38px;
+}
+
+.categoria-divider {
+    height: 2px;
+    background: #0d6efd;
+    margin-top: 16px;
+    border: none;
+}
+
+@media (max-width: 768px) {
+    .categoria-selects-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.empty-box {
+    background: #e9ecef;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 20px;
+    color: #6c757d;
+    margin-bottom: 12px;
+}
+
+.link-add {
+    color: #0d6efd;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.link-add:hover {
+    text-decoration: underline;
+}
+
+.alert {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+}
+
+.alert-warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+}
+
+.info-warning {
+    color: #fd7e14;
+    font-size: 13px;
+    margin-top: 12px;
+    margin-bottom: 0;
+}
+
+/* Editor */
+.editor-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 8px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+}
+
+.toolbar-btn {
+    background: transparent;
+    border: none;
+    padding: 6px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+    color: hsl(0, 0%, 0%);
+}
+
+.toolbar-btn:hover {
+    background: #e9ecef;
+}
+
+.toolbar-sep {
+    width: 1px;
+    background: #dee2e6;
+    margin: 2px 8px;
+}
+
+.editor-wrapper {
+    border: 1px solid #dee2e6;
+    border-radius: 0 0 6px 6px;
+    min-height: 200px;
+}
+
+.editor-content {
+    min-height: 200px;
+    padding: 16px;
+    background: white;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.editor-content:focus {
+    outline: none;
+}
+
+.char-count {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 8px;
+}
+
+/* Dropzone */
+.dropzone {
+    border: 2px dashed #ced4da;
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.dropzone:hover, .dropzone.dragover {
+    border-color: #0d6efd;
+    background: #e7f1ff;
+}
+
+.dropzone p {
+    margin: 0 0 12px 0;
+    color: #495057;
+}
+
+.dropzone ul {
+    text-align: left;
+    display: inline-block;
+    margin: 0 0 12px 0;
+}
+
+.dropzone-obs {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 12px !important;
+}
+
+/* Destinatário */
+.destinatario-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr auto;
+    gap: 16px;
+    align-items: end;
+}
+
+.destinatario-row .form-group {
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.destinatario-row .form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+}
+
+.destinatario-row .form-control {
+    min-height: 38px;
+}
+
+.destinatario-row .natureza-group label{
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 15px;
+}
+
+.destinatario-row .natureza-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 23px;
+}
+
+.destinatario-row .natureza-group .natureza-toggle {
+    height: 38px;
+    min-height: 38px;
+    display: flex;
+    align-items: stretch;
+    box-sizing: border-box;
+}
+
+.natureza-toggle {
+    display: flex;
+    gap: 0;
+}
+
+.natureza-btn {
+    flex: 1;
+    padding: 0 16px;
+    border: 1px solid #ced4da;
+    background: #e9ecef;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.natureza-btn:first-child {
+    border-radius: 6px 0 0 6px;
+    color: rgb(0, 0, 0);
+}
+
+.natureza-btn:last-child {
+    border-radius: 0 6px 6px 0;
+    color: rgb(0, 0, 0);
+}
+
+.natureza-btn.active {
+    background: #0d6efd;
+    color: white;
+    border-color: #0d6efd;
+}
+
+.natureza-btn:not(.active):hover {
+    background: #cccccc;
+}
+
+.modal-assinantes-info {
+    margin: 0 0 12px 0;
+    color: #6c757d;
+    font-size: 13px;
+}
+
+/* Requerentes/Assinaturas lista */
+.requerente-item, .assinante-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.requerente-remove {
+    border: none;
+    background: transparent;
+    color: #6c757d;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 4px 6px;
+}
+
+.requerente-remove:hover {
+    color: #dc3545;
+}
+
+/* Modal (Adicionar Requerente) */
+.sigein-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+}
+
+.sigein-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+}
+
+.sigein-modal-dialog {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 760px;
+    max-width: calc(100vw - 32px);
+    background: #fff;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+}
+
+.sigein-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #f1f3f5;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.sigein-modal-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #343a40;
+}
+
+.sigein-modal-close {
+    border: none;
+    background: transparent;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    color: #6c757d;
+}
+
+.sigein-modal-close:hover {
+    color: #212529;
+}
+
+.sigein-modal-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 12px;
+    background: #fff;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.sigein-tab-btn {
+    border: 1px solid #dee2e6;
+    border-bottom: none;
+    background: #f8f9fa;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #495057;
+    border-radius: 4px 4px 0 0;
+    margin-right: 6px;
+}
+
+.sigein-tab-btn.active {
+    background: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
+}
+
+.sigein-modal-body {
+    padding: 16px;
+}
+
+.sigein-tab-panel { display: none; }
+.sigein-tab-panel.active { display: block; }
+
+.sigein-modal-grid {
+    display: grid;
+    gap: 16px;
+    align-items: end;
+}
+
+.sigein-modal-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+.sigein-modal-grid.two { grid-template-columns: 1fr 1fr; }
+
+.sigein-modal-rightnote {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    color: #0d6efd;
+    font-weight: 600;
+    font-size: 14px;
+    padding-bottom: 6px;
+}
+
+.sigein-modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-top: 1px solid #dee2e6;
+    background: #fff;
+}
+
+.sigein-btn-cancel {
+    background: #fff;
+    border: 1px solid #ced4da;
+    color: #495057;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.sigein-btn-cancel:hover {
+    background: #f8f9fa;
+}
+
+.sigein-btn-primary {
+    background: #0d6efd;
+    border: 1px solid #0d6efd;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.sigein-btn-primary:hover {
+    background: #0b5ed7;
+    border-color: #0b5ed7;
+}
+
+@media (max-width: 768px) {
+    .sigein-modal-grid.three,
+    .sigein-modal-grid.two {
+        grid-template-columns: 1fr;
+    }
+    .sigein-modal-footer {
+        gap: 10px;
+    }
+}
+
+/* Actions */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+
+.btn-salvar {
+    background: #0d6efd;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-salvar:hover {
+    background: #0b5ed7;
+}
+
+@media (max-width: 768px) {
+    .destinatario-row {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script src="https://kit.fontawesome.com/a076d05399.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Controles de tamanho de fonte
+    var container = document.querySelector('.processo-criar-page');
+    var storageKey = 'criar-processo-font-size';
+    var currentSize = localStorage.getItem(storageKey) || '2';
+    function applyFontSize(size) {
+        container.classList.remove('font-size-1', 'font-size-2', 'font-size-3');
+        container.classList.add('font-size-' + size);
+        document.querySelectorAll('.font-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.getAttribute('data-size') === size);
+        });
+        localStorage.setItem(storageKey, size);
+    }
+    document.querySelectorAll('.font-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() { applyFontSize(this.getAttribute('data-size')); });
+    });
+    applyFontSize(currentSize);
+
+    const MAX_CHARS = 10000;
+    const editor = document.getElementById('conteudo-editor');
+    const charCount = document.getElementById('char-count');
+    const conteudoHidden = document.getElementById('conteudo-hidden');
+
+    // Contador de caracteres
+    function updateCharCount() {
+        const text = editor.innerText || '';
+        const len = text.length;
+        charCount.textContent = len;
+        if (len >= MAX_CHARS) editor.contentEditable = 'false';
+        else editor.contentEditable = 'true';
+    }
+    editor.addEventListener('input', updateCharCount);
+
+    // Toolbar
+    document.querySelectorAll('.toolbar-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const cmd = this.dataset.cmd;
+            if (cmd === 'createLink') {
+                const url = prompt('URL do link:');
+                if (url) document.execCommand(cmd, false, url);
+            } else {
+                document.execCommand(cmd, false, null);
+            }
+            editor.focus();
+        });
+    });
+
+    // Antes de submit, copiar conteúdo
+    document.getElementById('processo-form').addEventListener('submit', function() {
+        conteudoHidden.value = editor.innerHTML;
+    });
+
+    // Natureza toggle
+    document.querySelectorAll('.natureza-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.natureza-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById('nivel_acesso').value = this.dataset.value;
+        });
+    });
+
+    // Dropzone
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file-input');
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) fileInput.files = e.dataTransfer.files;
+    });
+    document.getElementById('btn-incluir-anexos').addEventListener('click', e => {
+        e.preventDefault();
+        fileInput.click();
+    });
+
+    // Validação tamanho PDF 10MB
+    fileInput.addEventListener('change', function() {
+        const files = Array.from(this.files);
+        const maxSize = 10 * 1024 * 1024;
+        for (const f of files) {
+            if (f.size > maxSize) {
+                alert('O arquivo "' + f.name + '" excede 10MB.');
+                this.value = '';
+                return;
+            }
+            if (!f.name.toLowerCase().endsWith('.pdf')) {
+                alert('Apenas arquivos PDF são permitidos.');
+                this.value = '';
+                return;
+            }
+        }
+    });
+
+    // Cascata Destinatário
+    const destEstado = document.getElementById('dest_estado');
+    const destMunicipio = document.getElementById('dest_municipio');
+    const destOrgao = document.getElementById('dest_orgao');
+    const destUnidade = document.getElementById('dest_unidade');
+
+    destEstado.addEventListener('change', async function() {
+        const id = this.value;
+        destMunicipio.innerHTML = '<option value="">Selecione</option>';
+        destOrgao.innerHTML = '<option value="">Selecione</option>';
+        destUnidade.innerHTML = '<option value="">Selecione</option>';
+        destMunicipio.disabled = destOrgao.disabled = destUnidade.disabled = !id;
+        if (!id) return;
+        const res = await fetch('/api/municipios/' + id);
+        const data = await res.json();
+        data.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.nome;
+            destMunicipio.appendChild(opt);
+        });
+        destMunicipio.disabled = false;
+    });
+
+    destMunicipio.addEventListener('change', async function() {
+        const id = this.value;
+        document.getElementById('municipio_destino_id').value = id || '';
+        destOrgao.innerHTML = '<option value="">Selecione</option>';
+        destUnidade.innerHTML = '<option value="">Selecione</option>';
+        destOrgao.disabled = destUnidade.disabled = !id;
+        if (!id) return;
+        const res = await fetch('/api/orgaos/' + id);
+        const data = await res.json();
+        data.forEach(o => {
+            const opt = document.createElement('option');
+            opt.value = o.id;
+            opt.textContent = o.nome + (o.sigla ? ' (' + o.sigla + ')' : '');
+            destOrgao.appendChild(opt);
+        });
+        destOrgao.disabled = false;
+    });
+
+    destOrgao.addEventListener('change', async function() {
+        const id = this.value;
+        destUnidade.innerHTML = '<option value="">Selecione</option>';
+        destUnidade.disabled = !id;
+        if (!id) return;
+        const res = await fetch('/api/unidades/' + id);
+        const data = await res.json();
+        data.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.textContent = u.nome + (u.sigla ? ' (' + u.sigla + ')' : '');
+            destUnidade.appendChild(opt);
+        });
+        destUnidade.disabled = false;
+    });
+
+    // Cascata Categoria (Grupo -> Assunto -> Subassunto)
+    const catGrupo = document.getElementById('categoria_grupo');
+    const catAssunto = document.getElementById('categoria_assunto');
+    const catSubassunto = document.getElementById('categoria_subassunto');
+    const catPesquisa = document.getElementById('categoria_pesquisa');
+
+    async function carregarGrupos() {
+        const res = await fetch('/api/grupos');
+        const data = await res.json();
+        catGrupo.innerHTML = '<option value="">Selecione</option>';
+        data.forEach(g => {
+            const opt = document.createElement('option');
+            opt.value = g.id;
+            opt.textContent = g.nome;
+            catGrupo.appendChild(opt);
+        });
+    }
+    carregarGrupos();
+
+    catGrupo.addEventListener('change', async function() {
+        const id = this.value;
+        catAssunto.innerHTML = '<option value="">Selecione</option>';
+        catSubassunto.innerHTML = '<option value="">Selecione</option>';
+        catAssunto.disabled = catSubassunto.disabled = !id;
+        if (!id) return;
+        const res = await fetch('/api/assuntos/' + id);
+        const data = await res.json();
+        data.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a.id;
+            opt.textContent = a.nome;
+            catAssunto.appendChild(opt);
+        });
+        catAssunto.disabled = false;
+    });
+
+    catAssunto.addEventListener('change', async function() {
+        const id = this.value;
+        catSubassunto.innerHTML = '<option value="">Selecione</option>';
+        catSubassunto.disabled = !id;
+        if (!id) return;
+        const res = await fetch('/api/subassuntos/' + id);
+        const data = await res.json();
+        data.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.nome;
+            catSubassunto.appendChild(opt);
+        });
+        catSubassunto.disabled = false;
+    });
+
+    // Pesquisa tipo LIKE - busca nos cadastros conforme digita
+    const catDropdown = document.getElementById('categoria_pesquisa_dropdown');
+    let catPesquisaTimer = null;
+
+    function fecharCatDropdown() {
+        catDropdown.style.display = 'none';
+        catDropdown.innerHTML = '';
+    }
+
+    async function buscarCategoria(q) {
+        if (!q || q.length < 1) {
+            fecharCatDropdown();
+            return;
+        }
+        try {
+            const res = await fetch('/api/categoria/search?q=' + encodeURIComponent(q));
+            const data = await res.json();
+            catDropdown.innerHTML = '';
+            if (data.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'categoria-dropdown-item';
+                empty.textContent = 'Nenhum resultado encontrado';
+                empty.style.color = '#6c757d';
+                empty.style.cursor = 'default';
+                catDropdown.appendChild(empty);
+            } else {
+                data.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'categoria-dropdown-item';
+                    div.textContent = item.label;
+                    div.addEventListener('click', async function() {
+                        catPesquisa.value = item.label;
+                        fecharCatDropdown();
+                        catGrupo.value = item.grupo_id;
+                        catAssunto.innerHTML = '<option value="">Selecione</option>';
+                        catSubassunto.innerHTML = '<option value="">Selecione</option>';
+                        catAssunto.disabled = catSubassunto.disabled = false;
+                        if (item.assunto_id) {
+                            const resA = await fetch('/api/assuntos/' + item.grupo_id);
+                            const assuntos = await resA.json();
+                            assuntos.forEach(a => {
+                                const opt = document.createElement('option');
+                                opt.value = a.id;
+                                opt.textContent = a.nome;
+                                if (a.id === item.assunto_id) opt.selected = true;
+                                catAssunto.appendChild(opt);
+                            });
+                            if (item.subassunto_id) {
+                                const resS = await fetch('/api/subassuntos/' + item.assunto_id);
+                                const subassuntos = await resS.json();
+                                subassuntos.forEach(s => {
+                                    const opt = document.createElement('option');
+                                    opt.value = s.id;
+                                    opt.textContent = s.nome;
+                                    if (s.id === item.subassunto_id) opt.selected = true;
+                                    catSubassunto.appendChild(opt);
+                                });
+                            }
+                        }
+                    });
+                    catDropdown.appendChild(div);
+                });
+            }
+            catDropdown.style.display = 'block';
+        } catch (e) {
+            fecharCatDropdown();
+        }
+    }
+
+    catPesquisa.addEventListener('input', function() {
+        clearTimeout(catPesquisaTimer);
+        const q = this.value.trim();
+        if (q.length < 1) {
+            fecharCatDropdown();
+            return;
+        }
+        catPesquisaTimer = setTimeout(() => buscarCategoria(q), 280);
+    });
+
+    catPesquisa.addEventListener('focus', function() {
+        if (this.value.trim().length >= 1 && catDropdown.children.length) {
+            catDropdown.style.display = 'block';
+        }
+    });
+
+    catPesquisa.addEventListener('blur', function() {
+        setTimeout(fecharCatDropdown, 150);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!catPesquisa.contains(e.target) && !catDropdown.contains(e.target)) {
+            fecharCatDropdown();
+        }
+    });
+
+    // Modal: Adicionar Requerente (conforme modelo)
+    const reqModal = document.getElementById('modal-requerente');
+    const reqModalClose = document.getElementById('modal-requerente-close');
+    const reqModalCancelar = document.getElementById('modal-requerente-cancelar');
+    const reqModalAdicionar = document.getElementById('modal-requerente-adicionar');
+    const reqTabs = Array.from(document.querySelectorAll('.sigein-tab-btn'));
+    const reqPanels = Array.from(document.querySelectorAll('.sigein-tab-panel'));
+    const reqListEl = document.getElementById('requerentes-list');
+    const reqEmptyText = document.getElementById('requerentes-text');
+    const reqHidden = document.getElementById('requerente-hidden');
+
+    const reqUAOrgao = document.getElementById('req_ua_orgao');
+    const reqUAUnidade = document.getElementById('req_ua_unidade');
+    const reqUACriadoPor = document.getElementById('req_ua_criado_por');
+    const reqPFTipo = document.getElementById('req_pf_tipo');
+    const reqPFCPF = document.getElementById('req_pf_cpf');
+    const reqPJCNPJ = document.getElementById('req_pj_cnpj');
+
+    let reqAtivo = 'ua';
+    const requerentes = [];
+
+    function abrirReqModal() {
+        reqModal.style.display = 'block';
+    }
+
+    function fecharReqModal() {
+        reqModal.style.display = 'none';
+    }
+
+    function selecionarAba(tab) {
+        reqAtivo = tab;
+        reqTabs.forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+        reqPanels.forEach(p => p.classList.toggle('active', p.dataset.panel === tab));
+    }
+
+    function atualizarRequerentesUI() {
+        reqListEl.innerHTML = '';
+        if (requerentes.length === 0) {
+            reqEmptyText.style.display = '';
+            reqHidden.value = '';
+            return;
+        }
+        reqEmptyText.style.display = 'none';
+        requerentes.forEach((r, idx) => {
+            const item = document.createElement('div');
+            item.className = 'requerente-item';
+            const span = document.createElement('span');
+            span.textContent = r.label;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'requerente-remove';
+            btn.title = 'Remover';
+            btn.textContent = '×';
+            btn.addEventListener('click', () => {
+                requerentes.splice(idx, 1);
+                atualizarRequerentesUI();
+            });
+            item.appendChild(span);
+            item.appendChild(btn);
+            reqListEl.appendChild(item);
+        });
+        reqHidden.value = requerentes.map(r => r.label).join('; ');
+    }
+
+    function onlyDigits(v) {
+        return (v || '').toString().replace(/\D/g, '');
+    }
+
+    async function addRequerenteAtual() {
+        let label = '';
+        if (reqAtivo === 'ua') {
+            const orgao = (reqUAOrgao.value || '').trim();
+            const unidade = (reqUAUnidade.value || '').trim();
+            const criadoPor = (reqUACriadoPor.value || '').trim();
+            if (!orgao && !unidade && !criadoPor) return;
+            const partes = [];
+            if (orgao) partes.push(orgao);
+            if (unidade) partes.push(unidade);
+            if (criadoPor) partes.push('Criado por: ' + criadoPor);
+            label = partes.join(' | ');
+        } else if (reqAtivo === 'pf') {
+            const tipo = (reqPFTipo.value || '').trim();
+            const cpf = onlyDigits(reqPFCPF.value);
+            if (!cpf) return;
+            label = `${tipo} | CPF: ${cpf}`;
+        } else if (reqAtivo === 'pj') {
+            const cnpj = onlyDigits(reqPJCNPJ.value);
+            if (!cnpj) return;
+            label = `CNPJ: ${cnpj}`;
+        }
+        if (!label) return;
+        requerentes.push({ label });
+        atualizarRequerentesUI();
+        fecharReqModal();
+    }
+
+    document.getElementById('btn-adicionar-requerente').addEventListener('click', function(e) {
+        e.preventDefault();
+        abrirReqModal();
+    });
+
+    reqModal.addEventListener('click', function(e) {
+        const close = e.target && e.target.dataset && e.target.dataset.close;
+        if (close) fecharReqModal();
+    });
+
+    reqModalClose.addEventListener('click', fecharReqModal);
+    reqModalCancelar.addEventListener('click', fecharReqModal);
+    reqModalAdicionar.addEventListener('click', addRequerenteAtual);
+
+    reqTabs.forEach(btn => {
+        btn.addEventListener('click', () => selecionarAba(btn.dataset.tab));
+    });
+
+    selecionarAba('ua');
+    atualizarRequerentesUI();
+    // Categoria: ao submeter, preencher assunto com o texto selecionado
+    document.getElementById('processo-form').addEventListener('submit', function() {
+        const grupo = document.getElementById('categoria_grupo');
+        const assunto = document.getElementById('categoria_assunto');
+        const subassunto = document.getElementById('categoria_subassunto');
+        const partes = [];
+        if (grupo.value && grupo.selectedOptions[0]) partes.push(grupo.selectedOptions[0].text);
+        if (assunto.value && assunto.selectedOptions[0]) partes.push(assunto.selectedOptions[0].text);
+        if (subassunto.value && subassunto.selectedOptions[0]) partes.push(subassunto.selectedOptions[0].text);
+        document.getElementById('assunto-hidden').value = partes.join(' / ') || '';
+    });
+    // —— Modal Selecionar assinantes ——
+    const modalAssinantes = document.getElementById('modal-assinantes');
+    const multiselect = document.getElementById('assinantes-multiselect');
+    const containerHidden = document.getElementById('assinantes-hidden-container');
+    const assinaturasText = document.getElementById('assinaturas-text');
+    const assinaturasList = document.getElementById('assinaturas-list');
+
+    function abrirModalAssinantes() {
+        modalAssinantes.style.display = 'block';
+        multiselect.innerHTML = '<option value="">Carregando...</option>';
+        fetch('/eprotocolo/api/assinantes-elegiveis')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.error) {
+                    multiselect.innerHTML = '<option value="">Erro ao carregar.</option>';
+                    return;
+                }
+                multiselect.innerHTML = '';
+                data.forEach(function(u) {
+                    var opt = document.createElement('option');
+                    opt.value = u.id;
+                    opt.textContent = u.nome + (u.perfil ? ' (' + u.perfil + ')' : '');
+                    multiselect.appendChild(opt);
+                });
+            })
+            .catch(function() {
+                multiselect.innerHTML = '<option value="">Erro ao carregar.</option>';
+            });
+    }
+
+    function fecharModalAssinantes() {
+        modalAssinantes.style.display = 'none';
+    }
+
+    function confirmarAssinantes() {
+        var opts = multiselect.selectedOptions;
+        var ids = [];
+        var nomes = [];
+        for (var i = 0; i < opts.length; i++) {
+            ids.push(opts[i].value);
+            nomes.push(opts[i].textContent);
+        }
+        containerHidden.innerHTML = '';
+        ids.forEach(function(id) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'assinante_ids[]';
+            input.value = id;
+            containerHidden.appendChild(input);
+        });
+        if (nomes.length) {
+            assinaturasText.style.display = 'none';
+            assinaturasList.innerHTML = nomes.map(function(n) { return '<span class="assinante-item">' + n + '</span>'; }).join('');
+        } else {
+            assinaturasText.style.display = '';
+            assinaturasList.innerHTML = '';
+        }
+        fecharModalAssinantes();
+    }
+
+    document.getElementById('btn-selecionar-assinantes').addEventListener('click', function(e) {
+        e.preventDefault();
+        abrirModalAssinantes();
+    });
+    modalAssinantes.querySelector('.modal-assinantes-close').addEventListener('click', fecharModalAssinantes);
+    modalAssinantes.querySelector('.modal-assinantes-cancelar').addEventListener('click', fecharModalAssinantes);
+    document.getElementById('modal-assinantes-confirmar').addEventListener('click', confirmarAssinantes);
+    modalAssinantes.querySelector('.sigein-modal-backdrop').addEventListener('click', fecharModalAssinantes);
+});
+</script>
+{% endblock %}

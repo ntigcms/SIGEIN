@@ -21,7 +21,7 @@
     </div>
     {% endfor %}
 
-    <div style="display:flex; align-items:center; margin-top:18px;">
+    <div style="display:flex; align-items:center; ">
         <button id="clear-filters" class="clear-btn">🧹 Limpar Filtros</button>
     </div>
 </div>
@@ -86,6 +86,9 @@
                     </div>
                 </div>
             </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+                <button onclick="closeModal('modal-product-details')" class="btn-fechar">Fechar</button>
+            </div>
         </div>
     </div>
 </div>
@@ -143,14 +146,9 @@
                 <textarea id="view-observacao" readonly rows="3"></textarea>
             </div>
 
-            <!-- ✅ Botão Voltar -->
             <div style="display: flex; justify-content: flex-end; margin-top: 20px; gap: 10px;">
-                <button onclick="voltarParaDetalhes()" class="btn-voltar" id="btn-voltar-detalhes" style="display:none;">
-                    ← Voltar
-                </button>
-                <button onclick="closeModal('modal-product-view')" class="btn-fechar">
-                    Fechar
-                </button>
+                <button onclick="voltarParaDetalhes()" class="btn-voltar" id="btn-voltar-detalhes" style="display:none;">← Voltar</button>
+                <button onclick="closeModal('modal-product-view')" class="btn-fechar">Fechar</button>
             </div>
         </div>
     </div>
@@ -432,6 +430,10 @@ async function openStockDetails(typeId, unitName) {
         
         document.getElementById('view-observacao').value = 'Produto controlado por quantidade (sem tombo/série individual)';
 
+        currentTypeId = null;
+        currentUnitName = null;
+        document.getElementById('btn-voltar-detalhes').style.display = 'none';
+
         document.getElementById('modal-product-view').style.display = 'flex';
 
     } catch (error) {
@@ -523,14 +525,12 @@ async function openItemView(itemId) {
         
         document.getElementById('view-observacao').value = data.observacao || '';
 
-        // ✅ Mostra botão Voltar se veio da modal de detalhes
         if (currentTypeId && currentUnitName) {
             document.getElementById('btn-voltar-detalhes').style.display = 'block';
         } else {
             document.getElementById('btn-voltar-detalhes').style.display = 'none';
         }
 
-        // Fecha modal de detalhes se estiver aberta
         closeModal('modal-product-details');
         
         document.getElementById('modal-product-view').style.display = 'flex';
@@ -541,7 +541,6 @@ async function openItemView(itemId) {
     }
 }
 
-// ✅ Função para voltar à modal de detalhes
 function voltarParaDetalhes() {
     closeModal('modal-product-view');
     if (currentTypeId && currentUnitName) {

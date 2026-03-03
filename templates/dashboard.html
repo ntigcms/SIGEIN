@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
 
 {% block content %}
-<h2>Bem-vindo ao Dashboard!</h2>
+<h2>Bem-vindo{% if user %}, {{ user }}{% endif %}!</h2>
 <p>Resumo rápido do estoque e movimentações:</p>
 
 <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 20px;">

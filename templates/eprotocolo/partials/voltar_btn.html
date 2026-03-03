@@ -1,0 +1,6 @@
+{# Botão Voltar padrão do E-Protocolo - incluir em todas as subpáginas #}
+{# Uso: {% include "eprotocolo/partials/voltar_btn.html" %} #}
+{# Ou com URL customizada: {% include "eprotocolo/partials/voltar_btn.html" with context %} e definir voltar_url, voltar_text #}
+<a href="{{ voltar_url | default('/eprotocolo') }}" class="btn-voltar-eprotocolo">
+    <i class="fas fa-arrow-left"></i> {{ voltar_text | default('Voltar') }}
+</a>

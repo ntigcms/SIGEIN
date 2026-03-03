@@ -5,10 +5,9 @@ from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import get_current_user, registrar_log
 from models import EquipmentState
-from fastapi.templating import Jinja2Templates
+from shared_templates import templates
 
 router = APIRouter(prefix="/states", tags=["States"])
-templates = Jinja2Templates(directory="templates")
 
 
 # LISTAR ESTADOS
@@ -17,7 +16,7 @@ def list_states(request: Request, db: Session = Depends(get_db), user: str = Dep
     if not user:
         return RedirectResponse("/login")
 
-    states = db.query(EquipmentState).all()
+    states = db.query(EquipmentState).order_by(EquipmentState.nome).all()
     return templates.TemplateResponse(
         "states.html",
         {"request": request, "states": states, "user": user}
