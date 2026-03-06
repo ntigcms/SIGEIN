@@ -1,260 +1,716 @@
 {% extends "eprotocolo/eprotocolo_base.html" %}
 
-{% block title %}Visualizar Processo {{ processo.numero }} - E-Protocolo{% endblock %}
+{% block title %}Detalhamento do Processo {{ processo.numero }} - E-Protocolo{% endblock %}
 
 {% block eprotocolo_content %}
-<div class="processo-visualizar">
-    <div class="doc-toolbar">
+<div class="processo-detalhe-page" data-processo-id="{{ processo.id }}">
+    <div class="page-toolbar">
         <a href="/eprotocolo/processos/caixa" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar à caixa</a>
-        <button type="button" class="btn-print" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
+        <div class="font-size-controls">
+            <button type="button" class="font-btn" data-size="1" title="Texto menor">A</button>
+            <button type="button" class="font-btn" data-size="2" title="Texto normal">A⁻</button>
+            <button type="button" class="font-btn" data-size="3" title="Texto maior">A⁺</button>
+        </div>
     </div>
+    <div class="caixa-processos">
+    <h1 class="page-title">Detalhamento do Processo {{ processo.numero }}</h1>
 
-    <article class="doc-paper">
-        <header class="doc-header">
-            <div class="doc-header-top">
-                <span class="doc-numero-badge">Processo {{ processo.numero }}</span>
-                <h1 class="doc-assunto">{{ processo.assunto or 'Sem assunto' }}</h1>
+    <!-- GERAL -->
+    <section class="detalhe-section">
+        <div class="section-badge">Geral</div>
+        <div class="section-body form-card-style">
+            <div class="info-grid">
+                <div class="info-field">
+                    <label>Número / Ano</label>
+                    <div class="info-value">{{ processo.numero or '-' }}</div>
+                </div>
+                <div class="info-field">
+                    <label>Código</label>
+                    <div class="info-value">{{ processo.id }}-{{ processo.ano or '' }}</div>
+                </div>
+                <div class="info-field">
+                    <label>Situação</label>
+                    <div class="info-value">{{ processo.status or 'Em andamento' }}</div>
+                </div>
+                <div class="info-field">
+                    <label>Número Externo</label>
+                    <div class="info-value">Não informado</div>
+                </div>
+                <div class="info-field">
+                    <label>Última Atualização</label>
+                    <div class="info-value">{% if historico %}{{ historico[-1].data.strftime('%d/%m/%Y %H:%M') if historico[-1].data else (processo.created_at.strftime('%d/%m/%Y %H:%M') if processo.created_at else '-') }}{% else %}{{ processo.created_at.strftime('%d/%m/%Y %H:%M') if processo.created_at else '-' }}{% endif %}</div>
+                </div>
+                <div class="info-field">
+                    <label>Natureza</label>
+                    <div class="info-value">{{ processo.nivel_acesso or 'Público' }}</div>
+                </div>
+                {% if processo.processo_principal_id and processo.processo_principal %}
+                <div class="info-field">
+                    <label>Apensado a</label>
+                    <div class="info-value"><a href="/eprotocolo/processos/{{ processo.processo_principal.id }}/visualizar">{{ processo.processo_principal.numero or processo.processo_principal.id }}</a></div>
+                </div>
+                {% endif %}
             </div>
-            <div class="doc-info-grid">
-                <div class="doc-info-card">
-                    <span class="doc-info-label"><i class="fas fa-user"></i> Requerente</span>
-                    <span class="doc-info-value">{{ processo.requerente or '-' }}</span>
+        </div>
+    </section>
+
+    <!-- CATEGORIA -->
+    <section class="detalhe-section">
+        <div class="section-badge">Categoria</div>
+        <div class="section-body form-card-style">
+            <div class="info-grid">
+                {% set partes = (processo.assunto or '').split(' / ') %}
+                <div class="info-field">
+                    <label>Grupo</label>
+                    <div class="info-value">{{ partes[0] if partes and partes[0] else '-' }}</div>
                 </div>
-                <div class="doc-info-card">
-                    <span class="doc-info-label"><i class="fas fa-map-marker-alt"></i> Procedência</span>
-                    <span class="doc-info-value">{{ processo.orgao_origem.sigla or processo.orgao_origem.nome if processo.orgao_origem else '-' }} / {{ processo.unidade_origem.sigla or processo.unidade_origem.nome if processo.unidade_origem else '-' }}</span>
+                <div class="info-field">
+                    <label>Assunto</label>
+                    <div class="info-value">{{ partes[1] if partes and partes|length > 1 else (processo.assunto or '-') }}</div>
                 </div>
-                <div class="doc-info-card">
-                    <span class="doc-info-label"><i class="fas fa-building"></i> Unidade atual</span>
-                    <span class="doc-info-value">{{ processo.orgao_atual.sigla or processo.orgao_atual.nome if processo.orgao_atual else '-' }} / {{ processo.unidade_atual.sigla or processo.unidade_atual.nome if processo.unidade_atual else '-' }}</span>
-                </div>
-                <div class="doc-info-card">
-                    <span class="doc-info-label"><i class="fas fa-calendar-alt"></i> Criado em</span>
-                    <span class="doc-info-value">{{ processo.created_at.strftime('%d/%m/%Y %H:%M') if processo.created_at else '-' }}</span>
-                </div>
-                <div class="doc-info-card">
-                    <span class="doc-info-label"><i class="fas fa-user-edit"></i> Criado por</span>
-                    <span class="doc-info-value">{{ processo.creator.nome if processo.creator else '-' }}</span>
-                </div>
-                <div class="doc-info-card doc-info-card--wide">
-                    <span class="doc-info-label"><i class="fas fa-pen-fancy"></i> Assinaturas</span>
-                    <span class="doc-info-value">{% if processo.assinantes %}{% for a in processo.assinantes %}{{ a.user.nome if a.user else '-' }}{% if not loop.last %}; {% endif %}{% endfor %}{% else %}-{% endif %}</span>
+                <div class="info-field">
+                    <label>Subassunto</label>
+                    <div class="info-value">{{ partes[2] if partes and partes|length > 2 else '-' }}</div>
                 </div>
             </div>
-        </header>
+        </div>
+    </section>
 
-        <section class="doc-conteudo">
-            <h2>Conteúdo</h2>
-            <div class="doc-texto">{{ processo.conteudo or 'Sem conteúdo.' }}</div>
-        </section>
-
-        {% if tramites %}
-        <section class="doc-historico">
-            <h2>Histórico de tramitações</h2>
-            <ol class="tramites-lista">
-                {% for t in tramites %}
-                <li class="tramite-item">
-                    <span class="tramite-data">{{ t.created_at.strftime('%d/%m/%Y %H:%M') if t.created_at else '-' }}</span>
-                    <span class="tramite-de">De: {{ t.orgao_origem.sigla or t.orgao_origem.nome if t.orgao_origem else '-' }} / {{ t.unidade_origem.sigla or t.unidade_origem.nome if t.unidade_origem else '-' }}</span>
-                    <span class="tramite-para">Para: {{ t.orgao_destino.sigla or t.orgao_destino.nome if t.orgao_destino else '-' }} / {{ t.unidade_destino.sigla or t.unidade_destino.nome if t.unidade_destino else '-' }}</span>
-                    <span class="tramite-por">Por: {{ t.usuario.nome if t.usuario else '-' }}</span>
-                    {% if t.despacho %}<p class="tramite-despacho">{{ t.despacho }}</p>{% endif %}
-                </li>
+    <!-- REQUERENTE -->
+    <section class="detalhe-section">
+        <div class="section-badge">Requerente</div>
+        <div class="section-body form-card-style requerente-section">
+            <div class="requerentes-blocks">
+                {% set req_raw = (processo.requerente or '').strip() %}
+                {% if req_raw %}
+                {% for r in req_raw.split(';') %}
+                {% if r.strip() %}
+                <div class="requerente-block">{{ r.strip() }}</div>
+                {% endif %}
                 {% endfor %}
-            </ol>
-        </section>
-        {% endif %}
-    </article>
+                {% else %}
+                <div class="requerente-block requerente-empty">-</div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <!-- ORIGEM -->
+    <section class="detalhe-section">
+        <div class="section-badge">Origem</div>
+        <div class="section-body form-card-style">
+            <div class="info-grid">
+                <div class="info-field">
+                    <label>Órgão</label>
+                    <div class="info-value">{{ processo.orgao_origem.sigla or processo.orgao_origem.nome if processo.orgao_origem else '-' }}</div>
+                </div>
+                <div class="info-field">
+                    <label>Unidade</label>
+                    <div class="info-value">{{ processo.unidade_origem.sigla or processo.unidade_origem.nome if processo.unidade_origem else '-' }}</div>
+                </div>
+                <div class="info-field">
+                    <label>Data de Criação</label>
+                    <div class="info-value">{{ processo.created_at.strftime('%d/%m/%Y %H:%M') if processo.created_at else '-' }}</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- LOCALIZAÇÃO ATUAL -->
+    <section class="detalhe-section">
+        <div class="section-badge">Localização Atual</div>
+        <div class="section-body form-card-style">
+            <div class="info-grid">
+                <div class="info-field">
+                    <label>Órgão</label>
+                    <div class="info-value">{{ processo.orgao_atual.sigla or processo.orgao_atual.nome if processo.orgao_atual else '-' }}</div>
+                </div>
+                <div class="info-field">
+                    <label>Unidade</label>
+                    <div class="info-value">{{ processo.unidade_atual.sigla or processo.unidade_atual.nome if processo.unidade_atual else '-' }}</div>
+                </div>
+                <div class="info-field">
+                    <label>Dias na Unidade</label>
+                    <div class="info-value">{{ dias_na_unidade }}</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- HISTÓRICO -->
+    <section class="detalhe-section">
+        <div class="section-badge">Histórico</div>
+        <div class="section-body form-card-style">
+            <table class="table-historico">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Tipo</th>
+                        <th>Procedência</th>
+                        <th>Destino</th>
+                        <th>Por</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ev in historico %}
+                    <tr>
+                        <td>{{ ev.data.strftime('%d/%m/%Y %H:%M') if ev.data else '-' }}</td>
+                        <td><span class="badge-tipo badge-{{ 'criacao' if ev.tipo == 'Criação' else 'tramitacao' }}">{{ ev.tipo }}</span></td>
+                        <td>{{ ev.procedencia }}</td>
+                        <td>{{ ev.destino }}</td>
+                        <td>{{ ev.por }}</td>
+                        <td>
+                            <a href="/eprotocolo/processos/{{ processo.id }}/pdf" target="_blank" class="acao-link" title="Visualizar"><i class="fas fa-file-alt"></i></a>
+                            <a href="/eprotocolo/processos/{{ processo.id }}/pdf?download=1" class="acao-link" title="Download"><i class="fas fa-download"></i></a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="empty-cell">Nenhuma movimentação registrada.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- BOTÕES DE AÇÃO -->
+    <div class="acao-buttons">
+        <button type="button" class="btn-acao btn-apensar" id="btn-apensar" {% if processo.processo_principal_id %}disabled title="Processo já apensado"{% else %}title="Vincular a outro processo"{% endif %}><i class="fas fa-link"></i> Apensar Processo</button>
+        <button type="button" class="btn-acao btn-reclassificar" id="btn-reclassificar" title="Em breve"><i class="fas fa-file-alt"></i> Reclassificar</button>
+        <a href="/eprotocolo/processos/{{ processo.id }}/pdf" target="_blank" class="btn-acao btn-imprimir"><i class="fas fa-print"></i> Imprimir Comprovante</a>
+        <a href="/eprotocolo/processos/{{ processo.id }}/pdf" target="_blank" class="btn-acao btn-visualizar"><i class="fas fa-eye"></i> Visualizar</a>
+        <a href="/eprotocolo/processos/{{ processo.id }}/pdf?download=1" class="btn-acao btn-download"><i class="fas fa-download"></i> Download</a>
+        <button type="button" class="btn-acao btn-tramitar" id="btn-tramitar"><i class="fas fa-arrow-right"></i> Tramitar</button>
+    </div>
 </div>
 
+<!-- Modal Tramitar -->
+<div id="modal-tramitar" class="sigein-modal" style="display:none;">
+    <div class="sigein-modal-backdrop" data-close="modal-tramitar"></div>
+    <div class="sigein-modal-dialog tramitar-modal-dialog">
+        <div class="sigein-modal-header">
+            <div class="sigein-modal-title">Tramitar Processo</div>
+            <button type="button" class="sigein-modal-close modal-tramitar-close">×</button>
+        </div>
+        <div class="sigein-modal-body tramitar-modal-body">
+            <!-- Destinatário -->
+            <div class="tramitar-section">
+                <div class="section-badge">Destinatário</div>
+                <div class="section-body form-card-style">
+                    <div class="destinatario-row">
+                        <div class="form-group">
+                            <label for="tram_estado">Estado</label>
+                            <select id="tram_estado" class="form-control">
+                                <option value="">Selecione</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="tram_municipio">Município</label>
+                            <select id="tram_municipio" class="form-control" disabled>
+                                <option value="">Selecione</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="tram_orgao">Órgão</label>
+                            <select id="tram_orgao" class="form-control" disabled>
+                                <option value="">Selecione</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="tram_unidade">Unidade</label>
+                            <select id="tram_unidade" class="form-control" disabled>
+                                <option value="">Selecione</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Conteúdo -->
+            <div class="tramitar-section">
+                <div class="section-badge">Conteúdo</div>
+                <div class="section-body form-card-style">
+                    <div class="editor-toolbar">
+                        <button type="button" class="toolbar-btn" data-cmd="bold" data-editor="tram" title="Negrito"><b>B</b></button>
+                        <button type="button" class="toolbar-btn" data-cmd="italic" data-editor="tram" title="Itálico"><i>I</i></button>
+                        <button type="button" class="toolbar-btn" data-cmd="underline" data-editor="tram" title="Sublinhado"><u>U</u></button>
+                        <button type="button" class="toolbar-btn" data-cmd="strikeThrough" data-editor="tram" title="Riscado"><s>S</s></button>
+                        <span class="toolbar-sep"></span>
+                        <button type="button" class="toolbar-btn" data-cmd="justifyLeft" data-editor="tram" title="Alinhar à esquerda"><i class="fas fa-align-left"></i></button>
+                        <button type="button" class="toolbar-btn" data-cmd="justifyCenter" data-editor="tram" title="Centralizar"><i class="fas fa-align-center"></i></button>
+                        <button type="button" class="toolbar-btn" data-cmd="justifyRight" data-editor="tram" title="Alinhar à direita"><i class="fas fa-align-right"></i></button>
+                        <button type="button" class="toolbar-btn" data-cmd="justifyFull" data-editor="tram" title="Justificar"><i class="fas fa-align-justify"></i></button>
+                        <span class="toolbar-sep"></span>
+                        <button type="button" class="toolbar-btn" data-cmd="insertUnorderedList" data-editor="tram" title="Lista com marcadores"><i class="fas fa-list-ul"></i></button>
+                        <button type="button" class="toolbar-btn" data-cmd="insertOrderedList" data-editor="tram" title="Lista numerada"><i class="fas fa-list-ol"></i></button>
+                        <span class="toolbar-sep"></span>
+                        <button type="button" class="toolbar-btn" data-cmd="createLink" data-editor="tram" title="Link"><i class="fas fa-link"></i></button>
+                        <button type="button" class="toolbar-btn" id="tram-btn-insert-img" title="Inserir imagem"><i class="fas fa-image"></i></button>
+                        <input type="file" id="tram-img-input" accept="image/*" style="display:none">
+                        <button type="button" class="toolbar-btn" data-cmd="undo" data-editor="tram" title="Desfazer"><i class="fas fa-undo"></i></button>
+                        <button type="button" class="toolbar-btn" data-cmd="redo" data-editor="tram" title="Refazer"><i class="fas fa-redo"></i></button>
+                    </div>
+                    <div class="editor-wrapper">
+                        <div id="tram-conteudo-editor" contenteditable="true" class="editor-content"></div>
+                    </div>
+                    <div class="char-count">Contagem de caracteres: <span id="tram-char-count">0</span>/10000</div>
+                </div>
+            </div>
+            <!-- Botões -->
+            <div class="tramitar-actions">
+                <button type="button" class="btn-tramitar-submit" id="tramitar-confirmar"><i class="fas fa-arrow-right"></i> Tramitar</button>
+                <button type="button" class="btn-tramitar-cancelar modal-tramitar-close">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Apensar Processo -->
+<div id="modal-apensar" class="sigein-modal" style="display:none;">
+    <div class="sigein-modal-backdrop" data-close="modal-apensar"></div>
+    <div class="sigein-modal-dialog apensar-modal-dialog">
+        <div class="sigein-modal-header">
+            <div class="sigein-modal-title">Apensar Processo</div>
+            <button type="button" class="sigein-modal-close modal-apensar-close">×</button>
+        </div>
+        <div class="sigein-modal-body apensar-modal-body">
+            <p class="apensar-desc">Pesquise o processo ao qual este será vinculado (apensado).</p>
+            <div class="apensar-search-row">
+                <input type="text" id="apensar-search" class="form-control" placeholder="Número, assunto ou requerente..." autocomplete="off">
+                <button type="button" class="btn-apensar-buscar" id="apensar-btn-buscar"><i class="fas fa-search"></i> Buscar</button>
+            </div>
+            <div id="apensar-resultados" class="apensar-resultados">
+                <p class="apensar-empty">Digite e clique em Buscar para listar processos.</p>
+            </div>
+            <div class="apensar-actions">
+                <button type="button" class="btn-tramitar-cancelar modal-apensar-close">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
 <style>
-.processo-visualizar {
-    max-width: 1600px;
-    margin: 0 auto;
-    padding: 24px;
-}
-
-.doc-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
-.btn-voltar, .btn-print {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 18px;
-    border-radius: 6px;
-    font-size: 14px;
-    text-decoration: none;
-    color: #0d6efd;
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    cursor: pointer;
-}
-
-.btn-voltar:hover, .btn-print:hover {
-    background: #e9ecef;
-}
-
-.btn-print { color: #333; }
-
-.doc-paper {
-    background: #fff;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-    padding: 48px 56px;
-    min-height: 60vh;
-}
-
-.doc-header {
-    margin-bottom: 32px;
-    padding: 0 0 28px 0;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.doc-header-top {
-    margin-bottom: 24px;
-}
-
-.doc-numero-badge {
-    display: inline-block;
-    padding: 8px 18px;
-    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
-    color: #fff;
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    border-radius: 8px;
-    margin-bottom: 14px;
-    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.35);
-}
-
-.doc-assunto {
-    font-size: 20px;
-    font-weight: 600;
-    color: #1a1a2e;
-    margin: 0;
-    line-height: 1.4;
-    letter-spacing: -0.01em;
-}
-
-.doc-info-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 16px;
-}
-
-.doc-info-card {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 14px 18px;
-    transition: box-shadow 0.2s, border-color 0.2s;
-}
-
-.doc-info-card:hover {
-    border-color: #cbd5e1;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.doc-info-card--wide {
-    grid-column: 1 / -1;
-}
-
-.doc-info-label {
-    display: block;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #64748b;
-    margin-bottom: 6px;
-}
-
-.doc-info-label i {
-    margin-right: 8px;
-    color: #0d6efd;
-    opacity: 0.9;
-}
-
-.doc-info-value {
-    display: block;
-    font-size: 14px;
-    font-weight: 500;
-    color: #1e293b;
-    line-height: 1.45;
-}
-
-.doc-conteudo {
-    margin-bottom: 40px;
-}
-
-.doc-conteudo h2 {
-    font-size: 16px;
-    font-weight: 600;
-    color: #212529;
-    margin: 0 0 12px 0;
-}
-
-.doc-texto {
-    font-size: 15px;
-    line-height: 1.7;
-    color: #212529;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-}
-
-.doc-historico h2 {
-    font-size: 16px;
-    font-weight: 600;
-    color: #212529;
-    margin: 0 0 16px 0;
-}
-
-.tramites-lista {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.tramite-item {
-    border-left: 4px solid #0d6efd;
-    padding: 12px 0 12px 16px;
-    margin-bottom: 16px;
-    background: #f8f9fa;
-    border-radius: 0 6px 6px 0;
-}
-
-.tramite-item span {
-    display: block;
-    font-size: 14px;
-    color: #495057;
-    margin-bottom: 4px;
-}
-
-.tramite-data { font-weight: 600; color: #0d6efd; }
-
-.tramite-despacho {
-    margin: 12px 0 0 0;
-    padding: 10px;
-    background: #fff;
-    border-radius: 4px;
-    font-size: 14px;
-    border: 1px solid #dee2e6;
-}
-
-@media print {
-    .doc-toolbar { display: none !important; }
-    .processo-visualizar { padding: 0; max-width: 100%; }
-    .doc-paper { box-shadow: none; border: 1px solid #ccc; }
-    .doc-paper { page-break-inside: avoid; }
-    .doc-conteudo .doc-texto { page-break-inside: auto; }
-}
+.caixa-processos { max-width: 1600px; margin: 0 auto; padding: 24px; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.swal2-container { z-index: 99999 !important; }            /* Garante que o SweetAlert fique acima de tudo */
+.processo-detalhe-page { max-width: 1200px; margin: 0 auto; padding: 24px; }
+.page-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+.btn-voltar { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 6px; font-size: 14px; text-decoration: none; color: #0d6efd; background: #f8f9fa; border: 1px solid #dee2e6; }
+.btn-voltar:hover { background: #e9ecef; }
+.font-size-controls { display: flex; gap: 4px; }
+.font-btn { background: #f0f0f0; border: 1px solid #ddd; padding: 6px 10px; cursor: pointer; font-size: 14px; border-radius: 4px; color: #1a1a1a; }
+.font-btn:hover { background: #e0e0e0; }
+.font-btn.active { background: #0d6efd; color: white; border-color: #0d6efd; }
+.page-title { font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 24px 0; }
+.detalhe-section { margin-bottom: 24px; }
+.section-badge { background: #0d6efd; color: white; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 700; margin-bottom: 8px; display: inline-block; }
+.section-body.form-card-style { background: #f8f9fa; padding: 24px; border-radius: 8px; }
+.info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+.info-field label { display: block; font-size: 12px; font-weight: 600; color: #6c757d; margin-bottom: 6px; }
+.info-value { font-size: 14px; color: #212529; background: #fff; border: 1px solid #dee2e6; padding: 10px 12px; border-radius: 6px; min-height: 20px; }
+.requerente-section { width: 96%; }
+.requerentes-blocks { display: flex; flex-direction: column; gap: 12px; }
+.requerente-block { background: #fff; border: 1px solid #dee2e6; padding: 12px 16px; border-radius: 6px; font-size: 14px; color: #212529; width: 100%; box-sizing: border-box; }
+.requerente-block.requerente-empty { color: #6c757d; }
+.table-historico { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
+.table-historico th, .table-historico td { padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6; }
+.table-historico th { background: #f8f9fa; font-size: 13px; font-weight: 600; }
+.acao-link { color: #0d6efd; text-decoration: none; margin-right: 12px; }
+.acao-link:hover { text-decoration: underline; }
+.empty-cell { color: #6c757d; text-align: center; }
+.badge-tipo { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+.badge-tipo.badge-criacao { background: #d1ecf1; color: #0c5460; }
+.badge-tipo.badge-tramitacao { background: #cce5ff; color: #004085; }
+.badge-tipo.badge-arquivamento { background: #e2e3e5; color: #383d41; }
+.badge-tipo.badge-apreensamento { background: #f8d7da; color: #721c24; }
+.acao-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 32px; padding-top: 24px; border-top: 1px solid #dee2e6; }
+.btn-acao { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 6px; font-size: 14px; font-weight: 600; text-decoration: none; border: none; cursor: pointer; }
+.btn-apensar, .btn-reclassificar, .btn-visualizar { background: #0d6efd; color: white !important; }
+.btn-apensar:hover, .btn-reclassificar:hover, .btn-visualizar:hover { background: #0b5ed7; }
+.btn-imprimir { background: #198754; color: white !important; }
+.btn-imprimir:hover { background: #157347; }
+.btn-download { background: #20c997; color: white !important; }
+.btn-download:hover { background: #1aa179; }
+.btn-tramitar { background: #0d6efd; color: white !important; }
+.btn-tramitar:hover { background: #0b5ed7; }
+.sigein-modal { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+.sigein-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); cursor: pointer; }
+.sigein-modal-dialog { position: relative; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); max-width: 500px; width: 90%; max-height: 90vh; overflow: auto; }
+.sigein-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid #dee2e6; }
+.sigein-modal-title { font-size: 16px; font-weight: 600; }
+.sigein-modal-close { border: none; background: transparent; font-size: 24px; cursor: pointer; color: #6c757d; }
+.sigein-modal-body { padding: 16px; }
+.tramitar-modal-dialog { max-width: 800px; width: 95%; }
+.tramitar-modal-body { max-height: 85vh; overflow-y: auto; }
+.tramitar-section { margin-bottom: 20px; }
+.tramitar-section .section-badge { margin-bottom: 8px; }
+.tramitar-section .section-body { padding: 20px; }
+.destinatario-row { display: flex; flex-wrap: wrap; gap: 16px; }
+.destinatario-row .form-group { flex: 1; min-width: 150px; }
+.destinatario-row label { display: block; font-size: 12px; font-weight: 600; color: #6c757d; margin-bottom: 6px; }
+.destinatario-row select { width: 100%; padding: 10px 12px; border: 1px solid #ced4da; border-radius: 6px; font-size: 14px; }
+.editor-toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; background: #f8f9fa; border: 1px solid #dee2e6; border-bottom: none; border-radius: 6px 6px 0 0; }
+.toolbar-btn { background: transparent; color: hsl(0, 0%, 0%); border: 1px solid #dee2e6; padding: 6px 10px; cursor: pointer; border-radius: 4px; font-size: 14px; }
+.toolbar-btn:hover { background: #e9ecef; }
+.toolbar-sep { width: 1px; background: #dee2e6; margin: 0 4px; }
+.editor-wrapper { border: 1px solid #dee2e6; border-radius: 0 0 6px 6px; }
+.editor-content { min-height: 150px; padding: 12px; background: white; font-size: 14px; line-height: 1.6; }
+.editor-content:focus { outline: none; }
+.editor-content img { max-width: 100%; height: auto; }
+.char-count { font-size: 12px; color: #6c757d; margin-top: 8px; }
+.tramitar-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid #dee2e6; }
+.btn-tramitar-submit { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; background: #0d6efd; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-tramitar-submit:hover { background: #0b5ed7; }
+.btn-tramitar-cancelar { padding: 10px 24px; background: #6c757d; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; }
+.btn-tramitar-cancelar:hover { background: #5a6268; }
+.apensar-modal-dialog { max-width: 600px; width: 95%; }
+.apensar-desc { margin-bottom: 16px; font-size: 14px; color: #495057; }
+.apensar-search-row { display: flex; gap: 8px; margin-bottom: 16px; }
+.apensar-search-row input { flex: 1; padding: 10px 12px; border: 1px solid #ced4da; border-radius: 6px; font-size: 14px; }
+.btn-apensar-buscar { padding: 10px 20px; background: #0d6efd; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; }
+.btn-apensar-buscar:hover { background: #0b5ed7; }
+.apensar-resultados { max-height: 280px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 6px; background: #f8f9fa; }
+.apensar-empty { padding: 24px; text-align: center; color: #6c757d; font-size: 14px; margin: 0; }
+.apensar-item { padding: 12px 16px; border-bottom: 1px solid #dee2e6; cursor: pointer; transition: background 0.2s; }
+.apensar-item:last-child { border-bottom: none; }
+.apensar-item:hover { background: #e9ecef; }
+.apensar-item .apensar-numero { font-weight: 600; color: #0d6efd; }
+.apensar-item .apensar-assunto { font-size: 13px; color: #495057; margin-top: 4px; }
+.apensar-item .apensar-meta { font-size: 12px; color: #6c757d; margin-top: 4px; }
+.apensar-actions { margin-top: 16px; padding-top: 16px; border-top: 1px solid #dee2e6; }
+/* SweetAlert confirmação apensamento */
+.swal-apensar-popup { font-family: inherit; }
+.swal-apensar-content { text-align: left; }
+.swal-apensar-desc { margin: 0 0 12px 0; font-size: 14px; color: #495057; line-height: 1.5; }
+.swal-apensar-card { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 14px 16px; margin: 12px 0; }
+.swal-apensar-numero { font-weight: 600; color: #0d6efd; font-size: 15px; margin-bottom: 6px; }
+.swal-apensar-numero i { margin-right: 8px; opacity: 0.8; }
+.swal-apensar-assunto { font-size: 13px; color: #495057; line-height: 1.4; }
+.swal-apensar-ask { margin: 14px 0 0 0; font-size: 14px; color: #212529; font-weight: 500; }
 </style>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+(function() {
+    const container = document.querySelector('.processo-detalhe-page');
+    const storageKey = 'processo-detalhe-font-size';
+    var currentSize = localStorage.getItem(storageKey) || '2';
+    function applySize(size) {
+        container.classList.remove('font-size-1', 'font-size-2', 'font-size-3');
+        container.classList.add('font-size-' + size);
+        document.querySelectorAll('.font-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.getAttribute('data-size') === size);
+        });
+        localStorage.setItem(storageKey, size);
+    }
+    document.querySelectorAll('.font-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() { applySize(this.getAttribute('data-size')); });
+    });
+    applySize(currentSize);
+})();
+
+const modalTramitar = document.getElementById('modal-tramitar');
+const tramEditor = document.getElementById('tram-conteudo-editor');
+const tramCharCount = document.getElementById('tram-char-count');
+const TRAM_MAX_CHARS = 10000;
+
+document.getElementById('btn-tramitar').addEventListener('click', function() {
+    modalTramitar.style.display = 'flex';
+    carregarEstadosTramitar();
+    tramEditor.innerHTML = '';
+    tramCharCount.textContent = '0';
+});
+document.querySelectorAll('.modal-tramitar-close').forEach(function(btn) {
+    btn.addEventListener('click', function() { modalTramitar.style.display = 'none'; });
+});
+document.querySelector('[data-close="modal-tramitar"]').addEventListener('click', function() {
+    modalTramitar.style.display = 'none';
+});
+
+async function carregarEstadosTramitar() {
+    const sel = document.getElementById('tram_estado');
+    sel.innerHTML = '<option value="">Selecione</option>';
+    document.getElementById('tram_municipio').innerHTML = '<option value="">Selecione</option>';
+    document.getElementById('tram_municipio').disabled = true;
+    document.getElementById('tram_orgao').innerHTML = '<option value="">Selecione</option>';
+    document.getElementById('tram_orgao').disabled = true;
+    document.getElementById('tram_unidade').innerHTML = '<option value="">Selecione</option>';
+    document.getElementById('tram_unidade').disabled = true;
+    try {
+        const res = await fetch('/api/estados');
+        const data = await res.json();
+        data.forEach(function(e) {
+            const opt = document.createElement('option');
+            opt.value = e.id;
+            opt.textContent = e.nome + (e.uf ? ' (' + e.uf + ')' : '');
+            sel.appendChild(opt);
+        });
+    } catch (err) { console.error(err); }
+}
+
+document.getElementById('tram_estado').addEventListener('change', async function() {
+    const id = this.value;
+    const mun = document.getElementById('tram_municipio');
+    mun.innerHTML = '<option value="">Selecione</option>';
+    document.getElementById('tram_orgao').innerHTML = '<option value="">Selecione</option>';
+    document.getElementById('tram_orgao').disabled = true;
+    document.getElementById('tram_unidade').innerHTML = '<option value="">Selecione</option>';
+    document.getElementById('tram_unidade').disabled = true;
+    mun.disabled = !id;
+    if (!id) return;
+    const res = await fetch('/api/municipios/' + id);
+    const data = await res.json();
+    data.forEach(function(m) {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.nome;
+        mun.appendChild(opt);
+    });
+    mun.disabled = false;
+});
+
+document.getElementById('tram_municipio').addEventListener('change', async function() {
+    const id = this.value;
+    const org = document.getElementById('tram_orgao');
+    org.innerHTML = '<option value="">Selecione</option>';
+    document.getElementById('tram_unidade').innerHTML = '<option value="">Selecione</option>';
+    document.getElementById('tram_unidade').disabled = true;
+    org.disabled = !id;
+    if (!id) return;
+    const res = await fetch('/api/orgaos/' + id);
+    const data = await res.json();
+    data.forEach(function(o) {
+        const opt = document.createElement('option');
+        opt.value = o.id;
+        opt.textContent = o.nome + (o.sigla ? ' (' + o.sigla + ')' : '');
+        org.appendChild(opt);
+    });
+    org.disabled = false;
+});
+
+document.getElementById('tram_orgao').addEventListener('change', async function() {
+    const id = this.value;
+    const un = document.getElementById('tram_unidade');
+    un.innerHTML = '<option value="">Selecione</option>';
+    un.disabled = !id;
+    if (!id) return;
+    const res = await fetch('/api/unidades/' + id);
+    const data = await res.json();
+    data.forEach(function(u) {
+        const opt = document.createElement('option');
+        opt.value = u.id;
+        opt.textContent = u.nome + (u.sigla ? ' (' + u.sigla + ')' : '');
+        un.appendChild(opt);
+    });
+    un.disabled = false;
+});
+
+// Editor toolbar tramitar
+document.querySelectorAll('.toolbar-btn[data-editor="tram"]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        const cmd = this.dataset.cmd;
+        if (cmd === 'createLink') {
+            const url = prompt('URL do link:');
+            if (url) document.execCommand(cmd, false, url);
+        } else {
+            document.execCommand(cmd, false, null);
+        }
+        tramEditor.focus();
+    });
+});
+
+tramEditor.addEventListener('input', function() {
+    const len = (tramEditor.innerText || '').length;
+    tramCharCount.textContent = len;
+    tramEditor.contentEditable = len >= TRAM_MAX_CHARS ? 'false' : 'true';
+});
+
+document.getElementById('tram-btn-insert-img').addEventListener('click', function() {
+    document.getElementById('tram-img-input').value = '';
+    document.getElementById('tram-img-input').click();
+});
+document.getElementById('tram-img-input').addEventListener('change', function() {
+    const file = this.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    if (file.size > 2 * 1024 * 1024) {
+        alert('A imagem não pode exceder 2MB.');
+        this.value = '';
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = function() {
+        tramEditor.focus();
+        document.execCommand('insertImage', false, reader.result);
+    };
+    reader.readAsDataURL(file);
+    this.value = '';
+});
+
+// Modal Apensar
+const modalApensar = document.getElementById('modal-apensar');
+document.getElementById('btn-apensar').addEventListener('click', function() {
+    if (this.disabled) return;
+    modalApensar.style.display = 'flex';
+    document.getElementById('apensar-search').value = '';
+    document.getElementById('apensar-resultados').innerHTML = '<p class="apensar-empty">Digite e clique em Buscar para listar processos.</p>';
+});
+document.querySelectorAll('.modal-apensar-close').forEach(function(btn) {
+    btn.addEventListener('click', function() { modalApensar.style.display = 'none'; });
+});
+document.querySelector('[data-close="modal-apensar"]').addEventListener('click', function() {
+    modalApensar.style.display = 'none';
+});
+
+document.getElementById('apensar-btn-buscar').addEventListener('click', buscarProcessosApensaveis);
+document.getElementById('apensar-search').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); buscarProcessosApensaveis(); }
+});
+
+async function buscarProcessosApensaveis() {
+    const q = document.getElementById('apensar-search').value.trim();
+    const processoId = document.querySelector('.processo-detalhe-page')?.dataset?.processoId;
+    const container = document.getElementById('apensar-resultados');
+    container.innerHTML = '<p class="apensar-empty"><i class="fas fa-spinner fa-spin"></i> Buscando...</p>';
+    try {
+        const params = new URLSearchParams();
+        if (q) params.append('q', q);
+        if (processoId) params.append('excluir_id', processoId);
+        const res = await fetch('/eprotocolo/api/processos-apensaveis?' + params.toString());
+        const data = await res.json();
+        if (!res.ok) {
+            container.innerHTML = '<p class="apensar-empty">Erro ao buscar. Tente novamente.</p>';
+            return;
+        }
+        if (!data || data.length === 0) {
+            container.innerHTML = '<p class="apensar-empty">Nenhum processo encontrado.</p>';
+            return;
+        }
+        container.innerHTML = data.map(function(p) {
+            var num = (p.numero || '-');
+            var ass = (p.assunto || '-').replace(/"/g, '&quot;');
+            return '<div class="apensar-item" data-id="' + p.id + '" data-numero="' + num.replace(/"/g, '&quot;') + '" data-assunto="' + ass + '">' +
+                '<span class="apensar-numero">' + num + '</span>' +
+                '<div class="apensar-assunto">' + (p.assunto || '-') + '</div>' +
+                '<div class="apensar-meta">' + (p.requerente || '-') + ' • ' + (p.orgao || '-') + ' / ' + (p.unidade || '-') + '</div>' +
+                '</div>';
+        }).join('');
+        container.querySelectorAll('.apensar-item').forEach(function(el) {
+            el.addEventListener('click', function() {
+                confirmarApensar(parseInt(this.dataset.id, 10), this.dataset.numero || '-', this.dataset.assunto || '-');
+            });
+        });
+    } catch (err) {
+        console.error(err);
+        container.innerHTML = '<p class="apensar-empty">Erro de conexão.</p>';
+    }
+}
+
+function escHtml(s) {
+    if (!s) return '';
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+async function confirmarApensar(processoPrincipalId, numeroPrincipal, assuntoPrincipal) {
+    const processoId = document.querySelector('.processo-detalhe-page')?.dataset?.processoId;
+    const processoAtual = document.querySelector('.page-title')?.textContent?.replace('Detalhamento do Processo ', '') || 'este processo';
+    if (!processoId) {
+        Swal.fire({ icon: 'error', title: 'Erro', text: 'ID do processo não encontrado.' });
+        return;
+    }
+    const result = await Swal.fire({
+        title: 'Confirmar apensamento',
+        html: '<div class="swal-apensar-content">' +
+            '<p class="swal-apensar-desc">O processo <strong>' + escHtml(processoAtual) + '</strong> será vinculado ao processo principal:</p>' +
+            '<div class="swal-apensar-card">' +
+            '<div class="swal-apensar-numero"><i class="fas fa-file-alt"></i> ' + escHtml(numeroPrincipal || '-') + '</div>' +
+            '<div class="swal-apensar-assunto">' + escHtml(assuntoPrincipal || '-') + '</div>' +
+            '</div>' +
+            '<p class="swal-apensar-ask">Deseja continuar?</p>' +
+            '</div>',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-link"></i> Sim, apensar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#0d6efd',
+        cancelButtonColor: '#6c757d',
+        customClass: { popup: 'swal-apensar-popup' },
+        width: '420px'
+    });
+    if (!result.isConfirmed) return;
+    try {
+        const formData = new FormData();
+        formData.append('processo_principal_id', processoPrincipalId);
+        const res = await fetch('/eprotocolo/processos/' + processoId + '/apensar', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const data = await res.json().catch(function() { return {}; });
+        if (res.ok && data.ok) {
+            modalApensar.style.display = 'none';
+            await Swal.fire({
+                icon: 'success',
+                title: 'Apensado!',
+                text: 'Processo vinculado com sucesso.',
+                timer: 1500,
+                showConfirmButton: false
+            });
+            window.location.reload();
+        } else {
+            Swal.fire({ icon: 'error', title: 'Erro', text: data.error || 'Erro ao apensar. Tente novamente.' });
+        }
+    } catch (err) {
+        console.error(err);
+        Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro de conexão ao apensar.' });
+    }
+}
+
+document.getElementById('tramitar-confirmar').addEventListener('click', async function() {
+    const unidadeId = document.getElementById('tram_unidade').value;
+    const municipioId = document.getElementById('tram_municipio').value;
+    const orgaoId = document.getElementById('tram_orgao').value;
+    if (!unidadeId || !municipioId || !orgaoId) {
+        alert('Selecione o destinatário (Estado, Município, Órgão e Unidade).');
+        return;
+    }
+    const processoId = document.querySelector('.processo-detalhe-page')?.dataset?.processoId;
+    if (!processoId) {
+        alert('Erro: ID do processo não encontrado.');
+        return;
+    }
+    const despacho = tramEditor.innerHTML.trim();
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Tramitando...';
+    try {
+        const formData = new FormData();
+        formData.append('municipio_destino_id', municipioId);
+        formData.append('orgao_destino_id', orgaoId);
+        formData.append('unidade_destino_id', unidadeId);
+        formData.append('despacho', despacho);
+        const res = await fetch('/eprotocolo/processos/' + processoId + '/tramitar', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const data = await res.json().catch(function() { return {}; });
+        if (res.ok && data.ok) {
+            modalTramitar.style.display = 'none';
+            window.location.reload();
+        } else {
+            alert(data.error || 'Erro ao tramitar. Tente novamente.');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Erro de conexão ao tramitar.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-arrow-right"></i> Tramitar';
+    }
+});
+</script>
 {% endblock %}

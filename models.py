@@ -338,8 +338,18 @@ class Processo(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(Integer, ForeignKey("users.id"))
     
+    # Apensamento: quando preenchido, este processo está apensado ao processo principal
+    processo_principal_id = Column(Integer, ForeignKey("processos.id"), nullable=True)
+    
+    # Arquivamento
+    arquivado = Column(Boolean, default=False)
+    arquivado_at = Column(DateTime, nullable=True)
+    arquivado_por_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    
     # Relacionamentos
     atribuido_to = relationship("User", foreign_keys=[atribuido_to_id])
+    processo_principal = relationship("Processo", remote_side="Processo.id", foreign_keys=[processo_principal_id], back_populates="apensos")
+    apensos = relationship("Processo", back_populates="processo_principal", foreign_keys=[processo_principal_id])
     municipio_origem = relationship("Municipio", foreign_keys=[municipio_origem_id])
     municipio_atual = relationship("Municipio", foreign_keys=[municipio_atual_id])
     orgao_origem = relationship("Orgao", foreign_keys=[orgao_origem_id])
@@ -350,6 +360,7 @@ class Processo(Base):
     tramites = relationship("Tramite", back_populates="processo")
     assinantes = relationship("ProcessoAssinante", back_populates="processo")
     creator = relationship("User", foreign_keys=[created_by])
+    arquivado_por = relationship("User", foreign_keys=[arquivado_por_id])
 
 
 class ProcessoAssinante(Base):

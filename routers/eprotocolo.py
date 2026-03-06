@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request, Depends, Query
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import RedirectResponse, JSONResponse, Response
 from fastapi import Form
 from models import Requerente
 from sqlalchemy import or_
@@ -69,18 +69,17 @@ def api_assinantes_elegiveis(
     db: Session = Depends(get_db),
     user: str = Depends(get_current_user),
 ):
-    """Retorna usuários do mesmo órgão/unidade do usuário logado com perfil Master, Admin Municipal, Gestor de Protocolo ou Gestor Geral (para seleção como assinantes)."""
+    """Retorna todos os usuários cadastrados na mesma unidade do usuário logado."""
     if not user:
         return JSONResponse({"error": "Não autorizado"}, status_code=401)
     u = db.query(User).filter(User.email == user).first()
     if not u:
         return JSONResponse({"error": "Não autorizado"}, status_code=401)
+
     usuarios = (
         db.query(User)
         .filter(
-            User.orgao_id == u.orgao_id,
             User.unidade_id == u.unidade_id,
-            User.perfil.in_(PERFIS_ASSINANTES),
             User.status == "ativo",
         )
         .order_by(User.nome)
@@ -272,6 +271,7 @@ def processo_visualizar(
             joinedload(Processo.orgao_atual),
             joinedload(Processo.unidade_atual),
             joinedload(Processo.creator),
+            joinedload(Processo.processo_principal),
             joinedload(Processo.assinantes).joinedload(ProcessoAssinante.user),
             joinedload(Processo.tramites).joinedload(Tramite.usuario),
             joinedload(Processo.tramites).joinedload(Tramite.orgao_origem),
@@ -284,17 +284,474 @@ def processo_visualizar(
     )
     if not processo:
         return RedirectResponse("/eprotocolo/processos/caixa", status_code=303)
+    # Marcar como lido ao visualizar
+    processo.lido_at = datetime.utcnow()
+    db.commit()
     # Ordenar trâmites por data (mais antigo primeiro)
     tramites_ordenados = sorted(processo.tramites, key=lambda t: t.created_at or datetime.min)
+    # Histórico unificado: criação + tramitações (futuro: arquivamento, apreensamento, etc.)
+    historico = []
+    # 1. Criação do processo (sempre primeiro)
+    origem = processo.orgao_origem and processo.unidade_origem
+    dest_str = "-"
+    if origem:
+        dest_str = f"{(processo.orgao_origem.sigla or processo.orgao_origem.nome)} / {(processo.unidade_origem.sigla or processo.unidade_origem.nome)}"
+    historico.append({
+        "tipo": "Criação",
+        "data": processo.created_at,
+        "procedencia": "-",
+        "destino": dest_str,
+        "por": processo.creator.nome if processo.creator else "-",
+        "tramite_id": None,
+    })
+    # 2. Tramitações
+    for t in tramites_ordenados:
+        proc = f"{(t.orgao_origem.sigla or t.orgao_origem.nome) if t.orgao_origem else '-'} / {(t.unidade_origem.sigla or t.unidade_origem.nome) if t.unidade_origem else '-'}"
+        dest = f"{(t.orgao_destino.sigla or t.orgao_destino.nome) if t.orgao_destino else '-'} / {(t.unidade_destino.sigla or t.unidade_destino.nome) if t.unidade_destino else '-'}"
+        historico.append({
+            "tipo": "Tramitação",
+            "data": t.created_at,
+            "procedencia": proc,
+            "destino": dest,
+            "por": t.usuario.nome if t.usuario else "-",
+            "tramite_id": t.id,
+        })
+    # Dias na unidade atual
+    data_ref = processo.created_at
+    if tramites_ordenados and tramites_ordenados[-1].created_at:
+        data_ref = tramites_ordenados[-1].created_at
+    try:
+        delta = datetime.now() - (data_ref or datetime.min)
+        dias_na_unidade = max(0, delta.days)
+    except Exception:
+        dias_na_unidade = 0
     return templates.TemplateResponse(
         "eprotocolo/processos/visualizar.html",
         {
             "request": request,
             "user": user,
             "processo": processo,
-            "tramites": tramites_ordenados,
+            "historico": historico,
+            "dias_na_unidade": dias_na_unidade,
         },
     )
+
+
+@router.get("/api/processos-apensaveis")
+def api_processos_apensaveis(
+    q: str = Query("", description="Busca por número, assunto ou requerente"),
+    excluir_id: int = Query(None, description="ID do processo a excluir (atual)"),
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    """Retorna processos que podem ser alvo de apensamento: públicos da unidade do usuário ou onde o usuário é requerente."""
+    if not user:
+        return JSONResponse({"error": "Não autorizado"}, status_code=401)
+    u = db.query(User).filter(User.email == user).first()
+    if not u:
+        return JSONResponse({"error": "Não autorizado"}, status_code=401)
+
+    # Filtro base: processos públicos da unidade OU processos onde o usuário é requerente
+    filtro_publico = (Processo.unidade_atual_id == u.unidade_id) & (Processo.nivel_acesso == "Público")
+    if u.nome and u.nome.strip():
+        filtro_acesso = or_(filtro_publico, Processo.requerente.ilike(f"%{u.nome.strip()}%"))
+    else:
+        filtro_acesso = filtro_publico
+
+    q_base = db.query(Processo).filter(filtro_acesso)
+
+    if excluir_id:
+        q_base = q_base.filter(Processo.id != excluir_id)
+
+    if q and q.strip():
+        termo = f"%{q.strip()}%"
+        q_base = q_base.filter(
+            or_(
+                Processo.numero.ilike(termo),
+                Processo.assunto.ilike(termo),
+                Processo.requerente.ilike(termo),
+            )
+        )
+
+    processos = (
+        q_base.options(
+            joinedload(Processo.orgao_atual),
+            joinedload(Processo.unidade_atual),
+        )
+        .order_by(Processo.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    return JSONResponse([
+        {
+            "id": p.id,
+            "numero": p.numero,
+            "ano": p.ano,
+            "assunto": p.assunto or "-",
+            "requerente": p.requerente or "-",
+            "status": p.status or "-",
+            "orgao": (p.orgao_atual.sigla or p.orgao_atual.nome) if p.orgao_atual else "-",
+            "unidade": (p.unidade_atual.sigla or p.unidade_atual.nome) if p.unidade_atual else "-",
+        }
+        for p in processos
+    ])
+
+
+@router.post("/processos/{processo_id:int}/apensar")
+async def processo_apensar_post(
+    processo_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    """Apensa o processo atual ao processo principal informado."""
+    if not user:
+        return JSONResponse({"error": "Não autorizado"}, status_code=401)
+    u = db.query(User).filter(User.email == user).first()
+    if not u:
+        return JSONResponse({"error": "Não autorizado"}, status_code=401)
+
+    form = await request.form()
+    processo_principal_id = form.get("processo_principal_id")
+    try:
+        ppid = int(processo_principal_id) if processo_principal_id else None
+    except (ValueError, TypeError):
+        return JSONResponse({"error": "Processo principal inválido"}, status_code=400)
+
+    if not ppid:
+        return JSONResponse({"error": "Selecione o processo ao qual apensar"}, status_code=400)
+
+    if ppid == processo_id:
+        return JSONResponse({"error": "Não é possível apensar um processo a si mesmo"}, status_code=400)
+
+    processo = db.query(Processo).filter(Processo.id == processo_id).first()
+    if not processo:
+        return JSONResponse({"error": "Processo não encontrado"}, status_code=404)
+
+    if processo.processo_principal_id:
+        return JSONResponse({"error": "Este processo já está apensado a outro"}, status_code=400)
+
+    principal = db.query(Processo).filter(Processo.id == ppid).first()
+    if not principal:
+        return JSONResponse({"error": "Processo principal não encontrado"}, status_code=404)
+
+    # Verificar permissão: principal deve ser público da unidade OU usuário é requerente
+    partes_req = [p.strip().upper() for p in (principal.requerente or "").split(";") if p.strip()]
+    user_nome_upper = (u.nome or "").strip().upper()
+    pode = (
+        (principal.unidade_atual_id == u.unidade_id and principal.nivel_acesso == "Público")
+        or (user_nome_upper and user_nome_upper in partes_req)
+    )
+    if not pode:
+        return JSONResponse({"error": "Sem permissão para apensar a este processo"}, status_code=403)
+
+    processo.processo_principal_id = ppid
+    db.commit()
+    return JSONResponse({"ok": True, "message": "Processo apensado com sucesso", "processo_id": processo_id})
+
+
+@router.post("/processos/{processo_id:int}/urgente")
+def processo_toggle_urgente(
+    processo_id: int,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    """Alterna a flag urgente do processo (criticidade alta)."""
+    if not user:
+        return JSONResponse({"error": "Não autorizado"}, status_code=401)
+    processo = db.query(Processo).filter(Processo.id == processo_id).first()
+    if not processo:
+        return JSONResponse({"error": "Processo não encontrado"}, status_code=404)
+    processo.urgente = not processo.urgente
+    db.commit()
+    return JSONResponse({"ok": True, "urgente": processo.urgente})
+
+
+@router.post("/processos/{processo_id:int}/tramitar")
+async def processo_tramitar_post(
+    processo_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    """Tramita o processo para a caixa de outra unidade. Registra quem tramitou, data/hora e despacho."""
+    if not user:
+        return JSONResponse({"error": "Não autorizado"}, status_code=401)
+    u = db.query(User).filter(User.email == user).first()
+    if not u:
+        return JSONResponse({"error": "Não autorizado"}, status_code=401)
+
+    form = await request.form()
+    municipio_destino_id = form.get("municipio_destino_id")
+    orgao_destino_id = form.get("orgao_destino_id")
+    unidade_destino_id = form.get("unidade_destino_id")
+    despacho = form.get("despacho") or ""
+
+    try:
+        mid = int(municipio_destino_id) if municipio_destino_id else None
+        oid = int(orgao_destino_id) if orgao_destino_id else None
+        uid = int(unidade_destino_id) if unidade_destino_id else None
+    except (ValueError, TypeError):
+        return JSONResponse({"error": "Dados do destinatário inválidos"}, status_code=400)
+
+    if not all([mid, oid, uid]):
+        return JSONResponse({"error": "Selecione Estado, Município, Órgão e Unidade destinatários"}, status_code=400)
+
+    processo = db.query(Processo).filter(Processo.id == processo_id).first()
+    if not processo:
+        return JSONResponse({"error": "Processo não encontrado"}, status_code=404)
+
+    # Validar que a unidade pertence ao órgão e ao município
+    unidade = db.query(Unidade).filter(Unidade.id == uid).first()
+    if not unidade or unidade.orgao_id != oid:
+        return JSONResponse({"error": "Unidade não pertence ao órgão informado"}, status_code=400)
+    orgao = db.query(Orgao).filter(Orgao.id == oid).first()
+    if not orgao or orgao.municipio_id != mid:
+        return JSONResponse({"error": "Órgão não pertence ao município informado"}, status_code=400)
+
+    # Não tramitar para a mesma unidade
+    if processo.unidade_atual_id == uid:
+        return JSONResponse({"error": "O processo já está nesta unidade"}, status_code=400)
+
+    # Criar registro de Tramite (origem = localização atual do processo)
+    tramite = Tramite(
+        processo_id=processo_id,
+        municipio_origem_id=processo.municipio_atual_id,
+        orgao_origem_id=processo.orgao_atual_id,
+        unidade_origem_id=processo.unidade_atual_id,
+        municipio_destino_id=mid,
+        orgao_destino_id=oid,
+        unidade_destino_id=uid,
+        despacho=despacho.strip() or None,
+        anexo_path=None,  # TODO: suporte a upload de arquivos
+        created_by=u.id,
+    )
+    db.add(tramite)
+
+    # Atualizar localização atual do processo
+    processo.municipio_atual_id = mid
+    processo.orgao_atual_id = oid
+    processo.unidade_atual_id = uid
+    processo.status = "Em tramitação"
+    processo.lido_at = None  # Unidade destino ainda não leu
+    processo.atribuido_to_id = None  # Desatribuir ao tramitar
+
+    db.commit()
+    return JSONResponse({"ok": True, "message": "Processo tramitado com sucesso", "processo_id": processo_id})
+
+
+def _html_para_texto(raw: str) -> str:
+    """Converte HTML para texto seguro para Paragraph do ReportLab."""
+    import re
+    texto = raw or ""
+    texto = re.sub(r"<[^>]+>", " ", texto).replace("&nbsp;", " ").strip()
+    texto = texto.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return texto.replace("\n", "<br/>") if texto else "-"
+
+
+def _quadro_cabecalho(linhas, styles) -> Table:
+    """Retorna uma Table com borda contendo campos rotulo:valor em linhas."""
+    from reportlab.platypus import Table, TableStyle, Paragraph
+    from reportlab.lib import colors
+    from reportlab.lib.units import cm
+    data = [[Paragraph(f"<b>{r}</b>", styles["Normal"]), Paragraph(v or "-", styles["Normal"])] for r, v in linhas]
+    t = Table(data, colWidths=[4*cm, None])
+    t.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#495057")),
+        ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#dee2e6")),
+        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#e9ecef")),
+        ("PADDING", (0, 0), (-1, -1), 8),
+        ("FONTSIZE", (0, 0), (-1, -1), 10),
+    ]))
+    return t
+
+
+def _quadro_conteudo(texto: str, styles) -> Table:
+    """Retorna uma Table com borda para bloco de conteúdo/despacho."""
+    from reportlab.platypus import Table, TableStyle, Paragraph
+    from reportlab.lib import colors
+    p = Paragraph(texto, styles["Normal"])
+    t = Table([[p]], colWidths=[None])
+    t.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#495057")),
+        ("PADDING", (0, 0), (-1, -1), 12),
+        ("BACKGROUND", (0, 0), (-1, -1), colors.white),
+    ]))
+    return t
+
+
+def _bloco_assinatura(nome: str, cargo_unidade: str, data_hora: str, styles) -> list:
+    """Retorna elementos do bloco de assinatura eletrônica no estilo de referência."""
+    from reportlab.platypus import Paragraph, Spacer
+    from reportlab.lib.styles import ParagraphStyle
+    nome_upper = (nome or "-").upper()
+    cargo_upper = (cargo_unidade or "-").upper()
+    # Formato: Assinatura eletrônica: DD/MM/YYYY HH:MM:SS
+    assinatura_str = f"Assinatura eletrônica: {data_hora}" if data_hora else "Assinatura eletrônica: -"
+    return [
+        Spacer(1, 16),
+        Paragraph(f"<b>{nome_upper}</b>", ParagraphStyle(
+            name="AssinaturaNome", parent=styles["Normal"], fontSize=11, spaceAfter=4
+        )),
+        Paragraph(f"<b>{cargo_upper}</b>", ParagraphStyle(
+            name="AssinaturaCargo", parent=styles["Normal"], fontSize=11, spaceAfter=4
+        )),
+        Paragraph(assinatura_str, ParagraphStyle(
+            name="AssinaturaData", parent=styles["Normal"], fontSize=9, textColor="gray"
+        )),
+    ]
+
+
+def _gerar_pdf_processo(processo, tramites):
+    """Gera PDF do processo: cada movimentação em sua própria página, com cabeçalho e campos em quadros."""
+    from io import BytesIO
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+    from reportlab.lib import colors
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        rightMargin=1.5*cm, leftMargin=1.5*cm,
+        topMargin=1.5*cm, bottomMargin=1.5*cm,
+    )
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name="BoxTitle", parent=styles["Heading2"], fontSize=11, spaceAfter=6))
+    normal = styles["Normal"]
+
+    story = []
+
+    # ---------- PÁGINA 1: CRIAÇÃO ----------
+    titulo = Paragraph(f"<b>PROCESSO {processo.numero}</b> — Criação", ParagraphStyle(
+        name="TituloPag", parent=normal, fontSize=14, spaceAfter=12, alignment=1
+    ))
+    story.append(titulo)
+    story.append(Spacer(1, 8))
+
+    origem_str = f"{(processo.orgao_origem.sigla or processo.orgao_origem.nome) if processo.orgao_origem else '-'} / {(processo.unidade_origem.sigla or processo.unidade_origem.nome) if processo.unidade_origem else '-'}"
+    dest_str = origem_str  # na criação, destino = origem
+    data_str = processo.created_at.strftime("%d/%m/%Y %H:%M") if processo.created_at else "-"
+    por_str = processo.creator.nome if processo.creator else "-"
+
+    cab_criacao = [
+        ("Assunto", processo.assunto or "Sem assunto"),
+        ("Requerente", processo.requerente or "-"),
+        ("Origem", origem_str),
+        ("Destino", dest_str),
+        ("Data/Hora", data_str),
+        ("Por", por_str),
+    ]
+    story.append(_quadro_cabecalho(cab_criacao, styles))
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("<b>Conteúdo</b>", normal))
+    story.append(Spacer(1, 4))
+    conteudo_texto = _html_para_texto(processo.conteudo or "Sem conteúdo.")
+    story.append(_quadro_conteudo(conteudo_texto, styles))
+
+    # Assinatura da criação (criador)
+    creator = processo.creator
+    nome_criador = creator.nome if creator else "-"
+    cargo_criador = "-"
+    if creator:
+        if creator.unidade:
+            cargo_criador = creator.unidade.nome or (creator.orgao.nome if creator.orgao else "-")
+        elif creator.orgao:
+            cargo_criador = creator.orgao.nome
+    data_criacao = processo.created_at.strftime("%d/%m/%Y %H:%M:%S") if processo.created_at else ""
+    story.extend(_bloco_assinatura(nome_criador, cargo_criador, data_criacao, styles))
+
+    # ---------- PÁGINAS 2+: TRAMITAÇÕES ----------
+    for tram in tramites:
+        story.append(PageBreak())
+
+        proc_orig = f"{(tram.orgao_origem.sigla or tram.orgao_origem.nome) if tram.orgao_origem else '-'} / {(tram.unidade_origem.sigla or tram.unidade_origem.nome) if tram.unidade_origem else '-'}"
+        proc_dest = f"{(tram.orgao_destino.sigla or tram.orgao_destino.nome) if tram.orgao_destino else '-'} / {(tram.unidade_destino.sigla or tram.unidade_destino.nome) if tram.unidade_destino else '-'}"
+        data_tram = tram.created_at.strftime("%d/%m/%Y %H:%M") if tram.created_at else "-"
+        por_tram = tram.usuario.nome if tram.usuario else "-"
+
+        titulo_tram = Paragraph(
+            f"<b>PROCESSO {processo.numero}</b> — Tramitação",
+            ParagraphStyle(name="TituloTram", parent=normal, fontSize=14, spaceAfter=12, alignment=1)
+        )
+        story.append(titulo_tram)
+        story.append(Spacer(1, 8))
+
+        cab_tram = [
+            ("Origem", proc_orig),
+            ("Destino", proc_dest),
+            ("Data/Hora", data_tram),
+            ("Por", por_tram),
+        ]
+        story.append(_quadro_cabecalho(cab_tram, styles))
+        story.append(Spacer(1, 12))
+        story.append(Paragraph("<b>Despacho</b>", normal))
+        story.append(Spacer(1, 4))
+        despacho_texto = _html_para_texto(tram.despacho or "-")
+        story.append(_quadro_conteudo(despacho_texto, styles))
+
+        # Assinatura da tramitação (quem tramitou)
+        usuario_tram = tram.usuario
+        nome_tram = usuario_tram.nome if usuario_tram else "-"
+        cargo_tram = "-"
+        if usuario_tram:
+            if usuario_tram.unidade:
+                cargo_tram = usuario_tram.unidade.nome or (usuario_tram.orgao.nome if usuario_tram.orgao else "-")
+            elif usuario_tram.orgao:
+                cargo_tram = usuario_tram.orgao.nome
+        data_tram_sig = tram.created_at.strftime("%d/%m/%Y %H:%M:%S") if tram.created_at else ""
+        story.extend(_bloco_assinatura(nome_tram, cargo_tram, data_tram_sig, styles))
+
+    doc.build(story)
+    return buffer.getvalue()
+
+
+@router.get("/processos/{processo_id:int}/pdf")
+def processo_pdf(
+    processo_id: int,
+    download: int = Query(0, description="1 para download"),
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    """Retorna o processo em PDF (visualizar no navegador ou download)."""
+    if not user:
+        return RedirectResponse("/login")
+    processo = (
+        db.query(Processo)
+        .options(
+            joinedload(Processo.creator).options(
+                joinedload(User.orgao),
+                joinedload(User.unidade),
+            ),
+            joinedload(Processo.orgao_origem), joinedload(Processo.unidade_origem),
+            joinedload(Processo.orgao_atual), joinedload(Processo.unidade_atual),
+            joinedload(Processo.tramites).options(
+                joinedload(Tramite.usuario).options(
+                    joinedload(User.orgao),
+                    joinedload(User.unidade),
+                ),
+                joinedload(Tramite.orgao_origem),
+                joinedload(Tramite.unidade_origem),
+                joinedload(Tramite.orgao_destino),
+                joinedload(Tramite.unidade_destino),
+            ),
+        )
+        .filter(Processo.id == processo_id)
+        .first()
+    )
+    if not processo:
+        return RedirectResponse("/eprotocolo/processos/caixa", status_code=303)
+    # Marcar como lido ao imprimir ou baixar PDF
+    processo.lido_at = datetime.utcnow()
+    db.commit()
+    tramites = sorted(processo.tramites, key=lambda t: t.created_at or datetime.min)
+    pdf_bytes = _gerar_pdf_processo(processo, tramites)
+    filename = f"processo_{processo.numero.replace('/', '_')}.pdf"
+    headers = {}
+    if download:
+        headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)
 
 
 @router.get("/processos/consulta")
@@ -433,17 +890,138 @@ def processos_consulta(
 
 
 @router.get("/processos/historico")
-def processos_historico(request: Request, user: str = Depends(get_current_user)):
+def processos_historico(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+    pesquisa: str = Query("", alias="pesquisa"),
+    pagina: int = Query(1, ge=1),
+    por_pagina: int = Query(10, ge=5, le=100),
+):
+    """Histórico da Unidade: lista processos da unidade do usuário com paginação e busca."""
     if not user:
         return RedirectResponse("/login")
-    return templates.TemplateResponse("eprotocolo/processos/historico.html", {"request": request, "user": user})
+    u = db.query(User).filter(User.email == user).first()
+    if not u:
+        return RedirectResponse("/login")
+    base_filter = or_(
+        Processo.unidade_atual_id == u.unidade_id,
+        Processo.unidade_origem_id == u.unidade_id,
+    )
+    q = db.query(Processo).filter(base_filter)
+    if pesquisa and pesquisa.strip():
+        termo = f"%{pesquisa.strip()}%"
+        q = q.filter(
+            or_(
+                Processo.numero.ilike(termo),
+                Processo.assunto.ilike(termo),
+                Processo.requerente.ilike(termo),
+            )
+        )
+    total = q.count()
+    offset = (pagina - 1) * por_pagina
+    processos = (
+        q.options(
+            joinedload(Processo.orgao_origem),
+            joinedload(Processo.unidade_origem),
+            joinedload(Processo.tramites),
+        )
+        .order_by(Processo.created_at.desc())
+        .offset(offset)
+        .limit(por_pagina)
+        .all()
+    )
+    # Data de atualização: última tramitação ou criação
+    def ultima_atualizacao(p):
+        if p.tramites:
+            ult = max(p.tramites, key=lambda t: t.created_at or datetime.min)
+            return ult.created_at
+        return p.created_at
+
+    processos_com_data = [(p, ultima_atualizacao(p)) for p in processos]
+    return templates.TemplateResponse(
+        "eprotocolo/processos/historico.html",
+        {
+            "request": request,
+            "user": user,
+            "processos": processos,
+            "processos_com_data": processos_com_data,
+            "total": total,
+            "pagina": pagina,
+            "por_pagina": por_pagina,
+            "pesquisa": pesquisa or "",
+            "ultima_pagina": ((total + por_pagina - 1) // por_pagina) if total else 1,
+        },
+    )
 
 
 @router.get("/processos/arquivados")
-def processos_arquivados(request: Request, user: str = Depends(get_current_user)):
+def processos_arquivados(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+    pesquisa: str = Query("", alias="pesquisa"),
+    pagina: int = Query(1, ge=1),
+    por_pagina: int = Query(10, ge=5, le=100),
+):
+    """Processos Arquivados: lista processos arquivados da unidade do usuário com paginação e busca."""
     if not user:
         return RedirectResponse("/login")
-    return templates.TemplateResponse("eprotocolo/processos/arquivados.html", {"request": request, "user": user})
+    u = db.query(User).filter(User.email == user).first()
+    if not u:
+        return RedirectResponse("/login")
+    base_filter = or_(
+        Processo.unidade_atual_id == u.unidade_id,
+        Processo.unidade_origem_id == u.unidade_id,
+    )
+    q = db.query(Processo).filter(base_filter, Processo.arquivado == True)
+    if pesquisa and pesquisa.strip():
+        termo = f"%{pesquisa.strip()}%"
+        q = q.filter(
+            or_(
+                Processo.numero.ilike(termo),
+                Processo.assunto.ilike(termo),
+                Processo.requerente.ilike(termo),
+            )
+        )
+    total = q.count()
+    offset = (pagina - 1) * por_pagina
+    processos = (
+        q.options(
+            joinedload(Processo.orgao_origem),
+            joinedload(Processo.unidade_origem),
+            joinedload(Processo.tramites),
+            joinedload(Processo.arquivado_por),
+        )
+        .order_by(Processo.arquivado_at.desc(), Processo.created_at.desc())
+        .offset(offset)
+        .limit(por_pagina)
+        .all()
+    )
+    # Data de atualização: arquivado_at ou última tramitação ou criação
+    def data_atualizacao(p):
+        if p.arquivado_at:
+            return p.arquivado_at
+        if p.tramites:
+            ult = max(p.tramites, key=lambda t: t.created_at or datetime.min)
+            return ult.created_at
+        return p.created_at
+
+    processos_com_data = [(p, data_atualizacao(p)) for p in processos]
+    return templates.TemplateResponse(
+        "eprotocolo/processos/arquivados.html",
+        {
+            "request": request,
+            "user": user,
+            "processos": processos,
+            "processos_com_data": processos_com_data,
+            "total": total,
+            "pagina": pagina,
+            "por_pagina": por_pagina,
+            "pesquisa": pesquisa or "",
+            "ultima_pagina": ((total + por_pagina - 1) // por_pagina) if total else 1,
+        },
+    )
 
 
 @router.get("/processos/atribuir")
