@@ -177,26 +177,28 @@ def processos_caixa(
 
     # Filtro por aba (status e demais critérios da caixa)
     q = q_base
-    if aba == "urgentes":
-        q = q.filter(Processo.urgente == True)
-    elif aba == "assinados":
-        q = q.filter(Processo.status == "Assinado")
-    elif aba == "a_assinar":
-        # Processos em que o usuário é assinante e ainda não estão assinados
-        q = q.filter(
-            Processo.assinantes.any(ProcessoAssinante.user_id == u.id),
-            Processo.status != "Assinado",
-        )
-    elif aba == "recebidos":
-        q = q.filter(Processo.status.in_(["Recebido", "Em tramitação"]))
-    elif aba == "em_edicao":
-        q = q.filter(Processo.status == "Em edição")
-    elif aba == "nao_lidos":
-        q = q.filter(Processo.lido_at == None)
-    elif aba == "lidos":
-        q = q.filter(Processo.lido_at != None)
-    elif aba == "nao_atribuidos":
-        q = q.filter(Processo.atribuido_to_id == None)
+    if aba == "arquivados":
+        q = q.filter(Processo.arquivado == True)
+    else:
+        # Nas demais abas, só processos não arquivados
+        q = q.filter(Processo.arquivado == False)
+        if aba == "urgentes":
+            q = q.filter(Processo.urgente == True)
+        elif aba == "assinados":
+            q = q.filter(Processo.status == "Assinado")
+        elif aba == "a_assinar":
+            q = q.filter(
+                Processo.assinantes.any(ProcessoAssinante.user_id == u.id),
+                Processo.status != "Assinado",
+            )
+        elif aba == "recebidos":
+            q = q.filter(Processo.status.in_(["Recebido", "Em tramitação"]))
+        elif aba == "em_edicao":
+            q = q.filter(Processo.status == "Em edição")
+        elif aba == "nao_lidos":
+            q = q.filter(Processo.lido_at == None)
+        elif aba == "lidos":
+            q = q.filter(Processo.lido_at != None)
 
     total = q.count()
     offset = (pagina - 1) * por_pagina
@@ -213,19 +215,20 @@ def processos_caixa(
         .all()
     )
 
-    # Contagens por aba (para badges)
-    cnt_todos = q_base.count()
-    cnt_urgentes = q_base.filter(Processo.urgente == True).count()
-    cnt_assinados = q_base.filter(Processo.status == "Assinado").count()
-    cnt_a_assinar = q_base.filter(
+    # Contagens por aba (para badges) — abas de tramitação só consideram não arquivados
+    q_nao_arq = q_base.filter(Processo.arquivado == False)
+    cnt_todos = q_nao_arq.count()
+    cnt_urgentes = q_nao_arq.filter(Processo.urgente == True).count()
+    cnt_assinados = q_nao_arq.filter(Processo.status == "Assinado").count()
+    cnt_a_assinar = q_nao_arq.filter(
         Processo.assinantes.any(ProcessoAssinante.user_id == u.id),
         Processo.status != "Assinado",
     ).count()
-    cnt_recebidos = q_base.filter(Processo.status.in_(["Recebido", "Em tramitação"])).count()
-    cnt_em_edicao = q_base.filter(Processo.status == "Em edição").count()
-    cnt_nao_lidos = q_base.filter(Processo.lido_at == None).count()
-    cnt_lidos = q_base.filter(Processo.lido_at != None).count()
-    cnt_nao_atribuidos = q_base.filter(Processo.atribuido_to_id == None).count()
+    cnt_recebidos = q_nao_arq.filter(Processo.status.in_(["Recebido", "Em tramitação"])).count()
+    cnt_em_edicao = q_nao_arq.filter(Processo.status == "Em edição").count()
+    cnt_nao_lidos = q_nao_arq.filter(Processo.lido_at == None).count()
+    cnt_lidos = q_nao_arq.filter(Processo.lido_at != None).count()
+    cnt_arquivados = q_base.filter(Processo.arquivado == True).count()
 
     return templates.TemplateResponse(
         "eprotocolo/processos/caixa.html",
@@ -245,7 +248,7 @@ def processos_caixa(
             "cnt_em_edicao": cnt_em_edicao,
             "cnt_nao_lidos": cnt_nao_lidos,
             "cnt_lidos": cnt_lidos,
-            "cnt_nao_atribuidos": cnt_nao_atribuidos,
+            "cnt_arquivados": cnt_arquivados,
         },
     )
 
@@ -549,7 +552,7 @@ def _html_para_texto(raw: str) -> str:
     return texto.replace("\n", "<br/>") if texto else "-"
 
 
-def _quadro_cabecalho(linhas, styles) -> Table:
+def _quadro_cabecalho(linhas, styles) -> "Table":
     """Retorna uma Table com borda contendo campos rotulo:valor em linhas."""
     from reportlab.platypus import Table, TableStyle, Paragraph
     from reportlab.lib import colors
@@ -566,7 +569,7 @@ def _quadro_cabecalho(linhas, styles) -> Table:
     return t
 
 
-def _quadro_conteudo(texto: str, styles) -> Table:
+def _quadro_conteudo(texto: str, styles) -> "Table":
     """Retorna uma Table com borda para bloco de conteúdo/despacho."""
     from reportlab.platypus import Table, TableStyle, Paragraph
     from reportlab.lib import colors
@@ -955,6 +958,53 @@ def processos_historico(
     )
 
 
+@router.post("/processos/{processo_id:int}/arquivar")
+async def processo_arquivar(
+    request: Request,
+    processo_id: int,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    """Marca o processo como arquivado (arquivado=True, arquivado_at=now, arquivado_por_id=usuário)."""
+    if not user:
+        return RedirectResponse("/login")
+    u = db.query(User).filter(User.email == user).first()
+    if not u:
+        return RedirectResponse("/login")
+    processo = db.query(Processo).filter(Processo.id == processo_id).first()
+    if not processo:
+        return RedirectResponse("/eprotocolo/processos/caixa", status_code=303)
+    form = await request.form()
+    redirect_to = form.get("redirect") or request.query_params.get("redirect") or "/eprotocolo/processos/caixa?aba=arquivados"
+    processo.arquivado = True
+    processo.arquivado_at = datetime.utcnow()
+    processo.arquivado_por_id = u.id
+    db.commit()
+    return RedirectResponse(str(redirect_to), status_code=303)
+
+
+@router.post("/processos/{processo_id:int}/desarquivar")
+async def processo_desarquivar(
+    request: Request,
+    processo_id: int,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    """Remove o processo do arquivo (arquivado=False)."""
+    if not user:
+        return RedirectResponse("/login")
+    processo = db.query(Processo).filter(Processo.id == processo_id).first()
+    if not processo:
+        return RedirectResponse("/eprotocolo/processos/caixa", status_code=303)
+    form = await request.form()
+    redirect_to = form.get("redirect") or request.query_params.get("redirect") or "/eprotocolo/processos/caixa"
+    processo.arquivado = False
+    processo.arquivado_at = None
+    processo.arquivado_por_id = None
+    db.commit()
+    return RedirectResponse(str(redirect_to), status_code=303)
+
+
 @router.get("/processos/arquivados")
 def processos_arquivados(
     request: Request,
@@ -1013,6 +1063,7 @@ def processos_arquivados(
         {
             "request": request,
             "user": user,
+            "user_obj": u,
             "processos": processos,
             "processos_com_data": processos_com_data,
             "total": total,
@@ -1022,13 +1073,6 @@ def processos_arquivados(
             "ultima_pagina": ((total + por_pagina - 1) // por_pagina) if total else 1,
         },
     )
-
-
-@router.get("/processos/atribuir")
-def processos_atribuir(request: Request, user: str = Depends(get_current_user)):
-    if not user:
-        return RedirectResponse("/login")
-    return templates.TemplateResponse("eprotocolo/processos/atribuir.html", {"request": request, "user": user})
 
 
 # ========================================

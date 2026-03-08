@@ -1,5 +1,5 @@
 """
-Migração: adiciona colunas arquivado, arquivado_at, arquivado_por_id na tabela processos.
+Migração: adiciona colunas processo_principal_id, arquivado, arquivado_at, arquivado_por_id na tabela processos.
 Execute uma vez: python migrate_processos_arquivado.py
 """
 from database import engine
@@ -19,6 +19,16 @@ def coluna_existe(conn, tabela: str, coluna: str) -> bool:
 
 def main():
     with engine.begin() as conn:
+        if not coluna_existe(conn, "processos", "processo_principal_id"):
+            conn.execute(
+                text(
+                    "ALTER TABLE processos ADD COLUMN processo_principal_id INTEGER REFERENCES processos(id)"
+                )
+            )
+            print("Coluna processos.processo_principal_id adicionada.")
+        else:
+            print("Coluna processos.processo_principal_id já existe.")
+
         if not coluna_existe(conn, "processos", "arquivado"):
             conn.execute(text("ALTER TABLE processos ADD COLUMN arquivado BOOLEAN DEFAULT FALSE"))
             print("Coluna processos.arquivado adicionada.")
