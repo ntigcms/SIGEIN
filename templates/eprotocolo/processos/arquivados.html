@@ -1,0 +1,338 @@
+{% extends "eprotocolo/eprotocolo_base.html" %}
+
+{% block title %}Processos Arquivados - E-Protocolo{% endblock %}
+
+{% block eprotocolo_content %}
+<div class="historico-unidade">
+    <div class="page-badge">PROCESSOS ARQUIVADOS</div>
+
+    <div class="historico-toolbar">
+        <div class="toolbar-left">
+            <select id="por-pagina" class="select-resultados" onchange="atualizarPorPagina(this.value)">
+                <option value="5" {% if por_pagina == 5 %}selected{% endif %}>5</option>
+                <option value="10" {% if por_pagina == 10 %}selected{% endif %}>10</option>
+                <option value="25" {% if por_pagina == 25 %}selected{% endif %}>25</option>
+                <option value="50" {% if por_pagina == 50 %}selected{% endif %}>50</option>
+            </select>
+            <span class="label-resultados">RESULTADOS POR PÁGINA</span>
+        </div>
+        <div class="toolbar-right">
+            <form method="get" action="/eprotocolo/processos/arquivados" class="form-pesquisa">
+                <input type="hidden" name="por_pagina" value="{{ por_pagina }}">
+                <input type="hidden" name="pagina" value="1">
+                <input type="text" name="pesquisa" value="{{ pesquisa }}" placeholder="PESQUISAR" class="input-pesquisa">
+                <button type="submit" class="btn-pesquisar"><i class="fas fa-search"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <div class="historico-table-wrapper">
+        <table class="historico-table">
+            <thead>
+                <tr>
+                    <th>N° INTERNO</th>
+                    <th>GRUPO / ASSUNTO / SUBASSUNTO</th>
+                    <th>DATA DE ATUALIZAÇÃO</th>
+                    <th>QUEM ARQUIVOU</th>
+                    <th>AÇÕES</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in processos_com_data %}
+                {% set p = item[0] %}
+                {% set data_atual = item[1] %}
+                <tr>
+                    <td class="col-numero">{{ p.numero or '-' }}</td>
+                    <td class="col-assunto">{{ p.assunto or '-' }}</td>
+                    <td class="col-data">{{ data_atual.strftime('%d/%m/%Y %H:%M:%S') if data_atual else '-' }}</td>
+                    <td class="col-quem-arquivou">
+                        {% if p.arquivado_por %}
+                        {{ p.arquivado_por.nome or p.arquivado_por.email or '-' }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td class="col-acoes">
+                        <a href="/eprotocolo/processos/{{ p.id }}/visualizar" class="btn-acao-visualizar" title="Visualizar"><i class="fas fa-eye"></i></a>
+                        {% if user_obj and user_obj.perfil == 'master' %}
+                        <form method="post" action="/eprotocolo/processos/{{ p.id }}/desarquivar" class="form-desarquivar-inline" data-processo-numero="{{ p.numero or '-' }}">
+                            <input type="hidden" name="redirect" value="/eprotocolo/processos/arquivados">
+                            <button type="button" class="btn-acao-desarquivar" title="Desarquivar processo"><i class="fas fa-archive"></i></button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="empty-row">Nenhum processo arquivado encontrado.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="historico-paginacao">
+        <span class="info-registros">MOSTRANDO DE {{ ((pagina - 1) * por_pagina) + 1 if total else 0 }} ATÉ {{ ((pagina - 1) * por_pagina) + processos|length }} DE {{ total }} REGISTROS</span>
+        <div class="paginacao-btns">
+            <a href="?pesquisa={{ pesquisa }}&pagina=1&por_pagina={{ por_pagina }}" class="btn-pag {% if pagina <= 1 %}disabled{% endif %}">PRIMEIRO</a>
+            <a href="?pesquisa={{ pesquisa }}&pagina={{ pagina - 1 }}&por_pagina={{ por_pagina }}" class="btn-pag {% if pagina <= 1 %}disabled{% endif %}">ANTERIOR</a>
+            {% if ultima_pagina <= 7 %}
+                {% for np in range(1, ultima_pagina + 1) %}
+                <a href="?pesquisa={{ pesquisa }}&pagina={{ np }}&por_pagina={{ por_pagina }}" class="btn-pag {% if np == pagina %}active{% endif %}">{{ np }}</a>
+                {% endfor %}
+            {% else %}
+                {% for np in range(1, 6) %}
+                <a href="?pesquisa={{ pesquisa }}&pagina={{ np }}&por_pagina={{ por_pagina }}" class="btn-pag {% if np == pagina %}active{% endif %}">{{ np }}</a>
+                {% endfor %}
+                <span class="btn-pag disabled">...</span>
+                <a href="?pesquisa={{ pesquisa }}&pagina={{ ultima_pagina }}&por_pagina={{ por_pagina }}" class="btn-pag {% if pagina == ultima_pagina %}active{% endif %}">{{ ultima_pagina }}</a>
+            {% endif %}
+            <a href="?pesquisa={{ pesquisa }}&pagina={{ pagina + 1 }}&por_pagina={{ por_pagina }}" class="btn-pag {% if pagina >= ultima_pagina %}disabled{% endif %}">PRÓXIMO</a>
+            <a href="?pesquisa={{ pesquisa }}&pagina={{ ultima_pagina }}&por_pagina={{ por_pagina }}" class="btn-pag {% if pagina >= ultima_pagina %}disabled{% endif %}">ÚLTIMO</a>
+        </div>
+    </div>
+</div>
+
+<style>
+.historico-unidade {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.page-badge {
+    display: inline-block;
+    background: #0d6efd;
+    color: white;
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    margin-bottom: 20px;
+    border-radius: 6px;
+}
+
+.historico-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.toolbar-left, .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.select-resultados {
+    width: 70px;
+    padding: 8px 12px;
+    border: 1px solid #0d6efd;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.label-resultados {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6c757d;
+    margin-bottom: 25px;
+}
+
+.form-pesquisa {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.input-pesquisa {
+    padding: 8px 14px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 14px;
+    width: 220px;
+    height: 38px;
+    box-sizing: border-box;
+}
+
+.btn-pesquisar {
+    padding: 0 16px;
+    height: 38px;
+    box-sizing: border-box;
+    background: #0d6efd;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-pesquisar:hover { background: #0b5ed7; }
+
+.historico-table-wrapper {
+    overflow-x: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+.historico-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.historico-table th {
+    background: #f8f9fa;
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.historico-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.historico-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.col-numero { font-weight: 600; color: #0d6efd; }
+.col-assunto { color: #212529; }
+.col-data { color: #6c757d; }
+.col-quem-arquivou { color: #495057; }
+
+.btn-acao-visualizar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    color: #0d6efd;
+    text-decoration: none;
+    border-radius: 6px;
+}
+
+.btn-acao-visualizar:hover {
+    background: #e7f1ff;
+    color: #0b5ed7;
+}
+
+.col-acoes {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.form-desarquivar-inline { display: inline-block; }
+
+.btn-acao-desarquivar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    color: #198754;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.btn-acao-desarquivar:hover {
+    background: #d1e7dd;
+    color: #157347;
+}
+
+.empty-row {
+    text-align: center;
+    color: #6c757d;
+    padding: 40px !important;
+}
+
+.historico-paginacao {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #dee2e6;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.info-registros {
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.paginacao-btns {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.paginacao-btns .btn-pag {
+    padding: 8px 12px;
+    border: 1px solid #dee2e6;
+    background: #fff;
+    color: #333;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.paginacao-btns .btn-pag:hover:not(.disabled) {
+    background: #e9ecef;
+}
+
+.paginacao-btns .btn-pag.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.paginacao-btns .btn-pag.active {
+    background: #0d6efd;
+    color: white;
+    border-color: #0d6efd;
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+function atualizarPorPagina(val) {
+    var url = new URL(window.location);
+    url.searchParams.set('por_pagina', val);
+    url.searchParams.set('pagina', '1');
+    window.location = url;
+}
+
+document.querySelectorAll('.btn-acao-desarquivar').forEach(function(btn) {
+    btn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        var form = this.closest('form');
+        var numero = form ? form.getAttribute('data-processo-numero') : '-';
+        var result = await Swal.fire({
+            title: 'Desarquivar processo?',
+            text: 'O processo ' + numero + ' voltará a aparecer na caixa de processos.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, desarquivar',
+            cancelButtonText: 'Cancelar'
+        });
+        if (result.isConfirmed && form) form.submit();
+    });
+});
+</script>
+{% endblock %}
