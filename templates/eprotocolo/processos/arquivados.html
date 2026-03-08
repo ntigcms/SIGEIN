@@ -54,6 +54,12 @@
                     </td>
                     <td class="col-acoes">
                         <a href="/eprotocolo/processos/{{ p.id }}/visualizar" class="btn-acao-visualizar" title="Visualizar"><i class="fas fa-eye"></i></a>
+                        {% if user_obj and user_obj.perfil == 'master' %}
+                        <form method="post" action="/eprotocolo/processos/{{ p.id }}/desarquivar" class="form-desarquivar-inline" data-processo-numero="{{ p.numero or '-' }}">
+                            <input type="hidden" name="redirect" value="/eprotocolo/processos/arquivados">
+                            <button type="button" class="btn-acao-desarquivar" title="Desarquivar processo"><i class="fas fa-archive"></i></button>
+                        </form>
+                        {% endif %}
                     </td>
                 </tr>
                 {% else %}
@@ -141,6 +147,7 @@
 
 .form-pesquisa {
     display: flex;
+    align-items: stretch;
     gap: 8px;
 }
 
@@ -150,15 +157,22 @@
     border-radius: 6px;
     font-size: 14px;
     width: 220px;
+    height: 38px;
+    box-sizing: border-box;
 }
 
 .btn-pesquisar {
-    padding: 8px 16px;
+    padding: 0 16px;
+    height: 38px;
+    box-sizing: border-box;
     background: #0d6efd;
     color: white;
     border: none;
     border-radius: 6px;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn-pesquisar:hover { background: #0b5ed7; }
@@ -212,6 +226,33 @@
 .btn-acao-visualizar:hover {
     background: #e7f1ff;
     color: #0b5ed7;
+}
+
+.col-acoes {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.form-desarquivar-inline { display: inline-block; }
+
+.btn-acao-desarquivar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    color: #198754;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.btn-acao-desarquivar:hover {
+    background: #d1e7dd;
+    color: #157347;
 }
 
 .empty-row {
@@ -268,6 +309,7 @@
 }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 function atualizarPorPagina(val) {
     var url = new URL(window.location);
@@ -275,5 +317,22 @@ function atualizarPorPagina(val) {
     url.searchParams.set('pagina', '1');
     window.location = url;
 }
+
+document.querySelectorAll('.btn-acao-desarquivar').forEach(function(btn) {
+    btn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        var form = this.closest('form');
+        var numero = form ? form.getAttribute('data-processo-numero') : '-';
+        var result = await Swal.fire({
+            title: 'Desarquivar processo?',
+            text: 'O processo ' + numero + ' voltará a aparecer na caixa de processos.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, desarquivar',
+            cancelButtonText: 'Cancelar'
+        });
+        if (result.isConfirmed && form) form.submit();
+    });
+});
 </script>
 {% endblock %}

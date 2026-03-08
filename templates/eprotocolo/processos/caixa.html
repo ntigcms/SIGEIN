@@ -37,32 +37,32 @@
 
     <div class="tabs">
         {% set tab_params = 'por_pagina=' ~ por_pagina %}
-        <a href="?aba=todos&{{ tab_params }}" class="tab {% if aba == 'todos' %}active{% endif %}">
+        <a href="?aba=todos&{{ tab_params }}" class="tab {% if aba == 'todos' %}active{% endif %}" title="Exibe todos os processos da unidade.">
             Todos {% if cnt_todos > 0 %}<span class="badge">{{ cnt_todos }}</span>{% endif %}
         </a>
-        <a href="?aba=assinados&{{ tab_params }}" class="tab {% if aba == 'assinados' %}active{% endif %}">
+        <a href="?aba=assinados&{{ tab_params }}" class="tab {% if aba == 'assinados' %}active{% endif %}" title="Exibe apenas processos assinados.">
             Assinados {% if cnt_assinados > 0 %}<span class="badge">{{ cnt_assinados }}</span>{% endif %}
         </a>
-        <a href="?aba=a_assinar&{{ tab_params }}" class="tab {% if aba == 'a_assinar' %}active{% endif %}">
+        <a href="?aba=a_assinar&{{ tab_params }}" class="tab {% if aba == 'a_assinar' %}active{% endif %}" title="Exibe apenas processos em edição com sua assinatura pendente.">
             A assinar {% if cnt_a_assinar > 0 %}<span class="badge">{{ cnt_a_assinar }}</span>{% endif %}
         </a>
-        <a href="?aba=recebidos&{{ tab_params }}" class="tab {% if aba == 'recebidos' %}active{% endif %}">
+        <a href="?aba=recebidos&{{ tab_params }}" class="tab {% if aba == 'recebidos' %}active{% endif %}" title="Exibe apenas processos que foram recebidos.">
             Recebidos {% if cnt_recebidos > 0 %}<span class="badge">{{ cnt_recebidos }}</span>{% endif %}
         </a>
-        <a href="?aba=em_edicao&{{ tab_params }}" class="tab {% if aba == 'em_edicao' %}active{% endif %}">
+        <a href="?aba=em_edicao&{{ tab_params }}" class="tab {% if aba == 'em_edicao' %}active{% endif %}" title="Exibe apenas processos que estão em edição.">
             Em edição {% if cnt_em_edicao > 0 %}<span class="badge">{{ cnt_em_edicao }}</span>{% endif %}
         </a>
-        <a href="?aba=urgentes&{{ tab_params }}" class="tab {% if aba == 'urgentes' %}active{% endif %}">
+        <a href="?aba=urgentes&{{ tab_params }}" class="tab {% if aba == 'urgentes' %}active{% endif %}" title="Exibe apenas processos marcados como urgente.">
             Urgentes {% if cnt_urgentes > 0 %}<span class="badge">{{ cnt_urgentes }}</span>{% endif %}
         </a>
-        <a href="?aba=nao_lidos&{{ tab_params }}" class="tab {% if aba == 'nao_lidos' %}active{% endif %}">
+        <a href="?aba=nao_lidos&{{ tab_params }}" class="tab {% if aba == 'nao_lidos' %}active{% endif %}" title="Exibe apenas processos que não foram lidos.">
             Não lidos {% if cnt_nao_lidos > 0 %}<span class="badge">{{ cnt_nao_lidos }}</span>{% endif %}
         </a>
-        <a href="?aba=lidos&{{ tab_params }}" class="tab {% if aba == 'lidos' %}active{% endif %}">
+        <a href="?aba=lidos&{{ tab_params }}" class="tab {% if aba == 'lidos' %}active{% endif %}" title="Exibe apenas processos que foram lidos.">
             Lidos {% if cnt_lidos > 0 %}<span class="badge">{{ cnt_lidos }}</span>{% endif %}
         </a>
-        <a href="?aba=nao_atribuidos&{{ tab_params }}" class="tab {% if aba == 'nao_atribuidos' %}active{% endif %}">
-            Não atribuídos {% if cnt_nao_atribuidos > 0 %}<span class="badge">{{ cnt_nao_atribuidos }}</span>{% endif %}
+        <a href="?aba=arquivados&{{ tab_params }}" class="tab {% if aba == 'arquivados' %}active{% endif %}" title="Exibe apenas processos que foram arquivados.">
+            Arquivados {% if cnt_arquivados > 0 %}<span class="badge">{{ cnt_arquivados }}</span>{% endif %}
         </a>
     </div>
 
@@ -87,6 +87,15 @@
                     </div>
                 </div>
                 <div class="processo-acoes">
+                    {% if p.arquivado %}
+                    <form method="post" action="/eprotocolo/processos/{{ p.id }}/desarquivar" class="acao-form-inline form-desarquivar-caixa" data-processo-numero="{{ p.numero or '-' }}">
+                        <button type="button" class="acao-btn btn-desarquivar-caixa" title="Desarquivar"><i class="fas fa-archive"></i></button>
+                    </form>
+                    {% else %}
+                    <form method="post" action="/eprotocolo/processos/{{ p.id }}/arquivar" class="acao-form-inline form-arquivar-caixa" data-processo-numero="{{ p.numero or '-' }}">
+                        <button type="button" class="acao-btn btn-arquivar-caixa" title="Arquivar"><i class="fas fa-archive"></i></button>
+                    </form>
+                    {% endif %}
                     <button type="button" class="acao-btn btn-apensar-caixa" {% if p.processo_principal_id %}disabled title="Processo já apensado"{% else %}title="Apensar Processo"{% endif %} data-processo-id="{{ p.id }}" data-processo-numero="{{ p.numero or '-' }}"><i class="fas fa-link"></i></button>
                     <a href="/eprotocolo/processos/{{ p.id }}/visualizar" class="acao-btn" title="Visualizar"><i class="fas fa-eye"></i></a>
                     <button type="button" class="acao-btn btn-tramitar-caixa" title="Tramitar" data-processo-id="{{ p.id }}"><i class="fas fa-arrow-right"></i></button>
@@ -493,6 +502,8 @@
     gap: 4px;
 }
 
+.acao-form-inline { display: inline-block; }
+
 .acao-btn {
     background: none;
     border: none;
@@ -663,6 +674,42 @@ const modalTramitar = document.getElementById('modal-tramitar');
 const tramEditor = document.getElementById('tram-conteudo-editor');
 const tramCharCount = document.getElementById('tram-char-count');
 const TRAM_MAX_CHARS = 10000;
+
+// Arquivar / Desarquivar com SweetAlert
+document.querySelectorAll('.btn-arquivar-caixa').forEach(function(btn) {
+    btn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        var form = this.closest('form');
+        var numero = form ? form.getAttribute('data-processo-numero') : '-';
+        var result = await Swal.fire({
+            title: 'Arquivar processo?',
+            text: 'O processo ' + numero + ' será arquivado e continuará acessível na aba Arquivados.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, arquivar',
+            cancelButtonText: 'Cancelar',
+            customClass: { popup: 'swal-apensar-popup' }
+        });
+        if (result.isConfirmed && form) form.submit();
+    });
+});
+document.querySelectorAll('.btn-desarquivar-caixa').forEach(function(btn) {
+    btn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        var form = this.closest('form');
+        var numero = form ? form.getAttribute('data-processo-numero') : '-';
+        var result = await Swal.fire({
+            title: 'Desarquivar processo?',
+            text: 'O processo ' + numero + ' voltará a aparecer na caixa de processos.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, desarquivar',
+            cancelButtonText: 'Cancelar',
+            customClass: { popup: 'swal-apensar-popup' }
+        });
+        if (result.isConfirmed && form) form.submit();
+    });
+});
 
 document.querySelectorAll('.btn-urgente-caixa').forEach(function(btn) {
     btn.addEventListener('click', async function() {

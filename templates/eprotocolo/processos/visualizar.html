@@ -177,6 +177,17 @@
 
     <!-- BOTÕES DE AÇÃO -->
     <div class="acao-buttons">
+        {% if processo.arquivado %}
+        <form method="post" action="/eprotocolo/processos/{{ processo.id }}/desarquivar" class="btn-acao-form-inline" id="form-desarquivar-visualizar">
+            <input type="hidden" name="redirect" value="/eprotocolo/processos/{{ processo.id }}/visualizar">
+            <button type="button" class="btn-acao btn-desarquivar" id="btn-desarquivar-swal"><i class="fas fa-archive"></i> Desarquivar Processo</button>
+        </form>
+        {% else %}
+        <form method="post" action="/eprotocolo/processos/{{ processo.id }}/arquivar" class="btn-acao-form-inline" id="form-arquivar-visualizar">
+            <input type="hidden" name="redirect" value="/eprotocolo/processos/caixa?aba=arquivados">
+            <button type="button" class="btn-acao btn-arquivar" id="btn-arquivar-swal"><i class="fas fa-archive"></i> Arquivar Processo</button>
+        </form>
+        {% endif %}
         <button type="button" class="btn-acao btn-apensar" id="btn-apensar" {% if processo.processo_principal_id %}disabled title="Processo já apensado"{% else %}title="Vincular a outro processo"{% endif %}><i class="fas fa-link"></i> Apensar Processo</button>
         <button type="button" class="btn-acao btn-reclassificar" id="btn-reclassificar" title="Em breve"><i class="fas fa-file-alt"></i> Reclassificar</button>
         <a href="/eprotocolo/processos/{{ processo.id }}/pdf" target="_blank" class="btn-acao btn-imprimir"><i class="fas fa-print"></i> Imprimir Comprovante</a>
@@ -324,7 +335,12 @@
 .badge-tipo.badge-arquivamento { background: #e2e3e5; color: #383d41; }
 .badge-tipo.badge-apreensamento { background: #f8d7da; color: #721c24; }
 .acao-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 32px; padding-top: 24px; border-top: 1px solid #dee2e6; }
+.btn-acao-form-inline { display: inline-block; }
 .btn-acao { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 6px; font-size: 14px; font-weight: 600; text-decoration: none; border: none; cursor: pointer; }
+.btn-arquivar { background: #6c757d; color: white !important; }
+.btn-arquivar:hover { background: #5a6268; }
+.btn-desarquivar { background: #20c997; color: white !important; }
+.btn-desarquivar:hover { background: #1aa179; }
 .btn-apensar, .btn-reclassificar, .btn-visualizar { background: #0d6efd; color: white !important; }
 .btn-apensar:hover, .btn-reclassificar:hover, .btn-visualizar:hover { background: #0b5ed7; }
 .btn-imprimir { background: #198754; color: white !important; }
@@ -426,6 +442,42 @@ document.querySelectorAll('.modal-tramitar-close').forEach(function(btn) {
 document.querySelector('[data-close="modal-tramitar"]').addEventListener('click', function() {
     modalTramitar.style.display = 'none';
 });
+
+// Arquivar / Desarquivar com SweetAlert
+var btnArquivar = document.getElementById('btn-arquivar-swal');
+if (btnArquivar) {
+    btnArquivar.addEventListener('click', async function(e) {
+        e.preventDefault();
+        var form = document.getElementById('form-arquivar-visualizar');
+        var result = await Swal.fire({
+            title: 'Arquivar processo?',
+            text: 'O processo será arquivado e continuará acessível na aba Arquivados.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, arquivar',
+            cancelButtonText: 'Cancelar',
+            customClass: { popup: 'swal-apensar-popup' }
+        });
+        if (result.isConfirmed && form) form.submit();
+    });
+}
+var btnDesarquivar = document.getElementById('btn-desarquivar-swal');
+if (btnDesarquivar) {
+    btnDesarquivar.addEventListener('click', async function(e) {
+        e.preventDefault();
+        var form = document.getElementById('form-desarquivar-visualizar');
+        var result = await Swal.fire({
+            title: 'Desarquivar processo?',
+            text: 'O processo voltará a aparecer na caixa de processos.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, desarquivar',
+            cancelButtonText: 'Cancelar',
+            customClass: { popup: 'swal-apensar-popup' }
+        });
+        if (result.isConfirmed && form) form.submit();
+    });
+}
 
 async function carregarEstadosTramitar() {
     const sel = document.getElementById('tram_estado');

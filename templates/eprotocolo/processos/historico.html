@@ -141,6 +141,7 @@
 
 .form-pesquisa {
     display: flex;
+    align-items: stretch;
     gap: 8px;
 }
 
@@ -150,15 +151,22 @@
     border-radius: 6px;
     font-size: 14px;
     width: 220px;
+    height: 38px;
+    box-sizing: border-box;
 }
 
 .btn-pesquisar {
-    padding: 8px 16px;
+    padding: 0 16px;
+    height: 38px;
+    box-sizing: border-box;
     background: #0d6efd;
     color: white;
     border: none;
     border-radius: 6px;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn-pesquisar:hover { background: #0b5ed7; }

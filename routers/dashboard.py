@@ -46,7 +46,7 @@ def dashboard_overview(request: Request, db: Session = Depends(get_db), user: st
         if status in ["ZERADO", "CRITICO"]:
             critical_stock.append({
                 "product_name": s.product.name,
-                "unit_name": s.unit.name,
+                "unit_name": s.unit.nome,
                 "quantidade": s.quantidade,
                 "quantidade_minima": s.quantidade_minima,
                 "status": status
