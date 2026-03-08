@@ -51,6 +51,34 @@ def get_logged_user(request: Request):
     return request.session.get("user")
 
 
+def get_meus_dados(request: Request):
+    """Retorna dict com dados do usuário logado para a modal Meus Dados, incluindo lotação administrativa."""
+    email = request.session.get("user")
+    if not email:
+        return None
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.email == email).first()
+        if not u:
+            return None
+        municipio_nome = u.municipio.nome if u.municipio else ""
+        orgao_nome = (u.orgao.sigla or u.orgao.nome) if u.orgao else ""
+        unidade_nome = (u.unidade.sigla or u.unidade.nome) if u.unidade else ""
+        return {
+            "id": u.id,
+            "nome": u.nome or "",
+            "email": u.email or "",
+            "perfil": u.perfil or "",
+            "status": getattr(u, "status", None) or "",
+            "municipio": municipio_nome,
+            "orgao": orgao_nome,
+            "unidade": unidade_nome,
+        }
+    finally:
+        db.close()
+
+
 templates.env.globals["get_user_display_name"] = get_user_display_name
 templates.env.globals["get_logged_user"] = get_logged_user
+templates.env.globals["get_meus_dados"] = get_meus_dados
 templates.env.filters["tempo_recebido"] = tempo_recebido
