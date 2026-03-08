@@ -68,12 +68,11 @@
 
     <div class="lista-processos">
         {% for p in processos %}
-        <div class="processo-card">
+        <div class="processo-card {% if p.urgente %}processo-card-urgente{% endif %}">
             <div class="processo-main">
                 <div class="processo-numero">
                     <a href="/eprotocolo/processos/{{ p.id }}/visualizar" class="numero-link">{{ p.numero }}</a>
                     <span class="processo-status-badge">{{ p.status or 'Em tramitação' }}</span>
-                    <button type="button" class="btn-expandir" title="Expandir"><i class="fas fa-plus"></i></button>
                 </div>
                 <div class="processo-info">
                     <div class="processo-assunto">{{ p.assunto or 'Sem assunto' }}</div>
@@ -88,11 +87,10 @@
                     </div>
                 </div>
                 <div class="processo-acoes">
-                    <button type="button" class="acao-btn" title="Mensagens"><i class="fas fa-envelope"></i></button>
+                    <button type="button" class="acao-btn btn-apensar-caixa" {% if p.processo_principal_id %}disabled title="Processo já apensado"{% else %}title="Apensar Processo"{% endif %} data-processo-id="{{ p.id }}" data-processo-numero="{{ p.numero or '-' }}"><i class="fas fa-link"></i></button>
                     <a href="/eprotocolo/processos/{{ p.id }}/visualizar" class="acao-btn" title="Visualizar"><i class="fas fa-eye"></i></a>
-                    <button type="button" class="acao-btn" title="Tramitar"><i class="fas fa-arrow-right"></i></button>
-                    <button type="button" class="acao-btn" title="Urgente"><i class="fas fa-exclamation-triangle"></i></button>
-                    <a href="#" class="link-previsao">Pré-visualizar</a>
+                    <button type="button" class="acao-btn btn-tramitar-caixa" title="Tramitar" data-processo-id="{{ p.id }}"><i class="fas fa-arrow-right"></i></button>
+                    <button type="button" class="acao-btn btn-urgente-caixa {% if p.urgente %}urgente-ativo{% endif %}" title="{% if p.urgente %}Remover urgência{% else %}Marcar como urgente{% endif %}" data-processo-id="{{ p.id }}"><i class="fas fa-exclamation-triangle"></i></button>
                 </div>
             </div>
         </div>
@@ -113,6 +111,107 @@
             <span class="pagina-atual">{{ pagina }}</span>
             <a href="?aba={{ aba }}&pagina={{ pagina + 1 }}&por_pagina={{ por_pagina }}" class="btn-pag {% if pagina >= ultima_pagina %}disabled{% endif %}">&gt;</a>
             <a href="?aba={{ aba }}&pagina={{ ultima_pagina }}&por_pagina={{ por_pagina }}" class="btn-pag {% if pagina >= ultima_pagina %}disabled{% endif %}">&gt;&gt;</a>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Tramitar (mesmo comportamento do visualizar) -->
+<div id="modal-tramitar" class="sigein-modal" style="display:none;">
+    <div class="sigein-modal-backdrop" data-close="modal-tramitar"></div>
+    <div class="sigein-modal-dialog tramitar-modal-dialog">
+        <div class="sigein-modal-header">
+            <div class="sigein-modal-title">Tramitar Processo</div>
+            <button type="button" class="sigein-modal-close modal-tramitar-close">×</button>
+        </div>
+        <div class="sigein-modal-body tramitar-modal-body">
+            <div class="tramitar-section">
+                <div class="section-badge">Destinatário</div>
+                <div class="section-body form-card-style">
+                    <div class="destinatario-row">
+                        <div class="form-group">
+                            <label for="tram_estado">Estado</label>
+                            <select id="tram_estado" class="form-control">
+                                <option value="">Selecione</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="tram_municipio">Município</label>
+                            <select id="tram_municipio" class="form-control" disabled>
+                                <option value="">Selecione</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="tram_orgao">Órgão</label>
+                            <select id="tram_orgao" class="form-control" disabled>
+                                <option value="">Selecione</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="tram_unidade">Unidade</label>
+                            <select id="tram_unidade" class="form-control" disabled>
+                                <option value="">Selecione</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tramitar-section">
+                <div class="section-badge">Conteúdo</div>
+                <div class="section-body form-card-style">
+                    <div class="editor-toolbar">
+                        <button type="button" class="toolbar-btn" data-cmd="bold" data-editor="tram" title="Negrito"><b>B</b></button>
+                        <button type="button" class="toolbar-btn" data-cmd="italic" data-editor="tram" title="Itálico"><i>I</i></button>
+                        <button type="button" class="toolbar-btn" data-cmd="underline" data-editor="tram" title="Sublinhado"><u>U</u></button>
+                        <button type="button" class="toolbar-btn" data-cmd="strikeThrough" data-editor="tram" title="Riscado"><s>S</s></button>
+                        <span class="toolbar-sep"></span>
+                        <button type="button" class="toolbar-btn" data-cmd="justifyLeft" data-editor="tram" title="Alinhar à esquerda"><i class="fas fa-align-left"></i></button>
+                        <button type="button" class="toolbar-btn" data-cmd="justifyCenter" data-editor="tram" title="Centralizar"><i class="fas fa-align-center"></i></button>
+                        <button type="button" class="toolbar-btn" data-cmd="justifyRight" data-editor="tram" title="Alinhar à direita"><i class="fas fa-align-right"></i></button>
+                        <button type="button" class="toolbar-btn" data-cmd="justifyFull" data-editor="tram" title="Justificar"><i class="fas fa-align-justify"></i></button>
+                        <span class="toolbar-sep"></span>
+                        <button type="button" class="toolbar-btn" data-cmd="insertUnorderedList" data-editor="tram" title="Lista com marcadores"><i class="fas fa-list-ul"></i></button>
+                        <button type="button" class="toolbar-btn" data-cmd="insertOrderedList" data-editor="tram" title="Lista numerada"><i class="fas fa-list-ol"></i></button>
+                        <span class="toolbar-sep"></span>
+                        <button type="button" class="toolbar-btn" data-cmd="createLink" data-editor="tram" title="Link"><i class="fas fa-link"></i></button>
+                        <button type="button" class="toolbar-btn" id="tram-btn-insert-img" title="Inserir imagem"><i class="fas fa-image"></i></button>
+                        <input type="file" id="tram-img-input" accept="image/*" style="display:none">
+                        <button type="button" class="toolbar-btn" data-cmd="undo" data-editor="tram" title="Desfazer"><i class="fas fa-undo"></i></button>
+                        <button type="button" class="toolbar-btn" data-cmd="redo" data-editor="tram" title="Refazer"><i class="fas fa-redo"></i></button>
+                    </div>
+                    <div class="editor-wrapper">
+                        <div id="tram-conteudo-editor" contenteditable="true" class="editor-content"></div>
+                    </div>
+                    <div class="char-count">Contagem de caracteres: <span id="tram-char-count">0</span>/10000</div>
+                </div>
+            </div>
+            <div class="tramitar-actions">
+                <button type="button" class="btn-tramitar-submit" id="tramitar-confirmar"><i class="fas fa-arrow-right"></i> Tramitar</button>
+                <button type="button" class="btn-tramitar-cancelar modal-tramitar-close">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Apensar Processo -->
+<div id="modal-apensar" class="sigein-modal" style="display:none;">
+    <div class="sigein-modal-backdrop" data-close="modal-apensar"></div>
+    <div class="sigein-modal-dialog apensar-modal-dialog">
+        <div class="sigein-modal-header">
+            <div class="sigein-modal-title">Apensar Processo</div>
+            <button type="button" class="sigein-modal-close modal-apensar-close">×</button>
+        </div>
+        <div class="sigein-modal-body apensar-modal-body">
+            <p class="apensar-desc">Pesquise o processo ao qual este será vinculado (apensado).</p>
+            <div class="apensar-search-row">
+                <input type="text" id="apensar-search" class="form-control" placeholder="Número, assunto ou requerente..." autocomplete="off">
+                <button type="button" class="btn-apensar-buscar" id="apensar-btn-buscar"><i class="fas fa-search"></i> Buscar</button>
+            </div>
+            <div id="apensar-resultados" class="apensar-resultados">
+                <p class="apensar-empty">Digite e clique em Buscar para listar processos.</p>
+            </div>
+            <div class="apensar-actions">
+                <button type="button" class="btn-tramitar-cancelar modal-apensar-close">Cancelar</button>
+            </div>
         </div>
     </div>
 </div>
@@ -202,7 +301,7 @@
     cursor: pointer;
     font-size: 14px;
     color: black;
-    margin-bottom: 11px;
+    margin-bottom: 20px;
 }
 
 .btn-atualizar:hover { 
@@ -287,6 +386,23 @@
 
 .processo-card:hover {
     background: #e7f1ff;
+}
+
+.processo-card-urgente {
+    border-left: 4px solid #dc3545;
+    background: #fff5f5;
+}
+
+.processo-card-urgente:hover {
+    background: #ffe5e5;
+}
+
+.btn-urgente-caixa.urgente-ativo {
+    color: #dc3545;
+}
+
+.btn-urgente-caixa.urgente-ativo i {
+    color: #dc3545;
 }
 
 .processo-main {
@@ -451,8 +567,65 @@ a.acao-btn { text-decoration: none; }
     .processo-main { grid-template-columns: 1fr; }
     .processo-acoes { flex-wrap: wrap; justify-content: flex-start; }
 }
+
+/* Modal Tramitar */
+.sigein-modal { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+.sigein-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); cursor: pointer; }
+.sigein-modal-dialog { position: relative; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); max-width: 500px; width: 90%; max-height: 90vh; overflow: auto; }
+.sigein-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid #dee2e6; }
+.sigein-modal-title { font-size: 16px; font-weight: 600; }
+.sigein-modal-close { border: none; background: transparent; font-size: 24px; cursor: pointer; color: #6c757d; }
+.sigein-modal-body { padding: 16px; }
+.tramitar-modal-dialog { max-width: 800px; width: 95%; }
+.tramitar-modal-body { max-height: 85vh; overflow-y: auto; }
+.tramitar-section { margin-bottom: 20px; }
+.tramitar-section .section-badge { background: #0d6efd; color: white; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 700; margin-bottom: 8px; display: inline-block; }
+.tramitar-section .section-body { padding: 20px; background: #f8f9fa; border-radius: 8px; }
+.destinatario-row { display: flex; flex-wrap: wrap; gap: 16px; }
+.destinatario-row .form-group { flex: 1; min-width: 150px; }
+.destinatario-row label { display: block; font-size: 12px; font-weight: 600; color: #6c757d; margin-bottom: 6px; }
+.destinatario-row select { width: 100%; padding: 10px 12px; border: 1px solid #ced4da; border-radius: 6px; font-size: 14px; }
+.editor-toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; background: #f8f9fa; border: 1px solid #dee2e6; border-bottom: none; border-radius: 6px 6px 0 0; }
+.toolbar-btn { background: transparent; color: #1a1a1a; border: 1px solid #dee2e6; padding: 6px 10px; cursor: pointer; border-radius: 4px; font-size: 14px; }
+.toolbar-btn:hover { background: #e9ecef; }
+.toolbar-sep { width: 1px; background: #dee2e6; margin: 0 4px; }
+.editor-wrapper { border: 1px solid #dee2e6; border-radius: 0 0 6px 6px; }
+.editor-content { min-height: 150px; padding: 12px; background: white; font-size: 14px; line-height: 1.6; }
+.editor-content:focus { outline: none; }
+.editor-content img { max-width: 100%; height: auto; }
+.char-count { font-size: 12px; color: #6c757d; margin-top: 8px; }
+.tramitar-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid #dee2e6; }
+.btn-tramitar-submit { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; background: #0d6efd; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-tramitar-submit:hover { background: #0b5ed7; }
+.btn-tramitar-cancelar { padding: 10px 24px; background: #6c757d; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; }
+.btn-tramitar-cancelar:hover { background: #5a6268; }
+.apensar-modal-dialog { max-width: 600px; width: 95%; }
+.apensar-desc { margin-bottom: 16px; font-size: 14px; color: #495057; }
+.apensar-search-row { display: flex; gap: 8px; margin-bottom: 16px; }
+.apensar-search-row input { flex: 1; padding: 10px 12px; border: 1px solid #ced4da; border-radius: 6px; font-size: 14px; }
+.btn-apensar-buscar { padding: 10px 20px; background: #0d6efd; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; }
+.btn-apensar-buscar:hover { background: #0b5ed7; }
+.apensar-resultados { max-height: 280px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 6px; background: #f8f9fa; }
+.apensar-empty { padding: 24px; text-align: center; color: #6c757d; font-size: 14px; margin: 0; }
+.apensar-item { padding: 12px 16px; border-bottom: 1px solid #dee2e6; cursor: pointer; transition: background 0.2s; }
+.apensar-item:last-child { border-bottom: none; }
+.apensar-item:hover { background: #e9ecef; }
+.apensar-item .apensar-numero { font-weight: 600; color: #0d6efd; }
+.apensar-item .apensar-assunto { font-size: 13px; color: #495057; margin-top: 4px; }
+.apensar-item .apensar-meta { font-size: 12px; color: #6c757d; margin-top: 4px; }
+.apensar-actions { margin-top: 16px; padding-top: 16px; border-top: 1px solid #dee2e6; }
+.swal2-container { z-index: 99999 !important; }
+.swal-apensar-popup { font-family: inherit; }
+.swal-apensar-content { text-align: left; }
+.swal-apensar-desc { margin: 0 0 12px 0; font-size: 14px; color: #495057; line-height: 1.5; }
+.swal-apensar-card { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 14px 16px; margin: 12px 0; }
+.swal-apensar-numero { font-weight: 600; color: #0d6efd; font-size: 15px; margin-bottom: 6px; }
+.swal-apensar-numero i { margin-right: 8px; opacity: 0.8; }
+.swal-apensar-assunto { font-size: 13px; color: #495057; line-height: 1.4; }
+.swal-apensar-ask { margin: 14px 0 0 0; font-size: 14px; color: #212529; font-weight: 500; }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 function atualizarPorPagina(val) {
     const url = new URL(window.location);
@@ -483,5 +656,337 @@ function atualizarPorPagina(val) {
 
     applySize(currentSize);
 })();
+
+// Modal Tramitar (mesmo comportamento do visualizar)
+var tramitarProcessoId = null;
+const modalTramitar = document.getElementById('modal-tramitar');
+const tramEditor = document.getElementById('tram-conteudo-editor');
+const tramCharCount = document.getElementById('tram-char-count');
+const TRAM_MAX_CHARS = 10000;
+
+document.querySelectorAll('.btn-urgente-caixa').forEach(function(btn) {
+    btn.addEventListener('click', async function() {
+        var pid = this.getAttribute('data-processo-id');
+        if (!pid) return;
+        try {
+            var res = await fetch('/eprotocolo/processos/' + pid + '/urgente', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            var data = await res.json().catch(function() { return {}; });
+            if (res.ok && data.ok) {
+                window.location.reload();
+            }
+        } catch (err) { console.error(err); }
+    });
+});
+
+document.querySelectorAll('.btn-tramitar-caixa').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        tramitarProcessoId = this.getAttribute('data-processo-id');
+        if (!tramitarProcessoId) return;
+        modalTramitar.style.display = 'flex';
+        carregarEstadosTramitar();
+        tramEditor.innerHTML = '';
+        tramCharCount.textContent = '0';
+    });
+});
+
+document.querySelectorAll('.modal-tramitar-close').forEach(function(btn) {
+    btn.addEventListener('click', function() { modalTramitar.style.display = 'none'; });
+});
+if (document.querySelector('[data-close="modal-tramitar"]')) {
+    document.querySelector('[data-close="modal-tramitar"]').addEventListener('click', function() {
+        modalTramitar.style.display = 'none';
+    });
+}
+
+async function carregarEstadosTramitar() {
+    var sel = document.getElementById('tram_estado');
+    sel.innerHTML = '<option value="">Selecione</option>';
+    document.getElementById('tram_municipio').innerHTML = '<option value="">Selecione</option>';
+    document.getElementById('tram_municipio').disabled = true;
+    document.getElementById('tram_orgao').innerHTML = '<option value="">Selecione</option>';
+    document.getElementById('tram_orgao').disabled = true;
+    document.getElementById('tram_unidade').innerHTML = '<option value="">Selecione</option>';
+    document.getElementById('tram_unidade').disabled = true;
+    try {
+        var res = await fetch('/api/estados');
+        var data = await res.json();
+        data.forEach(function(e) {
+            var opt = document.createElement('option');
+            opt.value = e.id;
+            opt.textContent = e.nome + (e.uf ? ' (' + e.uf + ')' : '');
+            sel.appendChild(opt);
+        });
+    } catch (err) { console.error(err); }
+}
+
+document.getElementById('tram_estado').addEventListener('change', async function() {
+    var id = this.value;
+    var mun = document.getElementById('tram_municipio');
+    mun.innerHTML = '<option value="">Selecione</option>';
+    document.getElementById('tram_orgao').innerHTML = '<option value="">Selecione</option>';
+    document.getElementById('tram_orgao').disabled = true;
+    document.getElementById('tram_unidade').innerHTML = '<option value="">Selecione</option>';
+    document.getElementById('tram_unidade').disabled = true;
+    mun.disabled = !id;
+    if (!id) return;
+    var res = await fetch('/api/municipios/' + id);
+    var data = await res.json();
+    data.forEach(function(m) {
+        var opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.nome;
+        mun.appendChild(opt);
+    });
+    mun.disabled = false;
+});
+
+document.getElementById('tram_municipio').addEventListener('change', async function() {
+    var id = this.value;
+    var org = document.getElementById('tram_orgao');
+    org.innerHTML = '<option value="">Selecione</option>';
+    document.getElementById('tram_unidade').innerHTML = '<option value="">Selecione</option>';
+    document.getElementById('tram_unidade').disabled = true;
+    org.disabled = !id;
+    if (!id) return;
+    var res = await fetch('/api/orgaos/' + id);
+    var data = await res.json();
+    data.forEach(function(o) {
+        var opt = document.createElement('option');
+        opt.value = o.id;
+        opt.textContent = o.nome + (o.sigla ? ' (' + o.sigla + ')' : '');
+        org.appendChild(opt);
+    });
+    org.disabled = false;
+});
+
+document.getElementById('tram_orgao').addEventListener('change', async function() {
+    var id = this.value;
+    var un = document.getElementById('tram_unidade');
+    un.innerHTML = '<option value="">Selecione</option>';
+    un.disabled = !id;
+    if (!id) return;
+    var res = await fetch('/api/unidades/' + id);
+    var data = await res.json();
+    data.forEach(function(u) {
+        var opt = document.createElement('option');
+        opt.value = u.id;
+        opt.textContent = u.nome + (u.sigla ? ' (' + u.sigla + ')' : '');
+        un.appendChild(opt);
+    });
+    un.disabled = false;
+});
+
+document.querySelectorAll('.toolbar-btn[data-editor="tram"]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var cmd = this.dataset.cmd;
+        if (cmd === 'createLink') {
+            var url = prompt('URL do link:');
+            if (url) document.execCommand(cmd, false, url);
+        } else {
+            document.execCommand(cmd, false, null);
+        }
+        tramEditor.focus();
+    });
+});
+
+tramEditor.addEventListener('input', function() {
+    var len = (tramEditor.innerText || '').length;
+    tramCharCount.textContent = len;
+    tramEditor.contentEditable = len >= TRAM_MAX_CHARS ? 'false' : 'true';
+});
+
+document.getElementById('tram-btn-insert-img').addEventListener('click', function() {
+    document.getElementById('tram-img-input').value = '';
+    document.getElementById('tram-img-input').click();
+});
+document.getElementById('tram-img-input').addEventListener('change', function() {
+    var file = this.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    if (file.size > 2 * 1024 * 1024) {
+        alert('A imagem não pode exceder 2MB.');
+        this.value = '';
+        return;
+    }
+    var reader = new FileReader();
+    reader.onload = function() {
+        tramEditor.focus();
+        document.execCommand('insertImage', false, reader.result);
+    };
+    reader.readAsDataURL(file);
+    this.value = '';
+});
+
+document.getElementById('tramitar-confirmar').addEventListener('click', async function() {
+    var unidadeId = document.getElementById('tram_unidade').value;
+    var municipioId = document.getElementById('tram_municipio').value;
+    var orgaoId = document.getElementById('tram_orgao').value;
+    if (!unidadeId || !municipioId || !orgaoId) {
+        alert('Selecione o destinatário (Estado, Município, Órgão e Unidade).');
+        return;
+    }
+    if (!tramitarProcessoId) {
+        alert('Erro: ID do processo não encontrado.');
+        return;
+    }
+    var despacho = tramEditor.innerHTML.trim();
+    var btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Tramitando...';
+    try {
+        var formData = new FormData();
+        formData.append('municipio_destino_id', municipioId);
+        formData.append('orgao_destino_id', orgaoId);
+        formData.append('unidade_destino_id', unidadeId);
+        formData.append('despacho', despacho);
+        var res = await fetch('/eprotocolo/processos/' + tramitarProcessoId + '/tramitar', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        var data = await res.json().catch(function() { return {}; });
+        if (res.ok && data.ok) {
+            modalTramitar.style.display = 'none';
+            window.location.reload();
+        } else {
+            alert(data.error || 'Erro ao tramitar. Tente novamente.');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Erro de conexão ao tramitar.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-arrow-right"></i> Tramitar';
+    }
+});
+
+// Modal Apensar
+var apensarProcessoId = null;
+var apensarProcessoNumero = '';
+const modalApensar = document.getElementById('modal-apensar');
+
+document.querySelectorAll('.btn-apensar-caixa').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        if (this.disabled) return;
+        apensarProcessoId = this.getAttribute('data-processo-id');
+        apensarProcessoNumero = this.getAttribute('data-processo-numero') || '-';
+        if (!apensarProcessoId) return;
+        modalApensar.style.display = 'flex';
+        document.getElementById('apensar-search').value = '';
+        document.getElementById('apensar-resultados').innerHTML = '<p class="apensar-empty">Digite e clique em Buscar para listar processos.</p>';
+    });
+});
+
+document.querySelectorAll('.modal-apensar-close').forEach(function(btn) {
+    btn.addEventListener('click', function() { modalApensar.style.display = 'none'; });
+});
+if (document.querySelector('[data-close="modal-apensar"]')) {
+    document.querySelector('[data-close="modal-apensar"]').addEventListener('click', function() {
+        modalApensar.style.display = 'none';
+    });
+}
+
+document.getElementById('apensar-btn-buscar').addEventListener('click', buscarProcessosApensaveis);
+document.getElementById('apensar-search').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); buscarProcessosApensaveis(); }
+});
+
+function escHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function buscarProcessosApensaveis() {
+    var q = document.getElementById('apensar-search').value.trim();
+    var container = document.getElementById('apensar-resultados');
+    container.innerHTML = '<p class="apensar-empty"><i class="fas fa-spinner fa-spin"></i> Buscando...</p>';
+    try {
+        var params = new URLSearchParams();
+        if (q) params.append('q', q);
+        if (apensarProcessoId) params.append('excluir_id', apensarProcessoId);
+        var res = await fetch('/eprotocolo/api/processos-apensaveis?' + params.toString());
+        var data = await res.json();
+        if (!res.ok) {
+            container.innerHTML = '<p class="apensar-empty">Erro ao buscar. Tente novamente.</p>';
+            return;
+        }
+        if (!data || data.length === 0) {
+            container.innerHTML = '<p class="apensar-empty">Nenhum processo encontrado.</p>';
+            return;
+        }
+        container.innerHTML = data.map(function(p) {
+            var num = (p.numero || '-');
+            var ass = (p.assunto || '-').replace(/"/g, '&quot;');
+            return '<div class="apensar-item" data-id="' + p.id + '" data-numero="' + num.replace(/"/g, '&quot;') + '" data-assunto="' + ass + '">' +
+                '<span class="apensar-numero">' + num + '</span>' +
+                '<div class="apensar-assunto">' + (p.assunto || '-') + '</div>' +
+                '<div class="apensar-meta">' + (p.requerente || '-') + ' • ' + (p.orgao || '-') + ' / ' + (p.unidade || '-') + '</div>' +
+                '</div>';
+        }).join('');
+        container.querySelectorAll('.apensar-item').forEach(function(el) {
+            el.addEventListener('click', function() {
+                confirmarApensar(parseInt(this.dataset.id, 10), this.dataset.numero || '-', this.dataset.assunto || '-');
+            });
+        });
+    } catch (err) {
+        console.error(err);
+        container.innerHTML = '<p class="apensar-empty">Erro de conexão.</p>';
+    }
+}
+
+async function confirmarApensar(processoPrincipalId, numeroPrincipal, assuntoPrincipal) {
+    if (!apensarProcessoId) {
+        Swal.fire({ icon: 'error', title: 'Erro', text: 'ID do processo não encontrado.' });
+        return;
+    }
+    var result = await Swal.fire({
+        title: 'Confirmar apensamento',
+        html: '<div class="swal-apensar-content">' +
+            '<p class="swal-apensar-desc">O processo <strong>' + escHtml(apensarProcessoNumero) + '</strong> será vinculado ao processo principal:</p>' +
+            '<div class="swal-apensar-card">' +
+            '<div class="swal-apensar-numero"><i class="fas fa-file-alt"></i> ' + escHtml(numeroPrincipal || '-') + '</div>' +
+            '<div class="swal-apensar-assunto">' + escHtml(assuntoPrincipal || '-') + '</div>' +
+            '</div>' +
+            '<p class="swal-apensar-ask">Deseja continuar?</p>' +
+            '</div>',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-link"></i> Sim, apensar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#0d6efd',
+        cancelButtonColor: '#6c757d',
+        customClass: { popup: 'swal-apensar-popup' },
+        width: '420px'
+    });
+    if (!result.isConfirmed) return;
+    try {
+        var formData = new FormData();
+        formData.append('processo_principal_id', processoPrincipalId);
+        var res = await fetch('/eprotocolo/processos/' + apensarProcessoId + '/apensar', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        var data = await res.json().catch(function() { return {}; });
+        if (res.ok && data.ok) {
+            modalApensar.style.display = 'none';
+            await Swal.fire({
+                icon: 'success',
+                title: 'Apensado!',
+                text: 'Processo vinculado com sucesso.',
+                timer: 1500,
+                showConfirmButton: false
+            });
+            window.location.reload();
+        } else {
+            Swal.fire({ icon: 'error', title: 'Erro', text: data.error || 'Erro ao apensar. Tente novamente.' });
+        }
+    } catch (err) {
+        console.error(err);
+        Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro de conexão ao apensar.' });
+    }
+}
 </script>
 {% endblock %}
