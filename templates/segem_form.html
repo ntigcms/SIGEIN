@@ -19,40 +19,27 @@
                            value="{{ item.ano if item and item.ano else '' }}">
                 </div>
                 <div class="form-group">
-                    <label for="num_tombo_gcm">Nº TOMBO (GCM)</label>
-                    <input type="text" name="num_tombo_gcm" id="num_tombo_gcm" placeholder="Ex: 003.406"
-                           value="{{ item.num_tombo_gcm if item and item.num_tombo_gcm else '' }}">
+                    <label for="local">LOCAL</label>
+                    <select name="local" id="local" required>
+                        <option value="">-- Selecione --</option>
+                        <option value="Unidade SEGEM" {% if item and item.local and item.local|upper == 'UNIDADE SEGEM' %}selected{% endif %}>SEGEM</option>
+                        <option value="CSL" {% if item and item.local and item.local|upper == 'CSL' %}selected{% endif %}>CSL</option>
+                    </select>
                 </div>
             </div>
 
             <div class="form-row form-row-two">
-                <div class="form-group">
-                    <label for="local">LOCAL</label>
-                    <input type="text" name="local" id="local" list="list-unidades" placeholder="Digite ou selecione"
-                           value="{{ item.local if item and item.local else '' }}">
-                    <datalist id="list-unidades">
-                        {% for u in unidades %}<option value="{{ u.nome }}">{% endfor %}
-                    </datalist>
-                </div>
                 <div class="form-group">
                     <label for="situacao">SITUAÇÃO</label>
                     <input type="text" name="situacao" id="situacao" placeholder="Ex: Em uso, Baixado"
                            value="{{ item.situacao if item and item.situacao else '' }}">
                 </div>
-            </div>
-
-            <div class="form-row form-row-two">
                 <div class="form-group codigo-autocomplete-wrap">
                     <label for="codigo">CÓDIGO</label>
                     <input type="text" name="codigo" id="codigo" placeholder="Digite o código (sugestões ao digitar)"
                            value="{{ item.codigo if item and item.codigo else '' }}"
                            autocomplete="off">
                     <div id="codigo-suggestions" class="codigo-suggestions" role="listbox" aria-hidden="true"></div>
-                </div>
-                <div class="form-group">
-                    <label for="valor_rs">VALOR R$</label>
-                    <input type="text" name="valor_rs" id="valor_rs" placeholder="R$ 0,00"
-                           value="{{ 'R$ {:,.2f}'.format(item.valor_rs).replace(',', 'X').replace('.', ',').replace('X', '.') if item and item.valor_rs is not none else '' }}">
                 </div>
             </div>
 
@@ -64,6 +51,39 @@
             </div>
         </fieldset>
 
+        <!-- PRODUTO -->
+        <fieldset>
+            <legend>Produto</legend>
+
+            <div id="lista-produtos">
+                {% for prod in produtos_list %}
+                <div class="produto-item" data-index="{{ loop.index0 }}">
+                    <div class="form-row form-row-produto">
+                        <div class="form-group">
+                            <label>Nº TOMBO</label>
+                            <input type="text" name="num_tombo_gcm" class="input-tombo" placeholder="Ex: 003.406"
+                                   value="{{ prod.tombo or '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label>VALOR R$</label>
+                            <input type="text" name="valor_rs" class="input-valor" placeholder="R$ 0,00"
+                                   value="{{ prod.valor_formatado or '' }}">
+                        </div>
+                        <div class="form-group form-group-remove">
+                            <button type="button" class="btn-remove-produto" onclick="removerProduto(this)" {% if loop.first and produtos_list|length <= 1 %}style="display:none;"{% endif %}>
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <button type="button" class="btn-add-produto" onclick="adicionarProduto()">
+                <i class="fas fa-plus"></i> Adicionar Novo Produto
+            </button>
+        </fieldset>
+
         <!-- DOCUMENTOS FISCAIS -->
         <fieldset>
             <legend>Documentos Fiscais</legend>
@@ -71,7 +91,7 @@
             <div class="form-row form-row-two">
                 <div class="form-group">
                     <label for="entrada_no_siga">ENTRADA NO SIGA</label>
-                    <input type="text" name="entrada_no_siga" id="entrada_no_siga"
+                    <input type="date" name="entrada_no_siga" id="entrada_no_siga"
                            value="{{ item.entrada_no_siga if item and item.entrada_no_siga else '' }}">
                 </div>
                 <div class="form-group">
@@ -83,8 +103,8 @@
 
             <div class="form-row form-row-two">
                 <div class="form-group">
-                    <label for="valor_nota_empenho">VALOR DA NOTA DE EMPENHO</label>
-                    <input type="text" name="valor_nota_empenho" id="valor_nota_empenho" placeholder="R$ 0,00"
+                    <label for="valor_nota_empenho">VALOR DA NOTA DE EMPENHO <span class="label-readonly">(soma dos valores dos produtos)</span></label>
+                    <input type="text" name="valor_nota_empenho" id="valor_nota_empenho" placeholder="R$ 0,00" readonly
                            value="{{ 'R$ {:,.2f}'.format(item.valor_nota_empenho).replace(',', 'X').replace('.', ',').replace('X', '.') if item and item.valor_nota_empenho is not none else '' }}">
                 </div>
                 <div class="form-group">
@@ -179,6 +199,7 @@ legend {
     height: 38px;
     box-sizing: border-box;
     max-width: 100%;
+    margin-bottom: 15px;
 }
 
 .form-group textarea {
@@ -271,9 +292,65 @@ legend {
     background: #e7f1ff;
 }
 
+/* Bloco Produto: lista dinâmica */
+#lista-produtos {
+    margin-bottom: 12px;
+}
+
+.produto-item {
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+.form-row-produto {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 16px;
+    align-items: end;
+}
+
+.form-group-remove {
+    margin-bottom: 0;
+}
+
+.btn-remove-produto {
+    background: #dc3545;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-bottom: 16px;
+}
+
+.btn-remove-produto:hover {
+    background: #c82333;
+}
+
+.btn-add-produto {
+    background: #28a745;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.btn-add-produto:hover {
+    background: #218838;
+}
+
 @media (max-width: 600px) {
     .form-row-two {
         grid-template-columns: 1fr;
+    }
+    .form-row-produto {
+        grid-template-columns: 1fr auto;
     }
 }
 </style>
@@ -373,44 +450,131 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener("DOMContentLoaded", function () {
     var formatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
-    function formatarMoeda(valor) {
+    /** Igual ao product_form: apenas números, valor em centavos (÷100). Backspace não insere zeros. */
+    function formatarDireitaParaEsquerda(valor) {
         var numeros = (valor || "").replace(/\D/g, "");
         var numero = numeros === "" ? 0 : (Number(numeros) / 100).toFixed(2);
         return formatter.format(numero);
     }
 
-    function aplicarMascaraMoeda(input) {
+    function aplicarMascaraValor(input) {
         if (!input) return;
         input.addEventListener("input", function () {
-            input.value = formatarMoeda(input.value);
+            input.value = formatarDireitaParaEsquerda(input.value);
         });
     }
 
-    aplicarMascaraMoeda(document.getElementById("valor_rs"));
-    aplicarMascaraMoeda(document.getElementById("valor_nota_empenho"));
+    function parseValorBr(v) {
+        if (!v || typeof v !== "string") return 0;
+        var s = v.replace(/\./g, "").replace(",", ".").replace(/R\$\s?/gi, "").trim();
+        var n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
+    }
+
+    function atualizarValorNotaEmpenho() {
+        var campo = document.getElementById("valor_nota_empenho");
+        if (!campo) return;
+        var soma = 0;
+        document.querySelectorAll(".input-valor").forEach(function(inp) {
+            soma += parseValorBr(inp.value);
+        });
+        campo.value = soma === 0 ? "" : formatter.format(soma);
+    }
+    window.atualizarValorNotaEmpenho = atualizarValorNotaEmpenho;
+
+    document.querySelectorAll(".input-valor").forEach(function(inp) {
+        aplicarMascaraValor(inp);
+        inp.addEventListener("input", atualizarValorNotaEmpenho);
+        inp.addEventListener("change", atualizarValorNotaEmpenho);
+    });
+    atualizarValorNotaEmpenho();
 
     var form = document.getElementById("segem-form");
     if (form) {
         form.addEventListener("submit", function () {
-            var v1 = document.getElementById("valor_rs");
+            document.querySelectorAll(".input-valor").forEach(function(inp) {
+                inp.value = (inp.value || "").replace(/\./g, "").replace(",", ".").replace(/R\$|\s/g, "").trim();
+            });
             var v2 = document.getElementById("valor_nota_empenho");
-            if (v1) {
-                v1.value = (v1.value || "")
-                    .replace(/\./g, "")
-                    .replace(",", ".")
-                    .replace("R$", "")
-                    .trim();
-            }
-            if (v2) {
-                v2.value = (v2.value || "")
-                    .replace(/\./g, "")
-                    .replace(",", ".")
-                    .replace("R$", "")
-                    .trim();
-            }
+            if (v2) v2.value = v2.value.replace(/\./g, "").replace(",", ".").replace(/R\$|\s/g, "").trim();
         });
     }
 });
+</script>
+<script>
+function adicionarProduto() {
+    var container = document.getElementById("lista-produtos");
+    if (!container) return;
+    var tombosNoForm = [];
+    container.querySelectorAll(".input-tombo").forEach(function(inp) {
+        var v = (inp.value || "").trim();
+        if (v) tombosNoForm.push(v);
+    });
+    var url = "/segem/proximo-tombo";
+    if (tombosNoForm.length) url += "?atuais=" + encodeURIComponent(tombosNoForm.join(","));
+    fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+        var proximoTombo = (data && data.proximo_tombo) ? data.proximo_tombo : "";
+        var novoItem = document.createElement("div");
+        novoItem.className = "produto-item";
+        novoItem.dataset.index = container.querySelectorAll(".produto-item").length;
+        novoItem.innerHTML = '<div class="form-row form-row-produto">' +
+            '<div class="form-group"><label>Nº TOMBO</label><input type="text" name="num_tombo_gcm" class="input-tombo" placeholder="Ex: 003.406" value="' + (proximoTombo.replace(/"/g, "&quot;") || "") + '"></div>' +
+            '<div class="form-group"><label>VALOR R$</label><input type="text" name="valor_rs" class="input-valor" placeholder="R$ 0,00" value=""></div>' +
+            '<div class="form-group form-group-remove"><button type="button" class="btn-remove-produto" onclick="removerProduto(this)"><i class="fas fa-trash"></i></button></div>' +
+            '</div>';
+        container.appendChild(novoItem);
+        var formatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+        var inputValor = novoItem.querySelector(".input-valor");
+        if (inputValor) {
+            inputValor.addEventListener("input", function() {
+                var numeros = (this.value || "").replace(/\D/g, "");
+                this.value = numeros === "" ? "" : formatter.format((Number(numeros) / 100).toFixed(2));
+                if (window.atualizarValorNotaEmpenho) window.atualizarValorNotaEmpenho();
+            });
+            if (window.atualizarValorNotaEmpenho) window.atualizarValorNotaEmpenho();
+        }
+        if (container.children.length > 1) {
+            var firstRemove = container.querySelector(".btn-remove-produto");
+            if (firstRemove) firstRemove.style.display = "";
+        }
+    }).catch(function() {
+        var novoItem = document.createElement("div");
+        novoItem.className = "produto-item";
+        novoItem.dataset.index = container.querySelectorAll(".produto-item").length;
+        novoItem.innerHTML = '<div class="form-row form-row-produto">' +
+            '<div class="form-group"><label>Nº TOMBO</label><input type="text" name="num_tombo_gcm" class="input-tombo" placeholder="Ex: 003.406" value=""></div>' +
+            '<div class="form-group"><label>VALOR R$</label><input type="text" name="valor_rs" class="input-valor" placeholder="R$ 0,00" value=""></div>' +
+            '<div class="form-group form-group-remove"><button type="button" class="btn-remove-produto" onclick="removerProduto(this)"><i class="fas fa-trash"></i></button></div>' +
+            '</div>';
+        container.appendChild(novoItem);
+        var formatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+        var inputValor = novoItem.querySelector(".input-valor");
+        if (inputValor) {
+            inputValor.addEventListener("input", function() {
+                var numeros = (this.value || "").replace(/\D/g, "");
+                this.value = numeros === "" ? "" : formatter.format((Number(numeros) / 100).toFixed(2));
+                if (window.atualizarValorNotaEmpenho) window.atualizarValorNotaEmpenho();
+            });
+            if (window.atualizarValorNotaEmpenho) window.atualizarValorNotaEmpenho();
+        }
+        if (container.children.length > 1) {
+            var firstRemove = container.querySelector(".btn-remove-produto");
+            if (firstRemove) firstRemove.style.display = "";
+        }
+    });
+}
+
+function removerProduto(btn) {
+    var container = document.getElementById("lista-produtos");
+    if (!container) return;
+    var item = btn.closest(".produto-item");
+    if (item) item.remove();
+    if (container.children.length === 1) {
+        var firstRemove = container.querySelector(".btn-remove-produto");
+        if (firstRemove) firstRemove.style.display = "none";
+    }
+    if (window.atualizarValorNotaEmpenho) window.atualizarValorNotaEmpenho();
+}
 </script>
 <script src="https://kit.fontawesome.com/a076d05399.js"></script>
 {% endblock %}

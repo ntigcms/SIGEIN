@@ -92,10 +92,10 @@
                 <td>{{ i.codigo or '-' }}</td>
                 <td>{{ (i.descricao or '-')[:50] }}{% if i.descricao and i.descricao|length > 50 %}...{% endif %}</td>
                 <td>{{ i.situacao or '-' }}</td>
-                <td>{{ '%.2f'|format(i.valor_rs) if i.valor_rs is not none else '-' }}</td>
-                <td>{{ i.entrada_no_siga or '-' }}</td>
+                <td>{{ valor_fmt(i.valor_rs) if i.valor_rs is not none else '-' }}</td>
+                <td>{% if i.entrada_no_siga and i.entrada_no_siga|length >= 10 %}{{ i.entrada_no_siga[8:10] }}/{{ i.entrada_no_siga[5:7] }}/{{ i.entrada_no_siga[0:4] }}{% else %}{{ i.entrada_no_siga or '-' }}{% endif %}</td>
                 <td>{{ i.nota_de_empenho or '-' }}</td>
-                <td>{{ '%.2f'|format(i.valor_nota_empenho) if i.valor_nota_empenho is not none else '-' }}</td>
+                <td>{{ valor_fmt(i.valor_nota_empenho) if i.valor_nota_empenho is not none else '-' }}</td>
                 <td>{{ i.num_nota_fiscal or '-' }}</td>
                 <td>{{ i.nome_empresa or '-' }}</td>
                 <td>{{ i.classificacao_asi or '-' }}</td>
@@ -151,7 +151,7 @@ $(document).ready(function() {
             paginate: { first: "Primeiro", last: "Último", next: "Próximo", previous: "Anterior" }
         },
         dom: 'rt<"bottom"l<"info-wrapper"ip>><"clear">',
-        columnDefs: [ { orderable: false, targets: 12 } ]
+        columnDefs: [ { orderable: false, targets: 13 } ]
     });
 
     $(document).on('click', '.btn-delete-segem', function() {

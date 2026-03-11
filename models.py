@@ -614,6 +614,19 @@ class SegemItem(Base):
 
     municipio = relationship("Municipio")
     orgao = relationship("Orgao")
+    produtos = relationship("SegemItemProduto", back_populates="segem_item", cascade="all, delete-orphan")
+
+
+class SegemItemProduto(Base):
+    """Produtos adicionais do registro SEGEM (Nº Tombo + Valor), linha do bloco Produto."""
+    __tablename__ = "segem_itens_produtos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    segem_item_id = Column(Integer, ForeignKey("segem_itens.id"), nullable=False)
+    num_tombo_gcm = Column(String(50))
+    valor_rs = Column(Float)
+
+    segem_item = relationship("SegemItem", back_populates="produtos")
 
 
 class ProdutoSegem(Base):
