@@ -550,6 +550,10 @@
         <a href="/movements"><img width="32" height="32" src="https://img.icons8.com/dusk/64/move-stock.png" alt="move-stock"/>Movimentações</a>
         <a href="/products"><img width="32" height="32" src="https://img.icons8.com/fluency/48/product.png" alt="Produtos" />Produtos</a>
         <a href="/stock"><img src="https://img.icons8.com/fluency/48/warehouse.png" width="32">Estoque</a>
+        {% set perfil_atual = get_meus_dados(request)['perfil'] if get_meus_dados(request) else '' %}
+        {% if perfil_atual in ['master', 'gestor_segem'] %}
+        <a href="/segem"><img width="32" height="32" src="https://img.icons8.com/fluency/48/services.png" alt="Segem" />SEGEM</a>
+        {% endif %}
 
         
         <!-- Submenu Administração -->

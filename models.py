@@ -14,6 +14,7 @@ class PerfilEnum(enum.Enum):
     GESTOR_ESTOQUE = "gestor_estoque"
     GESTOR_PROTOCOLO = "gestor_protocolo"
     GESTOR_GERAL = "gestor_geral"
+    GESTOR_SEGEM = "gestor_segem"
     OPERADOR = "operador"
 
 
@@ -76,6 +77,12 @@ class User(Base):
             PerfilEnum.ADMIN_MUNICIPAL.value,
             PerfilEnum.GESTOR_PROTOCOLO.value,
             PerfilEnum.GESTOR_GERAL.value,
+        ]
+
+    def pode_acessar_segem(self):
+        return self.perfil in [
+            PerfilEnum.MASTER.value,
+            PerfilEnum.GESTOR_SEGEM.value,
         ]
     
     def pode_gerenciar_usuarios(self):
@@ -575,3 +582,44 @@ class Unidade(Base):
         "Movement",
         foreign_keys="Movement.unit_destino_id"
     )
+
+
+# =====================================================
+# SEGEM (Sistema de Gestão de Materiais)
+# =====================================================
+
+class SegemItem(Base):
+    __tablename__ = "segem_itens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    municipio_id = Column(Integer, ForeignKey("municipios.id"), nullable=False)
+    orgao_id = Column(Integer, ForeignKey("orgaos.id"), nullable=False)
+
+    ano = Column(Integer)  # ANO
+    num_tombo_gcm = Column(String(50))  # Nº TOMBO (GCM)
+    local = Column(String(200))  # LOCAL
+    codigo = Column(String(100))  # CÓDIGO
+    descricao = Column(Text)  # DESCRIÇÃO
+    situacao = Column(String(100))  # SITUAÇÃO
+    valor_rs = Column(Float)  # VALOR R$
+    entrada_no_siga = Column(String(100))  # ENTRADA NO SIGA
+    nota_de_empenho = Column(String(100))  # NOTA DE EMPENHO
+    valor_nota_empenho = Column(Float)  # VALOR DA NOTA DE EMPENHO
+    num_nota_fiscal = Column(String(100))  # N° NOTA FISCAL
+    nome_empresa = Column(String(200))  # NOME DA EMPRESA
+    classificacao_asi = Column(String(100))  # CLASSIFICAÇÃO ASI
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(Integer, ForeignKey("users.id"))
+
+    municipio = relationship("Municipio")
+    orgao = relationship("Orgao")
+
+
+class ProdutoSegem(Base):
+    """Catálogo de produtos SEGEM (código + descrição) para preenchimento automático no formulário."""
+    __tablename__ = "produtos_segem"
+
+    id = Column(Integer, primary_key=True, index=True)
+    codigo = Column(String(100), unique=True, nullable=False, index=True)
+    descricao = Column(Text)

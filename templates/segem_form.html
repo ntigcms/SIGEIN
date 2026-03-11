@@ -1,0 +1,416 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar' if action == 'edit' else 'Cadastrar' }} SEGEM{% endblock %}
+
+{% block content %}
+<div class="container segem-form-container">
+    <h2>{{ 'Editar' if action == 'edit' else 'Cadastrar' }} Registro SEGEM</h2>
+
+    <form method="post" id="segem-form" class="segem-form">
+        <input type="hidden" name="id" value="{{ item.id if item else '' }}">
+
+        <!-- DADOS DO BEM -->
+        <fieldset>
+            <legend>Dados do Bem</legend>
+
+            <div class="form-row form-row-two">
+                <div class="form-group">
+                    <label for="ano">ANO</label>
+                    <input type="number" name="ano" id="ano" min="2000" max="2100" placeholder="Ex: 2025"
+                           value="{{ item.ano if item and item.ano else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="num_tombo_gcm">Nº TOMBO (GCM)</label>
+                    <input type="text" name="num_tombo_gcm" id="num_tombo_gcm" placeholder="Ex: 003.406"
+                           value="{{ item.num_tombo_gcm if item and item.num_tombo_gcm else '' }}">
+                </div>
+            </div>
+
+            <div class="form-row form-row-two">
+                <div class="form-group">
+                    <label for="local">LOCAL</label>
+                    <input type="text" name="local" id="local" list="list-unidades" placeholder="Digite ou selecione"
+                           value="{{ item.local if item and item.local else '' }}">
+                    <datalist id="list-unidades">
+                        {% for u in unidades %}<option value="{{ u.nome }}">{% endfor %}
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label for="situacao">SITUAÇÃO</label>
+                    <input type="text" name="situacao" id="situacao" placeholder="Ex: Em uso, Baixado"
+                           value="{{ item.situacao if item and item.situacao else '' }}">
+                </div>
+            </div>
+
+            <div class="form-row form-row-two">
+                <div class="form-group codigo-autocomplete-wrap">
+                    <label for="codigo">CÓDIGO</label>
+                    <input type="text" name="codigo" id="codigo" placeholder="Digite o código (sugestões ao digitar)"
+                           value="{{ item.codigo if item and item.codigo else '' }}"
+                           autocomplete="off">
+                    <div id="codigo-suggestions" class="codigo-suggestions" role="listbox" aria-hidden="true"></div>
+                </div>
+                <div class="form-group">
+                    <label for="valor_rs">VALOR R$</label>
+                    <input type="text" name="valor_rs" id="valor_rs" placeholder="R$ 0,00"
+                           value="{{ 'R$ {:,.2f}'.format(item.valor_rs).replace(',', 'X').replace('.', ',').replace('X', '.') if item and item.valor_rs is not none else '' }}">
+                </div>
+            </div>
+
+            <div class="form-row form-row-full">
+                <div class="form-group">
+                    <label for="descricao">DESCRIÇÃO <span class="label-readonly">(preenchida automaticamente pelo código)</span></label>
+                    <textarea name="descricao" id="descricao" rows="2" readonly placeholder="Selecione um código para preencher">{{ item.descricao if item and item.descricao else '' }}</textarea>
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- DOCUMENTOS FISCAIS -->
+        <fieldset>
+            <legend>Documentos Fiscais</legend>
+
+            <div class="form-row form-row-two">
+                <div class="form-group">
+                    <label for="entrada_no_siga">ENTRADA NO SIGA</label>
+                    <input type="text" name="entrada_no_siga" id="entrada_no_siga"
+                           value="{{ item.entrada_no_siga if item and item.entrada_no_siga else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="nota_de_empenho">NOTA DE EMPENHO</label>
+                    <input type="text" name="nota_de_empenho" id="nota_de_empenho"
+                           value="{{ item.nota_de_empenho if item and item.nota_de_empenho else '' }}">
+                </div>
+            </div>
+
+            <div class="form-row form-row-two">
+                <div class="form-group">
+                    <label for="valor_nota_empenho">VALOR DA NOTA DE EMPENHO</label>
+                    <input type="text" name="valor_nota_empenho" id="valor_nota_empenho" placeholder="R$ 0,00"
+                           value="{{ 'R$ {:,.2f}'.format(item.valor_nota_empenho).replace(',', 'X').replace('.', ',').replace('X', '.') if item and item.valor_nota_empenho is not none else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="num_nota_fiscal">N° NOTA FISCAL</label>
+                    <input type="text" name="num_nota_fiscal" id="num_nota_fiscal"
+                           value="{{ item.num_nota_fiscal if item and item.num_nota_fiscal else '' }}">
+                </div>
+            </div>
+
+            <div class="form-row form-row-two">
+                <div class="form-group">
+                    <label for="nome_empresa">NOME DA EMPRESA</label>
+                    <input type="text" name="nome_empresa" id="nome_empresa"
+                           value="{{ item.nome_empresa if item and item.nome_empresa else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="classificacao_asi">CLASSIFICAÇÃO ASI</label>
+                    <input type="text" name="classificacao_asi" id="classificacao_asi"
+                           value="{{ item.classificacao_asi if item and item.classificacao_asi else '' }}">
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="buttons">
+            <button type="submit" class="btn-submit">{{ 'Atualizar' if action == 'edit' else 'Salvar' }}</button>
+            <a href="/segem" class="btn-cancel">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<style>
+.segem-form-container {
+    max-width: 900px;
+}
+
+fieldset {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    background: #fafafa;
+}
+
+legend {
+    font-weight: 600;
+    color: #0d6efd;
+    padding: 0 10px;
+    font-size: 16px;
+}
+
+.form-row {
+    display: grid;
+    gap: 16px;
+    align-items: end;
+    margin-bottom: 16px;
+}
+
+.form-row:last-child {
+    margin-bottom: 0;
+}
+
+/* Duas colunas (estilo Cadastrar Produto: Categoria/Tipo, Marca/Modelo) */
+.form-row-two {
+    grid-template-columns: 1fr 1fr;
+}
+
+/* Uma coluna – campo em largura total (ex.: Descrição) */
+.form-row-full {
+    grid-template-columns: 1fr;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #004080;
+    margin-bottom: 5px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 8px 12px;
+    border: 1px solid #aaa;
+    border-radius: 6px;
+    font-size: 14px;
+    height: 38px;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.form-group textarea {
+    height: auto;
+    min-height: 52px;
+    resize: vertical;
+}
+
+.btn-submit {
+    background: #0d6efd;
+    color: #fff;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-submit:hover {
+    background: #0b5ed7;
+}
+
+.btn-cancel {
+    padding: 11px 24px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-cancel:hover {
+    background: #f1f5f9;
+}
+
+.buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.label-readonly {
+    font-weight: normal;
+    color: #666;
+    font-size: 11px;
+}
+
+#descricao[readonly] {
+    background: #f5f5f5;
+    cursor: not-allowed;
+}
+
+.codigo-autocomplete-wrap {
+    position: relative;
+}
+
+.codigo-suggestions {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #aaa;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 100;
+    margin-top: 2px;
+}
+
+.codigo-suggestions.is-open {
+    display: block;
+}
+
+.codigo-suggestions [role="option"] {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    border-bottom: 1px solid #eee;
+}
+
+.codigo-suggestions [role="option"]:last-child {
+    border-bottom: none;
+}
+
+.codigo-suggestions [role="option"]:hover,
+.codigo-suggestions [role="option"].highlight {
+    background: #e7f1ff;
+}
+
+@media (max-width: 600px) {
+    .form-row-two {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var codigoEl = document.getElementById('codigo');
+    var descricaoEl = document.getElementById('descricao');
+    var suggestionsEl = document.getElementById('codigo-suggestions');
+    if (!codigoEl || !descricaoEl || !suggestionsEl) return;
+
+    var produtos = [];
+    fetch('/segem/produtos', { credentials: 'same-origin' })
+        .then(function(r) { return r.json(); })
+        .then(function(list) { produtos = list || []; })
+        .catch(function() {});
+    var blurTimer = null;
+
+    function buscarDescricao() {
+        var codigo = (codigoEl.value || '').trim();
+        if (!codigo) {
+            descricaoEl.value = '';
+            return;
+        }
+        fetch('/segem/produtos/busca?codigo=' + encodeURIComponent(codigo), { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.descricao !== undefined) {
+                    descricaoEl.value = data.descricao || '';
+                }
+            })
+            .catch(function() { descricaoEl.value = ''; });
+    }
+
+    function filtrarSugestoes(texto) {
+        var t = (texto || '').trim().toLowerCase();
+        if (!t) return [];
+        return produtos.filter(function(p) {
+            var c = (p.codigo || '').toLowerCase();
+            return c.indexOf(t) !== -1;
+        }).slice(0, 10);
+    }
+
+    function mostrarSugestoes(matches) {
+        suggestionsEl.innerHTML = '';
+        suggestionsEl.classList.remove('is-open');
+        if (!matches.length) return;
+        matches.forEach(function(p) {
+            var opt = document.createElement('div');
+            opt.setAttribute('role', 'option');
+            opt.textContent = p.codigo;
+            opt.dataset.codigo = p.codigo;
+            opt.dataset.descricao = p.descricao || '';
+            opt.addEventListener('click', function() {
+                codigoEl.value = p.codigo;
+                descricaoEl.value = p.descricao || '';
+                suggestionsEl.classList.remove('is-open');
+                suggestionsEl.innerHTML = '';
+            });
+            suggestionsEl.appendChild(opt);
+        });
+        suggestionsEl.classList.add('is-open');
+    }
+
+    function esconderSugestoes() {
+        blurTimer = setTimeout(function() {
+            suggestionsEl.classList.remove('is-open');
+            suggestionsEl.innerHTML = '';
+        }, 150);
+    }
+
+    codigoEl.addEventListener('input', function() {
+        clearTimeout(blurTimer);
+        var matches = filtrarSugestoes(codigoEl.value);
+        mostrarSugestoes(matches);
+    });
+
+    codigoEl.addEventListener('paste', function() {
+        setTimeout(function() {
+            buscarDescricao();
+        }, 10);
+    });
+
+    codigoEl.addEventListener('blur', function() {
+        esconderSugestoes();
+        buscarDescricao();
+    });
+
+    codigoEl.addEventListener('focus', function() {
+        clearTimeout(blurTimer);
+        var matches = filtrarSugestoes(codigoEl.value);
+        if (matches.length) mostrarSugestoes(matches);
+    });
+});
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var formatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+    function formatarMoeda(valor) {
+        var numeros = (valor || "").replace(/\D/g, "");
+        var numero = numeros === "" ? 0 : (Number(numeros) / 100).toFixed(2);
+        return formatter.format(numero);
+    }
+
+    function aplicarMascaraMoeda(input) {
+        if (!input) return;
+        input.addEventListener("input", function () {
+            input.value = formatarMoeda(input.value);
+        });
+    }
+
+    aplicarMascaraMoeda(document.getElementById("valor_rs"));
+    aplicarMascaraMoeda(document.getElementById("valor_nota_empenho"));
+
+    var form = document.getElementById("segem-form");
+    if (form) {
+        form.addEventListener("submit", function () {
+            var v1 = document.getElementById("valor_rs");
+            var v2 = document.getElementById("valor_nota_empenho");
+            if (v1) {
+                v1.value = (v1.value || "")
+                    .replace(/\./g, "")
+                    .replace(",", ".")
+                    .replace("R$", "")
+                    .trim();
+            }
+            if (v2) {
+                v2.value = (v2.value || "")
+                    .replace(/\./g, "")
+                    .replace(",", ".")
+                    .replace("R$", "")
+                    .trim();
+            }
+        });
+    }
+});
+</script>
+<script src="https://kit.fontawesome.com/a076d05399.js"></script>
+{% endblock %}
