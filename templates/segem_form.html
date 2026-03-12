@@ -15,7 +15,7 @@
             <div class="form-row form-row-two">
                 <div class="form-group">
                     <label for="ano">ANO</label>
-                    <input type="number" name="ano" id="ano" min="2000" max="2100" placeholder="Ex: 2025"
+                    <input type="number" name="ano" id="ano" min="2000" max="2100" placeholder="Ex: 2025" required
                            value="{{ item.ano if item and item.ano else '' }}">
                 </div>
                 <div class="form-group">
@@ -32,13 +32,13 @@
                 <div class="form-group">
                     <label for="situacao">SITUAÇÃO</label>
                     <input type="text" name="situacao" id="situacao" placeholder="Ex: Em uso, Baixado"
-                           value="{{ item.situacao if item and item.situacao else '' }}">
+                           value="{{ item.situacao if item and item.situacao else '' }}" required>
                 </div>
                 <div class="form-group codigo-autocomplete-wrap">
                     <label for="codigo">CÓDIGO</label>
                     <input type="text" name="codigo" id="codigo" placeholder="Digite o código (sugestões ao digitar)"
                            value="{{ item.codigo if item and item.codigo else '' }}"
-                           autocomplete="off">
+                           autocomplete="off" required>
                     <div id="codigo-suggestions" class="codigo-suggestions" role="listbox" aria-hidden="true"></div>
                 </div>
             </div>
@@ -62,12 +62,12 @@
                         <div class="form-group">
                             <label>Nº TOMBO</label>
                             <input type="text" name="num_tombo_gcm" class="input-tombo" placeholder="Ex: 003.406"
-                                   value="{{ prod.tombo or '' }}">
+                                   value="{{ prod.tombo or '' }}" required>
                         </div>
                         <div class="form-group">
                             <label>VALOR R$</label>
                             <input type="text" name="valor_rs" class="input-valor" placeholder="R$ 0,00"
-                                   value="{{ prod.valor_formatado or '' }}">
+                                   value="{{ prod.valor_formatado or '' }}" required>
                         </div>
                         <div class="form-group form-group-remove">
                             <button type="button" class="btn-remove-produto" onclick="removerProduto(this)" {% if loop.first and produtos_list|length <= 1 %}style="display:none;"{% endif %}>
@@ -92,12 +92,12 @@
                 <div class="form-group">
                     <label for="entrada_no_siga">ENTRADA NO SIGA</label>
                     <input type="date" name="entrada_no_siga" id="entrada_no_siga"
-                           value="{{ item.entrada_no_siga if item and item.entrada_no_siga else '' }}">
+                           value="{{ item.entrada_no_siga if item and item.entrada_no_siga else '' }}" required>
                 </div>
                 <div class="form-group">
                     <label for="nota_de_empenho">NOTA DE EMPENHO</label>
                     <input type="text" name="nota_de_empenho" id="nota_de_empenho"
-                           value="{{ item.nota_de_empenho if item and item.nota_de_empenho else '' }}">
+                           value="{{ item.nota_de_empenho if item and item.nota_de_empenho else '' }}" required>
                 </div>
             </div>
 
@@ -105,12 +105,12 @@
                 <div class="form-group">
                     <label for="valor_nota_empenho">VALOR DA NOTA DE EMPENHO <span class="label-readonly">(soma dos valores dos produtos)</span></label>
                     <input type="text" name="valor_nota_empenho" id="valor_nota_empenho" placeholder="R$ 0,00" readonly
-                           value="{{ 'R$ {:,.2f}'.format(item.valor_nota_empenho).replace(',', 'X').replace('.', ',').replace('X', '.') if item and item.valor_nota_empenho is not none else '' }}">
+                           value="{{ 'R$ {:,.2f}'.format(item.valor_nota_empenho).replace(',', 'X').replace('.', ',').replace('X', '.') if item and item.valor_nota_empenho is not none else '' }}" required>
                 </div>
                 <div class="form-group">
                     <label for="num_nota_fiscal">N° NOTA FISCAL</label>
                     <input type="text" name="num_nota_fiscal" id="num_nota_fiscal"
-                           value="{{ item.num_nota_fiscal if item and item.num_nota_fiscal else '' }}">
+                           value="{{ item.num_nota_fiscal if item and item.num_nota_fiscal else '' }}" required>
                 </div>
             </div>
 
@@ -118,12 +118,12 @@
                 <div class="form-group">
                     <label for="nome_empresa">NOME DA EMPRESA</label>
                     <input type="text" name="nome_empresa" id="nome_empresa"
-                           value="{{ item.nome_empresa if item and item.nome_empresa else '' }}">
+                           value="{{ item.nome_empresa if item and item.nome_empresa else '' }}" required>
                 </div>
                 <div class="form-group">
                     <label for="classificacao_asi">CLASSIFICAÇÃO ASI</label>
                     <input type="text" name="classificacao_asi" id="classificacao_asi"
-                           value="{{ item.classificacao_asi if item and item.classificacao_asi else '' }}">
+                           value="{{ item.classificacao_asi if item and item.classificacao_asi else '' }}" required>
                 </div>
             </div>
         </fieldset>

@@ -132,7 +132,14 @@
     .search-container .options { display: none; position: absolute; top: 100%; left: 0; background: #fff; border: 1px solid #ccc; border-radius: 6px; max-height: 200px; overflow-y: auto; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 6px; min-width: 180px; }
     .search-container .option { padding: 4px 8px; display: flex; align-items: center; gap: 6px; }
     .search-container .option input { margin: 0; }
-    .clear-btn { padding: 8px 14px; border-radius: 6px; border: 1px solid #ccc; background: #f8f9fa; cursor: pointer; font-size: 13px; }
+    .clear-btn { padding: 12px 12px; border-radius: 6px; border: 1px solid #ccc; cursor: pointer; font-size: 13px; margin-bottom: 21px; }
+</style>
+
+<style>
+    /* Garante que o SweetAlert fique acima de tudo */
+.swal2-container {
+    z-index: 99999 !important;
+}
 </style>
 
 <script>
@@ -143,7 +150,7 @@ $(document).ready(function() {
         order: [[0, 'desc']],
         pageLength: 10,
         language: {
-            emptyTable: "Nenhum registro SEGEM",
+            emptyTable: "Nenhum registro",
             info: "Mostrando _START_ a _END_ de _TOTAL_",
             infoEmpty: "Mostrando 0 a 0 de 0",
             lengthMenu: "Mostrar _MENU_",
