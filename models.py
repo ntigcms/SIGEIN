@@ -576,11 +576,13 @@ class Unidade(Base):
     stocks = relationship("Stock", back_populates="unit")
     movimentos_origem = relationship(
         "Movement",
-        foreign_keys="Movement.unit_origem_id"
+        foreign_keys="Movement.unit_origem_id",
+        overlaps="unit_origem",
     )
     movimentos_destino = relationship(
         "Movement",
-        foreign_keys="Movement.unit_destino_id"
+        foreign_keys="Movement.unit_destino_id",
+        overlaps="unit_destino",
     )
 
 

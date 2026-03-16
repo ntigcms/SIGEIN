@@ -60,6 +60,17 @@ def _build_produtos_list(item):
     return rows if rows else [{"tombo": "", "valor_formatado": ""}]
 
 
+def _all_tombos(item):
+    """Concatena todos os Nº TOMBO (item principal + produtos relacionados)."""
+    tombos = []
+    if getattr(item, "num_tombo_gcm", None):
+        tombos.append(item.num_tombo_gcm)
+    for p in getattr(item, "produtos", []) or []:
+        if getattr(p, "num_tombo_gcm", None):
+            tombos.append(p.num_tombo_gcm)
+    return ", ".join(tombos)
+
+
 # Nº TOMBO: intervalo 000.001 a 999.999 (ex.: 003.502). Próximo = max(DB + atuais) + 1.
 _TOMBO_PATTERN = re.compile(r"^\s*(\d{1,3})\.(\d{1,3})\s*$")
 
@@ -174,7 +185,11 @@ def segem_home(
     if user_obj.perfil not in ["master", "gestor_segem"]:
         return RedirectResponse("/dashboard")
 
-    itens = _query_segem(db, user_obj).all()
+    itens = (
+        _query_segem(db, user_obj)
+        .options(joinedload(SegemItem.produtos))
+        .all()
+    )
     unidades = db.query(Unidade).filter(Unidade.ativo == True).order_by(Unidade.nome).all()
 
     # Valores únicos para filtros
@@ -193,6 +208,7 @@ def segem_home(
             "locais": locais,
             "situacoes": situacoes,
             "valor_fmt": _valor_fmt,
+            "all_tombos": _all_tombos,
         },
     )
 
