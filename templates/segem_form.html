@@ -1,0 +1,580 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar' if action == 'edit' else 'Cadastrar' }} SEGEM{% endblock %}
+
+{% block content %}
+<div class="container segem-form-container">
+    <h2>{{ 'Editar' if action == 'edit' else 'Cadastrar' }} Registro SEGEM</h2>
+
+    <form method="post" id="segem-form" class="segem-form">
+        <input type="hidden" name="id" value="{{ item.id if item else '' }}">
+
+        <!-- DADOS DO BEM -->
+        <fieldset>
+            <legend>Dados do Bem</legend>
+
+            <div class="form-row form-row-two">
+                <div class="form-group">
+                    <label for="ano">ANO</label>
+                    <input type="number" name="ano" id="ano" min="2000" max="2100" placeholder="Ex: 2025" required
+                           value="{{ item.ano if item and item.ano else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="local">LOCAL</label>
+                    <select name="local" id="local" required>
+                        <option value="">-- Selecione --</option>
+                        <option value="Unidade SEGEM" {% if item and item.local and item.local|upper == 'UNIDADE SEGEM' %}selected{% endif %}>SEGEM</option>
+                        <option value="CSL" {% if item and item.local and item.local|upper == 'CSL' %}selected{% endif %}>CSL</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row form-row-two">
+                <div class="form-group">
+                    <label for="situacao">SITUAÇÃO</label>
+                    <input type="text" name="situacao" id="situacao" placeholder="Ex: Em uso, Baixado"
+                           value="{{ item.situacao if item and item.situacao else '' }}" required>
+                </div>
+                <div class="form-group codigo-autocomplete-wrap">
+                    <label for="codigo">CÓDIGO</label>
+                    <input type="text" name="codigo" id="codigo" placeholder="Digite o código (sugestões ao digitar)"
+                           value="{{ item.codigo if item and item.codigo else '' }}"
+                           autocomplete="off" required>
+                    <div id="codigo-suggestions" class="codigo-suggestions" role="listbox" aria-hidden="true"></div>
+                </div>
+            </div>
+
+            <div class="form-row form-row-full">
+                <div class="form-group">
+                    <label for="descricao">DESCRIÇÃO <span class="label-readonly">(preenchida automaticamente pelo código)</span></label>
+                    <textarea name="descricao" id="descricao" rows="2" readonly placeholder="Selecione um código para preencher">{{ item.descricao if item and item.descricao else '' }}</textarea>
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- PRODUTO -->
+        <fieldset>
+            <legend>Produto</legend>
+
+            <div id="lista-produtos">
+                {% for prod in produtos_list %}
+                <div class="produto-item" data-index="{{ loop.index0 }}">
+                    <div class="form-row form-row-produto">
+                        <div class="form-group">
+                            <label>Nº TOMBO</label>
+                            <input type="text" name="num_tombo_gcm" class="input-tombo" placeholder="Ex: 003.406"
+                                   value="{{ prod.tombo or '' }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>VALOR R$</label>
+                            <input type="text" name="valor_rs" class="input-valor" placeholder="R$ 0,00"
+                                   value="{{ prod.valor_formatado or '' }}" required>
+                        </div>
+                        <div class="form-group form-group-remove">
+                            <button type="button" class="btn-remove-produto" onclick="removerProduto(this)" {% if loop.first and produtos_list|length <= 1 %}style="display:none;"{% endif %}>
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <button type="button" class="btn-add-produto" onclick="adicionarProduto()">
+                <i class="fas fa-plus"></i> Adicionar Novo Produto
+            </button>
+        </fieldset>
+
+        <!-- DOCUMENTOS FISCAIS -->
+        <fieldset>
+            <legend>Documentos Fiscais</legend>
+
+            <div class="form-row form-row-two">
+                <div class="form-group">
+                    <label for="entrada_no_siga">ENTRADA NO SIGA</label>
+                    <input type="date" name="entrada_no_siga" id="entrada_no_siga"
+                           value="{{ item.entrada_no_siga if item and item.entrada_no_siga else '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="nota_de_empenho">NOTA DE EMPENHO</label>
+                    <input type="text" name="nota_de_empenho" id="nota_de_empenho"
+                           value="{{ item.nota_de_empenho if item and item.nota_de_empenho else '' }}" required>
+                </div>
+            </div>
+
+            <div class="form-row form-row-two">
+                <div class="form-group">
+                    <label for="valor_nota_empenho">VALOR DA NOTA DE EMPENHO <span class="label-readonly">(soma dos valores dos produtos)</span></label>
+                    <input type="text" name="valor_nota_empenho" id="valor_nota_empenho" placeholder="R$ 0,00" readonly
+                           value="{{ 'R$ {:,.2f}'.format(item.valor_nota_empenho).replace(',', 'X').replace('.', ',').replace('X', '.') if item and item.valor_nota_empenho is not none else '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="num_nota_fiscal">N° NOTA FISCAL</label>
+                    <input type="text" name="num_nota_fiscal" id="num_nota_fiscal"
+                           value="{{ item.num_nota_fiscal if item and item.num_nota_fiscal else '' }}" required>
+                </div>
+            </div>
+
+            <div class="form-row form-row-two">
+                <div class="form-group">
+                    <label for="nome_empresa">NOME DA EMPRESA</label>
+                    <input type="text" name="nome_empresa" id="nome_empresa"
+                           value="{{ item.nome_empresa if item and item.nome_empresa else '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="classificacao_asi">CLASSIFICAÇÃO ASI</label>
+                    <input type="text" name="classificacao_asi" id="classificacao_asi"
+                           value="{{ item.classificacao_asi if item and item.classificacao_asi else '' }}" required>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="buttons">
+            <button type="submit" class="btn-submit">{{ 'Atualizar' if action == 'edit' else 'Salvar' }}</button>
+            <a href="/segem" class="btn-cancel">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<style>
+.segem-form-container {
+    max-width: 900px;
+}
+
+fieldset {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    background: #fafafa;
+}
+
+legend {
+    font-weight: 600;
+    color: #0d6efd;
+    padding: 0 10px;
+    font-size: 16px;
+}
+
+.form-row {
+    display: grid;
+    gap: 16px;
+    align-items: end;
+    margin-bottom: 16px;
+}
+
+.form-row:last-child {
+    margin-bottom: 0;
+}
+
+/* Duas colunas (estilo Cadastrar Produto: Categoria/Tipo, Marca/Modelo) */
+.form-row-two {
+    grid-template-columns: 1fr 1fr;
+}
+
+/* Uma coluna – campo em largura total (ex.: Descrição) */
+.form-row-full {
+    grid-template-columns: 1fr;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #004080;
+    margin-bottom: 5px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 8px 12px;
+    border: 1px solid #aaa;
+    border-radius: 6px;
+    font-size: 14px;
+    height: 38px;
+    box-sizing: border-box;
+    max-width: 100%;
+    margin-bottom: 15px;
+}
+
+.form-group textarea {
+    height: auto;
+    min-height: 52px;
+    resize: vertical;
+}
+
+.btn-submit {
+    background: #0d6efd;
+    color: #fff;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-submit:hover {
+    background: #0b5ed7;
+}
+
+.btn-cancel {
+    padding: 11px 24px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-cancel:hover {
+    background: #f1f5f9;
+}
+
+.buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.label-readonly {
+    font-weight: normal;
+    color: #666;
+    font-size: 11px;
+}
+
+#descricao[readonly] {
+    background: #f5f5f5;
+    cursor: not-allowed;
+}
+
+.codigo-autocomplete-wrap {
+    position: relative;
+}
+
+.codigo-suggestions {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #aaa;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 100;
+    margin-top: 2px;
+}
+
+.codigo-suggestions.is-open {
+    display: block;
+}
+
+.codigo-suggestions [role="option"] {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    border-bottom: 1px solid #eee;
+}
+
+.codigo-suggestions [role="option"]:last-child {
+    border-bottom: none;
+}
+
+.codigo-suggestions [role="option"]:hover,
+.codigo-suggestions [role="option"].highlight {
+    background: #e7f1ff;
+}
+
+/* Bloco Produto: lista dinâmica */
+#lista-produtos {
+    margin-bottom: 12px;
+}
+
+.produto-item {
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+.form-row-produto {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 16px;
+    align-items: end;
+}
+
+.form-group-remove {
+    margin-bottom: 0;
+}
+
+.btn-remove-produto {
+    background: #dc3545;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-bottom: 16px;
+}
+
+.btn-remove-produto:hover {
+    background: #c82333;
+}
+
+.btn-add-produto {
+    background: #28a745;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.btn-add-produto:hover {
+    background: #218838;
+}
+
+@media (max-width: 600px) {
+    .form-row-two {
+        grid-template-columns: 1fr;
+    }
+    .form-row-produto {
+        grid-template-columns: 1fr auto;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var codigoEl = document.getElementById('codigo');
+    var descricaoEl = document.getElementById('descricao');
+    var suggestionsEl = document.getElementById('codigo-suggestions');
+    if (!codigoEl || !descricaoEl || !suggestionsEl) return;
+
+    var produtos = [];
+    fetch('/segem/produtos', { credentials: 'same-origin' })
+        .then(function(r) { return r.json(); })
+        .then(function(list) { produtos = list || []; })
+        .catch(function() {});
+    var blurTimer = null;
+
+    function buscarDescricao() {
+        var codigo = (codigoEl.value || '').trim();
+        if (!codigo) {
+            descricaoEl.value = '';
+            return;
+        }
+        fetch('/segem/produtos/busca?codigo=' + encodeURIComponent(codigo), { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.descricao !== undefined) {
+                    descricaoEl.value = data.descricao || '';
+                }
+            })
+            .catch(function() { descricaoEl.value = ''; });
+    }
+
+    function filtrarSugestoes(texto) {
+        var t = (texto || '').trim().toLowerCase();
+        if (!t) return [];
+        return produtos.filter(function(p) {
+            var c = (p.codigo || '').toLowerCase();
+            return c.indexOf(t) !== -1;
+        }).slice(0, 10);
+    }
+
+    function mostrarSugestoes(matches) {
+        suggestionsEl.innerHTML = '';
+        suggestionsEl.classList.remove('is-open');
+        if (!matches.length) return;
+        matches.forEach(function(p) {
+            var opt = document.createElement('div');
+            opt.setAttribute('role', 'option');
+            opt.textContent = p.codigo;
+            opt.dataset.codigo = p.codigo;
+            opt.dataset.descricao = p.descricao || '';
+            opt.addEventListener('click', function() {
+                codigoEl.value = p.codigo;
+                descricaoEl.value = p.descricao || '';
+                suggestionsEl.classList.remove('is-open');
+                suggestionsEl.innerHTML = '';
+            });
+            suggestionsEl.appendChild(opt);
+        });
+        suggestionsEl.classList.add('is-open');
+    }
+
+    function esconderSugestoes() {
+        blurTimer = setTimeout(function() {
+            suggestionsEl.classList.remove('is-open');
+            suggestionsEl.innerHTML = '';
+        }, 150);
+    }
+
+    codigoEl.addEventListener('input', function() {
+        clearTimeout(blurTimer);
+        var matches = filtrarSugestoes(codigoEl.value);
+        mostrarSugestoes(matches);
+    });
+
+    codigoEl.addEventListener('paste', function() {
+        setTimeout(function() {
+            buscarDescricao();
+        }, 10);
+    });
+
+    codigoEl.addEventListener('blur', function() {
+        esconderSugestoes();
+        buscarDescricao();
+    });
+
+    codigoEl.addEventListener('focus', function() {
+        clearTimeout(blurTimer);
+        var matches = filtrarSugestoes(codigoEl.value);
+        if (matches.length) mostrarSugestoes(matches);
+    });
+});
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var formatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+    /** Igual ao product_form: apenas números, valor em centavos (÷100). Backspace não insere zeros. */
+    function formatarDireitaParaEsquerda(valor) {
+        var numeros = (valor || "").replace(/\D/g, "");
+        var numero = numeros === "" ? 0 : (Number(numeros) / 100).toFixed(2);
+        return formatter.format(numero);
+    }
+
+    function aplicarMascaraValor(input) {
+        if (!input) return;
+        input.addEventListener("input", function () {
+            input.value = formatarDireitaParaEsquerda(input.value);
+        });
+    }
+
+    function parseValorBr(v) {
+        if (!v || typeof v !== "string") return 0;
+        var s = v.replace(/\./g, "").replace(",", ".").replace(/R\$\s?/gi, "").trim();
+        var n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
+    }
+
+    function atualizarValorNotaEmpenho() {
+        var campo = document.getElementById("valor_nota_empenho");
+        if (!campo) return;
+        var soma = 0;
+        document.querySelectorAll(".input-valor").forEach(function(inp) {
+            soma += parseValorBr(inp.value);
+        });
+        campo.value = soma === 0 ? "" : formatter.format(soma);
+    }
+    window.atualizarValorNotaEmpenho = atualizarValorNotaEmpenho;
+
+    document.querySelectorAll(".input-valor").forEach(function(inp) {
+        aplicarMascaraValor(inp);
+        inp.addEventListener("input", atualizarValorNotaEmpenho);
+        inp.addEventListener("change", atualizarValorNotaEmpenho);
+    });
+    atualizarValorNotaEmpenho();
+
+    var form = document.getElementById("segem-form");
+    if (form) {
+        form.addEventListener("submit", function () {
+            document.querySelectorAll(".input-valor").forEach(function(inp) {
+                inp.value = (inp.value || "").replace(/\./g, "").replace(",", ".").replace(/R\$|\s/g, "").trim();
+            });
+            var v2 = document.getElementById("valor_nota_empenho");
+            if (v2) v2.value = v2.value.replace(/\./g, "").replace(",", ".").replace(/R\$|\s/g, "").trim();
+        });
+    }
+});
+</script>
+<script>
+function adicionarProduto() {
+    var container = document.getElementById("lista-produtos");
+    if (!container) return;
+    var tombosNoForm = [];
+    container.querySelectorAll(".input-tombo").forEach(function(inp) {
+        var v = (inp.value || "").trim();
+        if (v) tombosNoForm.push(v);
+    });
+    var url = "/segem/proximo-tombo";
+    if (tombosNoForm.length) url += "?atuais=" + encodeURIComponent(tombosNoForm.join(","));
+    fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+        var proximoTombo = (data && data.proximo_tombo) ? data.proximo_tombo : "";
+        var novoItem = document.createElement("div");
+        novoItem.className = "produto-item";
+        novoItem.dataset.index = container.querySelectorAll(".produto-item").length;
+        novoItem.innerHTML = '<div class="form-row form-row-produto">' +
+            '<div class="form-group"><label>Nº TOMBO</label><input type="text" name="num_tombo_gcm" class="input-tombo" placeholder="Ex: 003.406" value="' + (proximoTombo.replace(/"/g, "&quot;") || "") + '"></div>' +
+            '<div class="form-group"><label>VALOR R$</label><input type="text" name="valor_rs" class="input-valor" placeholder="R$ 0,00" value=""></div>' +
+            '<div class="form-group form-group-remove"><button type="button" class="btn-remove-produto" onclick="removerProduto(this)"><i class="fas fa-trash"></i></button></div>' +
+            '</div>';
+        container.appendChild(novoItem);
+        var formatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+        var inputValor = novoItem.querySelector(".input-valor");
+        if (inputValor) {
+            inputValor.addEventListener("input", function() {
+                var numeros = (this.value || "").replace(/\D/g, "");
+                this.value = numeros === "" ? "" : formatter.format((Number(numeros) / 100).toFixed(2));
+                if (window.atualizarValorNotaEmpenho) window.atualizarValorNotaEmpenho();
+            });
+            if (window.atualizarValorNotaEmpenho) window.atualizarValorNotaEmpenho();
+        }
+        if (container.children.length > 1) {
+            var firstRemove = container.querySelector(".btn-remove-produto");
+            if (firstRemove) firstRemove.style.display = "";
+        }
+    }).catch(function() {
+        var novoItem = document.createElement("div");
+        novoItem.className = "produto-item";
+        novoItem.dataset.index = container.querySelectorAll(".produto-item").length;
+        novoItem.innerHTML = '<div class="form-row form-row-produto">' +
+            '<div class="form-group"><label>Nº TOMBO</label><input type="text" name="num_tombo_gcm" class="input-tombo" placeholder="Ex: 003.406" value=""></div>' +
+            '<div class="form-group"><label>VALOR R$</label><input type="text" name="valor_rs" class="input-valor" placeholder="R$ 0,00" value=""></div>' +
+            '<div class="form-group form-group-remove"><button type="button" class="btn-remove-produto" onclick="removerProduto(this)"><i class="fas fa-trash"></i></button></div>' +
+            '</div>';
+        container.appendChild(novoItem);
+        var formatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+        var inputValor = novoItem.querySelector(".input-valor");
+        if (inputValor) {
+            inputValor.addEventListener("input", function() {
+                var numeros = (this.value || "").replace(/\D/g, "");
+                this.value = numeros === "" ? "" : formatter.format((Number(numeros) / 100).toFixed(2));
+                if (window.atualizarValorNotaEmpenho) window.atualizarValorNotaEmpenho();
+            });
+            if (window.atualizarValorNotaEmpenho) window.atualizarValorNotaEmpenho();
+        }
+        if (container.children.length > 1) {
+            var firstRemove = container.querySelector(".btn-remove-produto");
+            if (firstRemove) firstRemove.style.display = "";
+        }
+    });
+}
+
+function removerProduto(btn) {
+    var container = document.getElementById("lista-produtos");
+    if (!container) return;
+    var item = btn.closest(".produto-item");
+    if (item) item.remove();
+    if (container.children.length === 1) {
+        var firstRemove = container.querySelector(".btn-remove-produto");
+        if (firstRemove) firstRemove.style.display = "none";
+    }
+    if (window.atualizarValorNotaEmpenho) window.atualizarValorNotaEmpenho();
+}
+</script>
+<script src="https://kit.fontawesome.com/a076d05399.js"></script>
+{% endblock %}

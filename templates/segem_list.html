@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}SEGEM{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 20px;">
+    <h2>Módulo SEGEM</h2>
+    <a href="/segem/add">
+    <button class="animated-btn">Cadastro</button>
+    </a>
+</div>
+
+<!-- Filtros no mesmo padrão da tela de usuários -->
+<div class="filtros-container">
+    <div class="filtro-item">
+        <label>Ano</label>
+        <div class="search-container" data-col="0">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options">
+                {% for a in anos %}
+                <div class="option"><input type="checkbox" value="{{ a }}"><label>{{ a }}</label></div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="filtro-item">
+        <label>Nº Tombo (GCM)</label>
+        <input type="text" id="filter-tombo" class="filter-search" placeholder="Digite...">
+    </div>
+    <div class="filtro-item">
+        <label>Local</label>
+        <div class="search-container" data-col="2">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options">
+                {% for loc in locais %}
+                <div class="option"><input type="checkbox" value="{{ loc }}"><label>{{ loc }}</label></div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="filtro-item">
+        <label>Descrição</label>
+        <input type="text" id="filter-descricao" class="filter-search" placeholder="Digite...">
+    </div>
+    <div class="filtro-item">
+        <label>Situação</label>
+        <div class="search-container" data-col="5">
+            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
+            <span class="arrow">▼</span>
+            <div class="options">
+                {% for s in situacoes %}
+                <div class="option"><input type="checkbox" value="{{ s }}"><label>{{ s }}</label></div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div style="display:flex; align-items:center;">
+        <button id="clear-filters" class="clear-btn">🧹 Limpar Filtros</button>
+    </div>
+    </div>
+
+<!-- TABELA -->
+<!-- CARD / TABELA NO MESMO PADRÃO DE LISTA DE USUÁRIOS -->
+<div class="table-section">
+    <h4>Registros SEGEM</h4>
+    <table id="segemTable" class="data-grid display" style="width:100%; border-collapse: collapse; text-align:left;">
+        <thead>
+            <tr>
+                <th>ANO</th>
+                <th>CÓDIGO</th>
+                <th>Nº TOMBO (GCM)</th>
+                <th>LOCAL</th>
+                <th>DESCRIÇÃO</th>
+                <th>SITUAÇÃO</th>
+                <th>VALOR R$</th>
+                <th>ENTRADA NO SIGA</th>
+                <th>NOTA DE EMPENHO</th>
+                <th>VALOR NOTA EMPENHO</th>
+                <th>N° NOTA FISCAL</th>
+                <th>NOME DA EMPRESA</th>
+                <th>CLASSIF. ASI</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for i in itens %}
+            <tr>
+                <td>{{ i.ano or '-' }}</td>
+                <td>{{ i.codigo or '-' }}</td>
+                <td>{{ all_tombos(i) or '-' }}</td>
+                <td>{{ i.local or '-' }}</td>
+                <td>{{ (i.descricao or '-')[:50] }}{% if i.descricao and i.descricao|length > 50 %}...{% endif %}</td>
+                <td>{{ i.situacao or '-' }}</td>
+                <td>{{ valor_fmt(i.valor_rs) if i.valor_rs is not none else '-' }}</td>
+                <td>{% if i.entrada_no_siga and i.entrada_no_siga|length >= 10 %}{{ i.entrada_no_siga[8:10] }}/{{ i.entrada_no_siga[5:7] }}/{{ i.entrada_no_siga[0:4] }}{% else %}{{ i.entrada_no_siga or '-' }}{% endif %}</td>
+                <td>{{ i.nota_de_empenho or '-' }}</td>
+                <td>{{ valor_fmt(i.valor_nota_empenho) if i.valor_nota_empenho is not none else '-' }}</td>
+                <td>{{ i.num_nota_fiscal or '-' }}</td>
+                <td>{{ i.nome_empresa or '-' }}</td>
+                <td>{{ i.classificacao_asi or '-' }}</td>
+                <td>
+                    <a href="/segem/edit/{{ i.id }}" title="Editar"><i class="fas fa-pen" style="color:#ffaa00;"></i></a>
+                    <button type="button" class="btn-delete-segem" data-id="{{ i.id }}" title="Excluir" style="background:none;border:none;cursor:pointer;padding:0;"><i class="fas fa-trash" style="color:#cc0000;"></i></button>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+
+<!-- DataTables -->
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"/>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- CSS VISUAL (SEM DUPLICAÇÃO) -->
+<link rel="stylesheet" href="{{ request.url_for('static', path='css/equipamentos-grid.css') }}">
+
+
+<style>
+    .btn-primary { padding: 10px 18px; border-radius: 8px; border: none; background: #0d6efd; color: #fff; cursor: pointer; font-size: 14px; font-weight: 600; }
+    .btn-primary:hover { background: #0b5ed7; }
+    .btn-cancel { padding: 10px 18px; border-radius: 8px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
+    .filtros-container { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 16px; }
+    .filtro-item { display: flex; flex-direction: column; }
+    .filtro-item label { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+    .search-container { position: relative; }
+    .filter-search { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; min-width: 140px; }
+    .search-container .options { display: none; position: absolute; top: 100%; left: 0; background: #fff; border: 1px solid #ccc; border-radius: 6px; max-height: 200px; overflow-y: auto; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 6px; min-width: 180px; }
+    .search-container .option { padding: 4px 8px; display: flex; align-items: center; gap: 6px; }
+    .search-container .option input { margin: 0; }
+    .clear-btn { padding: 12px 12px; border-radius: 6px; border: 1px solid #ccc; cursor: pointer; font-size: 13px; margin-bottom: 21px; }
+</style>
+
+<style>
+    /* Garante que o SweetAlert fique acima de tudo */
+.swal2-container {
+    z-index: 99999 !important;
+}
+</style>
+
+<script>
+var table;
+
+$(document).ready(function() {
+    table = $('#segemTable').DataTable({
+        order: [[0, 'desc']],
+        pageLength: 10,
+        language: {
+            emptyTable: "Nenhum registro",
+            info: "Mostrando _START_ a _END_ de _TOTAL_",
+            infoEmpty: "Mostrando 0 a 0 de 0",
+            lengthMenu: "Mostrar _MENU_",
+            zeroRecords: "Nenhum registro encontrado",
+            paginate: { first: "Primeiro", last: "Último", next: "Próximo", previous: "Anterior" }
+        },
+        dom: 'rt<"bottom"l<"info-wrapper"ip>><"clear">',
+        columnDefs: [ { orderable: false, targets: 13 },
+                    { visible: false, targets: [2] }
+                    ] // checkbox oculto
+    });
+
+    $(document).on('click', '.btn-delete-segem', function() {
+        var id = $(this).data('id');
+        Swal.fire({
+            title: 'Excluir registro?',
+            text: 'Esta ação não pode ser desfeita.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sim, excluir'
+        }).then(function(res) {
+            if (!res.isConfirmed) return;
+            fetch('/segem/delete/' + id, { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) { Swal.fire({ icon: 'success', title: 'Excluído!', timer: 1500, showConfirmButton: false }); location.reload(); }
+                    else Swal.fire({ icon: 'error', title: 'Erro', text: data.message || 'Falha ao excluir' });
+                });
+        });
+    });
+
+    // Filtro por texto (tombo e descrição)
+    $('#filter-tombo').on('keyup', function() { table.column(2).search(this.value).draw(); });
+    $('#filter-descricao').on('keyup', function() { table.column(4).search(this.value).draw(); });
+
+    // Filtros por checkbox (ano, local, situação)
+    $('.search-container[data-col]').each(function() {
+        var col = parseInt($(this).data('col'), 10);
+        var container = $(this);
+        var input = container.find('.filter-search').first();
+        var optionsDiv = container.find('.options');
+        var selecionados = [];
+        container.find('.option input[type="checkbox"]').on('change', function() {
+            var v = $(this).val();
+            if (this.checked) selecionados.push(v);
+            else selecionados = selecionados.filter(x => x !== v);
+            input.val(selecionados.join(', '));
+            var re = selecionados.length ? selecionados.map(function(x) { return x.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&'); }).join('|') : '';
+            table.column(col).search(re, true, false).draw();
+        });
+        input.on('click', function(e) { e.stopPropagation(); optionsDiv.toggle(); });
+        $(document).on('click', function(e) { if (!$(e.target).closest(container).length) optionsDiv.hide(); });
+    });
+
+    $('#clear-filters').on('click', function() {
+        table.search('').columns().search('').draw();
+        $('.filter-search').val('');
+        $('.search-container .option input[type="checkbox"]').prop('checked', false);
+    });
+});
+</script>
+{% endblock %}

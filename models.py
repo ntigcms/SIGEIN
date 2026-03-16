@@ -14,6 +14,7 @@ class PerfilEnum(enum.Enum):
     GESTOR_ESTOQUE = "gestor_estoque"
     GESTOR_PROTOCOLO = "gestor_protocolo"
     GESTOR_GERAL = "gestor_geral"
+    GESTOR_SEGEM = "gestor_segem"
     OPERADOR = "operador"
 
 
@@ -76,6 +77,12 @@ class User(Base):
             PerfilEnum.ADMIN_MUNICIPAL.value,
             PerfilEnum.GESTOR_PROTOCOLO.value,
             PerfilEnum.GESTOR_GERAL.value,
+        ]
+
+    def pode_acessar_segem(self):
+        return self.perfil in [
+            PerfilEnum.MASTER.value,
+            PerfilEnum.GESTOR_SEGEM.value,
         ]
     
     def pode_gerenciar_usuarios(self):
@@ -569,9 +576,65 @@ class Unidade(Base):
     stocks = relationship("Stock", back_populates="unit")
     movimentos_origem = relationship(
         "Movement",
-        foreign_keys="Movement.unit_origem_id"
+        foreign_keys="Movement.unit_origem_id",
+        overlaps="unit_origem",
     )
     movimentos_destino = relationship(
         "Movement",
-        foreign_keys="Movement.unit_destino_id"
+        foreign_keys="Movement.unit_destino_id",
+        overlaps="unit_destino",
     )
+
+
+# =====================================================
+# SEGEM (Sistema de Gestão de Materiais)
+# =====================================================
+
+class SegemItem(Base):
+    __tablename__ = "segem_itens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    municipio_id = Column(Integer, ForeignKey("municipios.id"), nullable=False)
+    orgao_id = Column(Integer, ForeignKey("orgaos.id"), nullable=False)
+
+    ano = Column(Integer)  # ANO
+    num_tombo_gcm = Column(String(50))  # Nº TOMBO (GCM)
+    local = Column(String(200))  # LOCAL
+    codigo = Column(String(100))  # CÓDIGO
+    descricao = Column(Text)  # DESCRIÇÃO
+    situacao = Column(String(100))  # SITUAÇÃO
+    valor_rs = Column(Float)  # VALOR R$
+    entrada_no_siga = Column(String(100))  # ENTRADA NO SIGA
+    nota_de_empenho = Column(String(100))  # NOTA DE EMPENHO
+    valor_nota_empenho = Column(Float)  # VALOR DA NOTA DE EMPENHO
+    num_nota_fiscal = Column(String(100))  # N° NOTA FISCAL
+    nome_empresa = Column(String(200))  # NOME DA EMPRESA
+    classificacao_asi = Column(String(100))  # CLASSIFICAÇÃO ASI
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(Integer, ForeignKey("users.id"))
+
+    municipio = relationship("Municipio")
+    orgao = relationship("Orgao")
+    produtos = relationship("SegemItemProduto", back_populates="segem_item", cascade="all, delete-orphan")
+
+
+class SegemItemProduto(Base):
+    """Produtos adicionais do registro SEGEM (Nº Tombo + Valor), linha do bloco Produto."""
+    __tablename__ = "segem_itens_produtos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    segem_item_id = Column(Integer, ForeignKey("segem_itens.id"), nullable=False)
+    num_tombo_gcm = Column(String(50))
+    valor_rs = Column(Float)
+
+    segem_item = relationship("SegemItem", back_populates="produtos")
+
+
+class ProdutoSegem(Base):
+    """Catálogo de produtos SEGEM (código + descrição) para preenchimento automático no formulário."""
+    __tablename__ = "produtos_segem"
+
+    id = Column(Integer, primary_key=True, index=True)
+    codigo = Column(String(100), unique=True, nullable=False, index=True)
+    descricao = Column(Text)
