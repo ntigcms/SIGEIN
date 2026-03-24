@@ -329,6 +329,43 @@ def segem_edit_form(
     )
 
 
+@router.get("/view/{item_id}")
+def segem_view_form(
+    item_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    """Tela de visualização somente leitura de um registro SEGEM."""
+    if not user:
+        return RedirectResponse("/login")
+    user_obj = _user_obj(db, user)
+    if not user_obj or user_obj.perfil not in ["master", "gestor_segem"]:
+        return RedirectResponse("/dashboard")
+    item = db.query(SegemItem).options(
+        joinedload(SegemItem.produtos)
+    ).filter(SegemItem.id == item_id).first()
+    if not item:
+        return RedirectResponse("/segem")
+    if user_obj.perfil != "master" and item.municipio_id != user_obj.municipio_id:
+        return RedirectResponse("/segem")
+    unidades = db.query(Unidade).filter(Unidade.ativo == True).order_by(Unidade.nome).all()
+    produtos_segem = db.query(ProdutoSegem).order_by(ProdutoSegem.codigo).all()
+    produtos_list = _build_produtos_list(item)
+    return templates.TemplateResponse(
+        "segem_form.html",
+        {
+            "request": request,
+            "user": user,
+            "action": "view",
+            "item": item,
+            "unidades": unidades,
+            "produtos_segem": produtos_segem,
+            "produtos_list": produtos_list,
+        },
+    )
+
+
 @router.post("/edit/{item_id}")
 async def segem_edit_submit(
     item_id: int,

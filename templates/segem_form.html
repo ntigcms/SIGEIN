@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}{{ 'Editar' if action == 'edit' else 'Cadastrar' }} SEGEM{% endblock %}
+{% block title %}{{ 'Editar' if action == 'edit' else ('Visualizar' if action == 'view' else 'Cadastrar') }} SEGEM{% endblock %}
 
 {% block content %}
 <div class="container segem-form-container">
-    <h2>{{ 'Editar' if action == 'edit' else 'Cadastrar' }} Registro SEGEM</h2>
+    <h2>{{ 'Editar' if action == 'edit' else ('Visualizar' if action == 'view' else 'Cadastrar') }} Registro SEGEM</h2>
 
     <form method="post" id="segem-form" class="segem-form">
         <input type="hidden" name="id" value="{{ item.id if item else '' }}">
@@ -129,8 +129,10 @@
         </fieldset>
 
         <div class="buttons">
+            {% if action != 'view' %}
             <button type="submit" class="btn-submit">{{ 'Atualizar' if action == 'edit' else 'Salvar' }}</button>
-            <a href="/segem" class="btn-cancel">Cancelar</a>
+            {% endif %}
+            <a href="/segem" class="btn-cancel">Voltar</a>
         </div>
     </form>
 </div>
@@ -357,6 +359,22 @@ legend {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    var isViewMode = "{{ action }}" === "view";
+    var form = document.getElementById('segem-form');
+
+    if (isViewMode && form) {
+        // Desabilita todos os campos de edição
+        form.querySelectorAll('input, select, textarea').forEach(function(el) {
+            // Mantém o hidden de id apenas para consistência; não será enviado pois não há submit
+            if (el.type === 'hidden') return;
+            el.disabled = true;
+        });
+        // Esconde botões de adicionar/remover produto em modo visualização
+        form.querySelectorAll('.btn-add-produto, .btn-remove-produto').forEach(function(btn) {
+            btn.style.display = 'none';
+        });
+    }
+
     var codigoEl = document.getElementById('codigo');
     var descricaoEl = document.getElementById('descricao');
     var suggestionsEl = document.getElementById('codigo-suggestions');
