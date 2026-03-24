@@ -1,6 +1,19 @@
 from sqlalchemy.orm import Session
-from models import Product, Item, Stock, Movement
+from models import Product, Item, Stock, Movement, Unidade
 from datetime import datetime
+
+
+def _validar_unidade_existe(db: Session, unit_id: int, campo: str) -> None:
+    """Verifica se a unidade existe na tabela unidades. Levanta exceção se não existir."""
+    if unit_id is None:
+        return
+    unidade = db.query(Unidade).filter(Unidade.id == unit_id).first()
+    if not unidade:
+        raise Exception(
+            f"A unidade de {campo} (ID {unit_id}) não existe mais no cadastro. "
+            "Possível inconsistência: a unidade foi excluída mas há itens/estoque referenciando-a. "
+            "Corrija o cadastro do item ou recrie a unidade."
+        )
 
 
 class StockService:
@@ -59,6 +72,11 @@ class StockService:
         if unit_origem_id and item.unit_id != unit_origem_id:
             raise Exception("Item não está na unidade de origem")
 
+        # Valida que a unidade do item existe (evita FK violation se unidade foi excluída)
+        _validar_unidade_existe(db, item.unit_id, "origem")
+        if unit_destino_id:
+            _validar_unidade_existe(db, unit_destino_id, "destino")
+
         if tipo == "TRANSFERENCIA":
             if not unit_destino_id:
                 raise Exception("Unidade destino obrigatória")
@@ -96,6 +114,10 @@ class StockService:
         unit_origem_id, unit_destino_id,
         quantidade, observacao
     ):
+
+        # Valida que as unidades existem (evita FK violation se unidade foi excluída)
+        _validar_unidade_existe(db, unit_origem_id, "origem")
+        _validar_unidade_existe(db, unit_destino_id, "destino")
 
         stock_origem = db.query(Stock).filter(
             Stock.product_id == product.id,

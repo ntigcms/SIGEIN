@@ -104,6 +104,7 @@
                         <option value="gestor_estoque" {% if (form_data and form_data.perfil == 'gestor_estoque') or (user and user.perfil == 'gestor_estoque') %}selected{% endif %}>GESTOR DE ESTOQUE - Gerencia Inventário</option>
                         <option value="gestor_protocolo" {% if (form_data and form_data.perfil == 'gestor_protocolo') or (user and user.perfil == 'gestor_protocolo') %}selected{% endif %}>GESTOR DE PROTOCOLO - Gerencia E-Protocolo</option>
                         <option value="gestor_geral" {% if (form_data and form_data.perfil == 'gestor_geral') or (user and user.perfil == 'gestor_geral') %}selected{% endif %}>GESTOR GERAL - Estoque + Protocolo</option>
+                        <option value="gestor_segem" {% if (form_data and form_data.perfil == 'gestor_segem') or (user and user.perfil == 'gestor_segem') %}selected{% endif %}>GESTOR SEGEM - Módulo SEGEM</option>
                         <option value="operador" {% if (form_data and form_data.perfil == 'operador') or (user and user.perfil == 'operador') %}selected{% endif %}>OPERADOR - Acesso Básico</option>
                     </select>
                 </div>
@@ -458,6 +459,7 @@ function mostrarDescricaoPerfil() {
         'gestor_estoque': '✅ Acesso total ao inventário do órgão | Gera relatórios | NÃO acessa protocolo',
         'gestor_protocolo': '✅ Acesso total ao protocolo | Cria e tramita processos | NÃO acessa inventário',
         'gestor_geral': '✅ Combina Estoque + Protocolo | Visão 360° do órgão | NÃO gerencia usuários',
+        'gestor_segem': '✅ Acesso ao módulo SEGEM (gestão de materiais) | Apenas Master e Gestor SEGEM visualizam',
         'operador': '⚠️ Acesso básico | Consulta e ações limitadas | Não pode criar/editar/excluir'
     };
     

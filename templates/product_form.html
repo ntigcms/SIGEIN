@@ -503,8 +503,16 @@ legend {
 }
 </style>
 
+<span id="numero-index"
+      data-numero="{% if action == 'edit' and product_items %}{{ product_items|length }}{% else %}1{% endif %}"
+      style="display:none;">
+</span>
+
 <script>
-let numeroIndex = {% if action == 'edit' and product_items %}{{ product_items|length }}{% else %}1{% endif %};
+let numeroIndex = parseInt(
+    document.getElementById('numero-index').dataset.numero,
+    10
+);
 
 function toggleControles() {
     const controlaSerie = document.getElementById('controla_por_serie').checked;

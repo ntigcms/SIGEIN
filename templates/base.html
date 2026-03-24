@@ -172,7 +172,8 @@
             color: #ffffff;
             padding: 1px 20px;
             text-align: center;
-            margin-bottom: 40px; /* 👈 ESPAÇO ENTRE HEADER E CONTEÚDO */
+            margin-bottom: 40px;  /* 👈 ESPAÇO ENTRE HEADER E CONTEÚDO */
+            margin-top: 25px; /* 👈 ESPAÇO ENTRE MENU DO USUÁRIO E CONTEÚDO */
         }
 
         .app-header-content {
@@ -226,24 +227,37 @@
         /* =========================
    MENU DO USUÁRIO (TOPO)
 ========================== */
-.user-menu {
+.user-menu-wrap {
     position: fixed;
     top: 10px;
-    right: 20px;
+    right: 40px;
     z-index: 1000;
+}
 
+.user-menu-trigger {
     display: flex;
-    align-items: center;  /* Alinha verticalmente ícone e nome */
-    gap: 8px;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    background: rgba(255,255,255,0.95);
+    border: 1px solid rgba(0,119,204,0.25);
+    border-radius: 24px;
     cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: box-shadow 0.2s, background 0.2s;
+}
+
+.user-menu-trigger:hover {
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
 }
 
 .user-icon {
-    width: 25px;
-    height: 25px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     overflow: hidden;
-    background-color: #eaeaea; /* Fundo neutro para avatar */
+    background: linear-gradient(135deg, #0077cc 0%, #00aaff 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -258,38 +272,175 @@
 }
 
 .user-name {
-    font-weight: bold;
+    font-weight: 600;
     color: #0077cc;
-    margin: 0; /* remove margem se for <span> ou <p> */
-    user-select: none; /* opcional: evita seleção de texto ao clicar */
+    font-size: 14px;
+    margin: 0;
+    user-select: none;
 }
 
-.dropdown {
+.user-menu-trigger .fa-chevron-down {
+    font-size: 10px;
+    color: #6c757d;
+    transition: transform 0.2s;
+}
+
+.user-menu-wrap.open .user-menu-trigger .fa-chevron-down {
+    transform: rotate(180deg);
+}
+
+.user-dropdown {
     display: none;
     position: absolute;
     right: 0;
-    top: 100%;
-    background-color: white;
-    min-width: 150px;
-    box-shadow: 0px 2px 5px rgba(0,0,0,0.2);
-    border-radius: 5px;
+    top: calc(100% + 6px);
+    min-width: 200px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    border: 1px solid #e9ecef;
     overflow: hidden;
+    padding: 6px 0;
 }
 
-.dropdown a {
+.user-menu-wrap.open .user-dropdown {
     display: block;
-    padding: 10px;
+}
+
+.user-dropdown a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
     text-decoration: none;
-    color: #333;
-    transition: 0.2s;
+    color: #212529;
+    font-size: 14px;
+    transition: background 0.15s;
 }
 
-.dropdown a:hover {
-    background-color: #f0f0f0;
+.user-dropdown a:hover {
+    background: #f8f9fa;
 }
 
-.user-menu:hover .dropdown {
+.user-dropdown a i {
+    width: 20px;
+    text-align: center;
+    color: #0077cc;
+}
+
+.user-dropdown .dropdown-divider {
+    height: 1px;
+    background: #e9ecef;
+    margin: 4px 0;
+}
+
+/* Modal Meus Dados */
+.meus-dados-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 9998;
+    align-items: center;
+    justify-content: center;
+}
+
+.meus-dados-modal-backdrop.show {
+    display: flex;
+}
+
+.meus-dados-modal {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    max-width: 420px;
+    width: 90%;
+    max-height: 90vh;
+    overflow: auto;
+}
+
+.meus-dados-modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 18px;
+    font-weight: 700;
+    color: #212529;
+}
+
+.meus-dados-modal-body {
+    padding: 24px;
+}
+
+.meus-dados-field {
+    margin-bottom: 16px;
+}
+
+.meus-dados-field:last-child {
+    margin-bottom: 0;
+}
+
+.meus-dados-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #495057;
+    margin: 20px 0 12px 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.meus-dados-field label {
     display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6c757d;
+    margin-bottom: 4px;
+}
+
+.meus-dados-field .value {
+    font-size: 14px;
+    color: #212529;
+    padding: 10px 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.meus-dados-modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.meus-dados-modal-footer .btn-fechar {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    background: #fff;
+    color: #495057;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.meus-dados-modal-footer .btn-fechar:hover {
+    background: #f8f9fa;
+}
+
+.meus-dados-modal-footer .btn-editar {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    background: #0077cc;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.meus-dados-modal-footer .btn-editar:hover {
+    background: #0066b3;
+    color: #fff;
 }
         /* =========================
            CAMPOS DE FORMULÁRIO
@@ -399,6 +550,10 @@
         <a href="/movements"><img width="32" height="32" src="https://img.icons8.com/dusk/64/move-stock.png" alt="move-stock"/>Movimentações</a>
         <a href="/products"><img width="32" height="32" src="https://img.icons8.com/fluency/48/product.png" alt="Produtos" />Produtos</a>
         <a href="/stock"><img src="https://img.icons8.com/fluency/48/warehouse.png" width="32">Estoque</a>
+        {% set perfil_atual = get_meus_dados(request)['perfil'] if get_meus_dados(request) else '' %}
+        {% if perfil_atual in ['master', 'gestor_segem'] %}
+        <a href="/segem"><img width="32" height="32" src="https://img.icons8.com/fluency/48/services.png" alt="Segem" />SEGEM</a>
+        {% endif %}
 
         
         <!-- Submenu Administração -->
@@ -460,14 +615,65 @@
 
 
         <!-- Menu do usuário (canto superior direito) -->
-        <div class="user-menu">
-            <span class="user-icon"><img src="https://img.icons8.com/?size=100&id=tZuAOUGm9AuS&format=png&color=000000" alt="Usuário" width="32" height="32"></span>
-            <span class="user-name">{{ get_user_display_name(request) }}</span>
-            <div class="dropdown">
-                <a href="/meus-dados"><i class="fas fa-id-card"></i> Meus Dados</a>
+        {% set meus_dados = get_meus_dados(request) %}
+        <div class="user-menu-wrap" id="user-menu-wrap">
+            <div class="user-menu-trigger" id="user-menu-trigger" role="button" aria-expanded="false" aria-haspopup="true">
+                <span class="user-icon"><img src="https://img.icons8.com/?size=100&id=tZuAOUGm9AuS&format=png&color=000000" alt="Usuário" width="32" height="32"></span>
+                <span class="user-name">{{ get_user_display_name(request) }}</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="user-dropdown">
+                <a href="#" id="btn-meus-dados"><i class="fas fa-id-card"></i> Meus Dados</a>
+                <div class="dropdown-divider"></div>
                 <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
         </div>
+
+        <!-- Modal Meus Dados -->
+        {% if meus_dados %}
+        <div class="meus-dados-modal-backdrop" id="meus-dados-modal" aria-hidden="true">
+            <div class="meus-dados-modal">
+                <div class="meus-dados-modal-header">Meus Dados</div>
+                <div class="meus-dados-modal-body">
+                    <div class="meus-dados-field">
+                        <label>Nome</label>
+                        <div class="value">{{ meus_dados.nome }}</div>
+                    </div>
+                    <div class="meus-dados-field">
+                        <label>E-mail</label>
+                        <div class="value">{{ meus_dados.email }}</div>
+                    </div>
+                    <div class="meus-dados-field">
+                        <label>Perfil</label>
+                        <div class="value">{{ meus_dados.perfil }}</div>
+                    </div>
+                    {% if meus_dados.status %}
+                    <div class="meus-dados-field">
+                        <label>Status</label>
+                        <div class="value">{{ meus_dados.status }}</div>
+                    </div>
+                    {% endif %}
+                    <div class="meus-dados-section-title">Lotação administrativa</div>
+                    <div class="meus-dados-field">
+                        <label>Município</label>
+                        <div class="value">{{ meus_dados.municipio or '-' }}</div>
+                    </div>
+                    <div class="meus-dados-field">
+                        <label>Órgão</label>
+                        <div class="value">{{ meus_dados.orgao or '-' }}</div>
+                    </div>
+                    <div class="meus-dados-field">
+                        <label>Unidade</label>
+                        <div class="value">{{ meus_dados.unidade or '-' }}</div>
+                    </div>
+                </div>
+                <div class="meus-dados-modal-footer">
+                    <button type="button" class="btn-fechar" id="meus-dados-fechar">Fechar</button>
+                    <a href="/users/edit/{{ meus_dados.id }}" class="btn-editar">Editar</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Bloco para conteúdo específico de cada página -->
         {% block content %}
@@ -483,6 +689,56 @@
                 submenu.classList.toggle('open');
             });
         });
+
+        // Menu do usuário (dropdown por clique)
+        (function() {
+            var wrap = document.getElementById('user-menu-wrap');
+            var trigger = document.getElementById('user-menu-trigger');
+            var btnMeusDados = document.getElementById('btn-meus-dados');
+            var modal = document.getElementById('meus-dados-modal');
+            var btnFechar = document.getElementById('meus-dados-fechar');
+
+            if (trigger) {
+                trigger.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    wrap.classList.toggle('open');
+                });
+            }
+
+            document.addEventListener('click', function() {
+                if (wrap) wrap.classList.remove('open');
+            });
+            if (wrap && wrap.querySelector('.user-dropdown')) {
+                wrap.querySelector('.user-dropdown').addEventListener('click', function(e) {
+                    e.stopPropagation();
+                });
+            }
+
+            if (btnMeusDados) {
+                btnMeusDados.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (wrap) wrap.classList.remove('open');
+                    if (modal) {
+                        modal.classList.add('show');
+                        modal.setAttribute('aria-hidden', 'false');
+                    }
+                });
+            }
+
+            function fecharModalMeusDados() {
+                if (modal) {
+                    modal.classList.remove('show');
+                    modal.setAttribute('aria-hidden', 'true');
+                }
+            }
+
+            if (btnFechar) btnFechar.addEventListener('click', fecharModalMeusDados);
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) fecharModalMeusDados();
+                });
+            }
+        })();
     </script>
 
 </body>

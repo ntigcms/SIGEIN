@@ -1,5 +1,6 @@
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi import APIRouter, Request, Form, Depends
+from urllib.parse import quote
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from models import Product, Unit, Category, Movement, User, Stock, Item, Unidade
@@ -50,6 +51,7 @@ def listar_movimentacoes(
 @router.get("/nova")
 def nova_movimentacao_form(
     request: Request,
+    error: Optional[str] = None,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
@@ -67,10 +69,10 @@ def nova_movimentacao_form(
         units_options = []
 
         if p.controla_por_serie:
-            # Produto com série: pega unidades dos itens existentes
+            # Produto com série: pega unidades dos itens existentes (só itens com unidade válida)
             units_set = set()
             for item in p.items:
-                if item.unit_id and item.unit_id not in units_set:
+                if item.unit_id and item.unit_id not in units_set and item.unit:
                     units_options.append({
                         "unit_id": item.unit.id,
                         "unit_name": item.unit.nome
@@ -85,13 +87,13 @@ def nova_movimentacao_form(
                 Stock.quantidade > 0
                 ).all()
             for s in stocks:
-                if s.unit_id and s.unit_id not in units_set:
+                if s.unit_id and s.unit_id not in units_set and s.unit:
                     units_options.append({"unit_id": s.unit.id, "unit_name": s.unit.nome})
                     units_set.add(s.unit_id)
-            # Unidades de itens existentes
+            # Unidades de itens existentes (só itens com unidade válida)
             items = db.query(Item).filter(Item.product_id == p.id).all()
             for i in items:
-                if i.unit_id and i.unit_id not in units_set:
+                if i.unit_id and i.unit_id not in units_set and i.unit:
                     units_options.append({"unit_id": i.unit.id, "unit_name": i.unit.nome})
                     units_set.add(i.unit_id)
 
@@ -115,7 +117,8 @@ def nova_movimentacao_form(
             "products": products_js,
             "units": units,
             "categories": categories,
-            "user": user
+            "user": user,
+            "error": error
         }
     )
 
@@ -198,7 +201,11 @@ def movimentacoes_submit(
         )
 
     except Exception as e:
-        return {"error": str(e)}
+        err_msg = str(e)
+        return RedirectResponse(
+            url=f"/movements/nova?error={quote(err_msg)}",
+            status_code=HTTP_302_FOUND
+        )
 
     registrar_log(
         db=db,
@@ -241,7 +248,7 @@ def editar_movimentacao_form(
         if p.controla_por_serie:
             units_set = set()
             for item in p.items:
-                if item.unit_id and item.unit_id not in units_set:
+                if item.unit_id and item.unit_id not in units_set and item.unit:
                     units_options.append({
                         "unit_id": item.unit.id,
                         "unit_name": item.unit.nome
@@ -254,7 +261,7 @@ def editar_movimentacao_form(
                 Stock.quantidade > 0
             ).all()
             for s in stocks:
-                if s.unit_id and s.unit_id not in units_set:
+                if s.unit_id and s.unit_id not in units_set and s.unit:
                     units_options.append({"unit_id": s.unit.id, "unit_name": s.unit.nome})
                     units_set.add(s.unit_id)
 
@@ -459,6 +466,7 @@ def get_product_items(type_id: int, db: Session = Depends(get_db)):
     items = (
         db.query(Item)
         .join(Product)
+        .join(Unidade, Item.unit_id == Unidade.id)  # Só itens cuja unidade existe
         .filter(Product.type_id == type_id)
         .all()
     )

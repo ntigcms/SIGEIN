@@ -38,8 +38,8 @@
 </div>
 
 <h3 style="margin-top:30px;">Produtos com Estoque Crítico</h3>
-<table style="width:100%; border-collapse: collapse; margin-top:10px;">
-    <thead style="background:#ddd;">
+<table class="dashboard-critical-table" style="width:100%; border-collapse: collapse; margin-top:10px; background:#fff;">
+    <thead style="background:#f0f0f0;">
         <tr>
             <th style="padding:8px; border:1px solid #ccc;">Produto</th>
             <th style="padding:8px; border:1px solid #ccc;">Unidade</th>
@@ -48,7 +48,7 @@
             <th style="padding:8px; border:1px solid #ccc;">Status</th>
         </tr>
     </thead>
-    <tbody>
+    <tbody style="background:#fff;">
         {% for s in critical_stock %}
 <tr class="
     {% if s.status == 'ZERADO' %}status-zerado
@@ -65,6 +65,14 @@
 
     </tbody>
 </table>
+<style>
+.dashboard-critical-table { background: #fff !important; }
+.dashboard-critical-table tbody { background: #fff !important; }
+.dashboard-critical-table tbody tr { background: #fff !important; }
+.dashboard-critical-table tbody tr.status-critico,
+.dashboard-critical-table tbody tr.status-zerado,
+.dashboard-critical-table tbody tr.status-ok { background: #fff !important; }
+</style>
 
 <h3 style="margin-top:30px;">Ações Rápidas</h3>
 <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px;">

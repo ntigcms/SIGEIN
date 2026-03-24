@@ -399,13 +399,13 @@ document.addEventListener('click', function(e) {
 });
 
 // ✅ Para produtos SEM série
-async function openStockDetails(typeId, unitName) {
+async function openStockDetails(productId, unitName) {
     try {
-        const response = await fetch(`/stock/items-by-type?type_id=${typeId}&unit_name=${encodeURIComponent(unitName)}`);
+        const response = await fetch(`/stock/items-by-type?product_id=${productId}&unit_name=${encodeURIComponent(unitName)}`);
         const data = await response.json();
 
         if (data.controla_por_serie) {
-            openProductDetails(typeId, unitName);
+            openProductDetails(productId, unitName);
             return;
         }
 
@@ -444,13 +444,13 @@ async function openStockDetails(typeId, unitName) {
 
 
 // Abre modal de detalhes (produtos com tombo/série)
-async function openProductDetails(typeId, unitName) {
+async function openProductDetails(productId, unitName) {
     try {
         // ✅ Salva o contexto
-        currentTypeId = typeId;
+        currentProductId = productId;
         currentUnitName = unitName;
 
-        const response = await fetch(`/stock/items-by-type?type_id=${typeId}&unit_name=${encodeURIComponent(unitName)}`);
+        const response = await fetch(`/stock/items-by-type?product_id=${productId}&unit_name=${encodeURIComponent(unitName)}`);
         const data = await response.json();
 
         if (!data.controla_por_serie) {
@@ -497,7 +497,7 @@ async function openProductDetails(typeId, unitName) {
 
 // ✅ Para produtos COM série (quando clica no número da lista)
 // ✅ Variáveis globais para guardar contexto
-let currentTypeId = null;
+let currentProductId = null;
 let currentUnitName = null;
 
 async function openItemView(itemId) {
@@ -525,7 +525,7 @@ async function openItemView(itemId) {
         
         document.getElementById('view-observacao').value = data.observacao || '';
 
-        if (currentTypeId && currentUnitName) {
+        if (currentProductId && currentUnitName) {
             document.getElementById('btn-voltar-detalhes').style.display = 'block';
         } else {
             document.getElementById('btn-voltar-detalhes').style.display = 'none';
@@ -543,8 +543,8 @@ async function openItemView(itemId) {
 
 function voltarParaDetalhes() {
     closeModal('modal-product-view');
-    if (currentTypeId && currentUnitName) {
-        openProductDetails(currentTypeId, currentUnitName);
+    if (currentProductId && currentUnitName) {
+        openProductDetails(currentProductId, currentUnitName);
     }
 }
 
@@ -556,7 +556,7 @@ $(document).ready(function() {
             dataSrc: ""
         },
         columns: [
-            { data: "product_type" },
+            { data: "product_name", defaultContent: "", render: (d, t, row) => (d || row.product_type || "-") },
             { data: "unit_name" },
             { data: "quantidade" },
             {
@@ -578,9 +578,10 @@ $(document).ready(function() {
     data: null,
     orderable: false,
     render: function(row) {
+        const unitName = (row.unit_name || '').replace(/'/g, "\\'");
         if (row.controla_por_serie) {
             return `
-                <a href="#" onclick="openProductDetails(${row.type_id}, '${row.unit_name}'); return false;" title="Detalhar">
+                <a href="#" onclick="openProductDetails(${row.product_id}, '${unitName}'); return false;" title="Detalhar">
                     <i class="fas fa-eye"></i></a>
                 <a href="/movements/nova?type=${row.type_id}" title="Movimentar">
                     <i class="fas fa-exchange-alt"></i>
@@ -588,7 +589,7 @@ $(document).ready(function() {
             `;
         } else {
             return `
-                <a href="#" onclick="openStockDetails(${row.type_id}, '${row.unit_name}'); return false;" title="Detalhar">
+                <a href="#" onclick="openStockDetails(${row.product_id}, '${unitName}'); return false;" title="Detalhar">
                     <i class="fas fa-eye"></i></a>
                 <a href="/movements/nova?type=${row.type_id}" title="Movimentar">
                     <i class="fas fa-exchange-alt"></i>
