@@ -20,13 +20,34 @@ def get_current_user(request: Request):
 
 
 
-def registrar_log(db: Session, usuario: str, acao: str, ip: str = None):
-    """Registra uma ação no log do sistema"""
+def registrar_log(
+    db: Session,
+    usuario: str,
+    acao: str,
+    ip: str = None,
+    municipio_id: int = None,
+    user_id: int = None,
+    user_agent: str = None,
+    tipo: str = "operacional",
+):
+    """Registra uma ação no log do sistema com escopo de município."""
+    if usuario and (municipio_id is None or user_id is None):
+        user_obj = db.query(models.User).filter(models.User.email == usuario).first()
+        if user_obj:
+            if municipio_id is None:
+                municipio_id = user_obj.municipio_id
+            if user_id is None:
+                user_id = user_obj.id
+
     novo_log = models.Log(
+        municipio_id=municipio_id,
+        user_id=user_id,
+        tipo=tipo,
         usuario=usuario,
         acao=acao,
         data_hora=datetime.utcnow(),
-        ip=ip
+        ip=ip,
+        user_agent=user_agent
     )
     db.add(novo_log)
     db.commit()

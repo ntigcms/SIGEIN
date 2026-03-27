@@ -1,53 +1,64 @@
 {% extends "base.html" %}
+{% block title %}Logs{% endblock %}
 
 {% block content %}
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Logs do Sistema</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        h1 { color: #333; }
-        .btn { 
-            display: inline-block; 
-            padding: 8px 12px; 
-            background-color: #4CAF50; 
-            color: white; 
-            text-decoration: none; 
-            border-radius: 4px; 
-            margin-bottom: 10px;
-            margin-right: 5px;
-        }
-        .btn:hover { background-color: #45a049; }
-        .btn-pdf { background-color: #e74c3c; }
-        .btn-pdf:hover { background-color: #c0392b; }
-    </style>
-</head>
-<body>
-    <h1>Logs do Sistema</h1>
-    <p>Usuário logado: <strong>{{ user }}</strong></p>
-
-    <!-- Botões -->
-    <div style="margin-bottom: 20px;">
-    <a href="/dashboard" class="btn" style="padding:8px 12px; background:#3498db; color:white; text-decoration:none; border-radius:4px;">
-        ⬅️ Voltar à Home
-    </a>
-    <a href="/logs/export/pdf" class="btn" style="padding:8px 12px; background:#e74c3c; color:white; text-decoration:none; border-radius:4px; margin-left:10px;">
-        📄 Exportar PDF
-    </a>
-    <a href="/logs/export/xlsx" class="btn" style="padding:8px 12px; background:#27ae60; color:white; text-decoration:none; border-radius:4px; margin-left:10px;">
-        📊 Exportar Excel (.xlsx)
-    </a>
+<div style="margin-bottom: 16px;">
+    <h2 style="margin-bottom: 12px;">Logs do Sistema</h2>
+    <div class="logs-actions">
+        <a href="/dashboard"><button class="animated-btn" style="background:#3498db;">Voltar a Home</button></a>
+        <a href="/logs/export/pdf"><button class="animated-btn" style="background:#e74c3c;">Exportar PDF</button></a>
+        <a href="/logs/export/xlsx"><button class="animated-btn" style="background:#27ae60;">Exportar Excel</button></a>
+        {% if user_perfil == "master" %}
+        <form id="retencao-form" class="retencao-form">
+            <input type="number" name="retention_days_operacional" value="365" min="1" class="retencao-input" title="Dias operacional">
+            <input type="number" name="retention_days_seguranca" value="730" min="1" class="retencao-input" title="Dias seguranca">
+            <button type="submit" class="animated-btn" style="background:#8e44ad;">Executar retencao</button>
+        </form>
+        {% endif %}
+    </div>
 </div>
 
+{% if user_perfil == "master" and governanca %}
+<div class="table-section" style="margin-bottom: 16px;">
+    <h4>Painel LGPD (Governanca)</h4>
+    <div class="gov-grid">
+        <div class="gov-card">
+            <div class="gov-label">Ultima execucao de retencao</div>
+            <div class="gov-value">
+                {% if governanca.ultima_retencao %}
+                    {{ governanca.ultima_retencao.data_hora.strftime("%d/%m/%Y %H:%M:%S") }}
+                {% else %}
+                    Nunca executada
+                {% endif %}
+            </div>
+        </div>
+        <div class="gov-card">
+            <div class="gov-label">Logs operacionais</div>
+            <div class="gov-value">{{ governanca.total_operacional }}</div>
+        </div>
+        <div class="gov-card">
+            <div class="gov-label">Logs de seguranca</div>
+            <div class="gov-value">{{ governanca.total_seguranca }}</div>
+        </div>
+        <div class="gov-card">
+            <div class="gov-label">Total de logs</div>
+            <div class="gov-value">{{ governanca.total_logs }}</div>
+        </div>
+    </div>
+    <div class="gov-dryrun">
+        <button id="btn-dry-run" class="animated-btn" style="background:#6c757d;">Simular exclusao (dry-run)</button>
+        <span id="dry-run-result">
+            Estimativa atual: {{ governanca.dry_run.estimate_total }}
+            (Operacional: {{ governanca.dry_run.estimate_operacional }},
+            Seguranca: {{ governanca.dry_run.estimate_seguranca }})
+        </span>
+    </div>
+</div>
+{% endif %}
 
-    <table>
+<div class="table-section">
+    <h4>Historico de Logs</h4>
+    <table id="logsTable" class="display data-grid" style="width:100%; border-collapse: collapse; text-align:left;">
         <thead>
             <tr>
                 <th>Data/Hora</th>
@@ -69,6 +80,155 @@
             {% endfor %}
         </tbody>
     </table>
-</body>
-</html>
+</div>
+
+<link rel="stylesheet" href="{{ request.url_for('static', path='css/equipamentos-grid.css') }}">
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"/>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<style>
+    .logs-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .retencao-form {
+        display: inline-flex !important;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: nowrap !important;
+        margin: 0;
+        width: auto !important;
+    }
+
+    .retencao-input {
+        width: 140px !important;
+        min-width: 140px !important;
+        max-width: 140px !important;
+        height: 38px !important;
+        padding: 0 12px;
+        border: 1px solid #c7c7c7;
+        border-radius: 6px;
+        font-size: 16px;
+        box-sizing: border-box;
+        background: #fff;
+        color: #333;
+        display: inline-block !important;
+        flex: 0 0 140px !important;
+    }
+
+    .gov-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+
+    .gov-card {
+        border: 1px solid #dfe3e8;
+        border-radius: 8px;
+        background: #fff;
+        padding: 10px 12px;
+    }
+
+    .gov-label {
+        font-size: 12px;
+        color: #54606e;
+        margin-bottom: 6px;
+    }
+
+    .gov-value {
+        font-size: 16px;
+        font-weight: 700;
+        color: #243447;
+    }
+
+    .gov-dryrun {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    #dry-run-result {
+        font-size: 13px;
+        color: #334155;
+    }
+
+    .dataTables_length label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .dataTables_length select {
+        width: auto;
+        display: inline-block;
+    }
+</style>
+
+<script>
+$(document).ready(function () {
+    $('#logsTable').DataTable({
+        pageLength: 10,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+        language: {
+            emptyTable: "Nenhum registro",
+            info: "Mostrando _START_ a _END_ de _TOTAL_",
+            infoEmpty: "Mostrando 0 a 0 de 0",
+            lengthMenu: "Mostrar registros _MENU_",
+            zeroRecords: "Nenhum registro encontrado",
+            paginate: {
+                first: "Primeiro",
+                last: "Último",
+                next: "Próximo",
+                previous: "Anterior"
+            }
+        },
+        dom: 'rt<"bottom"l<"info-wrapper"ip>><"clear">',
+        order: [[0, "desc"]]
+    });
+});
+</script>
+
+{% if user_perfil == "master" %}
+<script>
+document.getElementById("btn-dry-run")?.addEventListener("click", async function () {
+    const formEl = document.getElementById("retencao-form");
+    const form = new FormData(formEl);
+    const res = await fetch("/logs/admin/retention/dry-run", {
+        method: "POST",
+        body: form
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+        alert(data.message || "Falha ao simular retenção.");
+        return;
+    }
+    const r = data.result;
+    const msg = `Estimativa: ${r.estimate_total} (Operacional: ${r.estimate_operacional}, Seguranca: ${r.estimate_seguranca})`;
+    document.getElementById("dry-run-result").textContent = msg;
+});
+
+document.getElementById("retencao-form")?.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const form = new FormData(e.target);
+    const res = await fetch("/logs/admin/retention/run", {
+        method: "POST",
+        body: form
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+        alert(data.message || "Falha ao executar retenção.");
+        return;
+    }
+    const r = data.result;
+    alert(`Retenção concluída.\nTotal removido: ${r.deleted_total}\nOperacional: ${r.deleted_operacional}\nSegurança: ${r.deleted_seguranca}`);
+    window.location.reload();
+});
+</script>
+{% endif %}
 {% endblock %}

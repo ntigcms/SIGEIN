@@ -1,6 +1,7 @@
 from database import SessionLocal, engine
 import models
 from sqlalchemy.exc import IntegrityError
+from security import hash_password
 
 # Cria as tabelas (caso não existam ainda)
 models.Base.metadata.create_all(bind=engine)
@@ -11,7 +12,7 @@ db = SessionLocal()
 # Dados do admin
 username = "admin"
 email = "admin@sigein.local"
-password = "1234"  # ⚠️ Em produção, use hash seguro (ex: bcrypt)
+password = "1234"
 role = "master"
 status = "ativo"
 
@@ -26,7 +27,7 @@ try:
             nome="Administrador SIGEIN",
             cpf="00000000000",
             email=email,
-            password=password,
+            password=hash_password(password),
             municipio_id=None,
             orgao_id=None,
             unidade_id=None,

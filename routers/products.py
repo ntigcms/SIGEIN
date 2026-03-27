@@ -24,8 +24,15 @@ def _user_obj(db: Session, user: str):
 def list_products(request: Request, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
     if not user:
         return RedirectResponse("/login")
-    
-    products = db.query(Product).all()
+
+    user_obj = _user_obj(db, user)
+    if not user_obj:
+        return RedirectResponse("/login")
+
+    products_q = db.query(Product)
+    if getattr(user_obj, "perfil", None) != "master":
+        products_q = products_q.filter(Product.municipio_id == user_obj.municipio_id)
+    products = products_q.all()
 
     # FILTROS: coletamos valores únicos
     tipos = sorted({p.type.nome for p in products if p.type})
@@ -287,7 +294,14 @@ async def add_product(
             db.add(item)
             items_criados += 1
         db.commit()
-        registrar_log(db, usuario=user, acao=f"Cadastrou produto em lote: {product.name} ({items_criados} itens)", ip=request.client.host)
+        registrar_log(
+            db,
+            usuario=user,
+            acao=f"Cadastrou produto em lote: {product.name} ({items_criados} itens)",
+            ip=request.client.host,
+            user_agent=request.headers.get("user-agent"),
+            tipo="operacional",
+        )
     else:
         stock = Stock(
             product_id=product.id,
@@ -328,7 +342,14 @@ async def add_product(
         )
         db.add(item)
         db.commit()
-        registrar_log(db, usuario=user, acao=f"Cadastrou produto: {product.name}", ip=request.client.host)
+        registrar_log(
+            db,
+            usuario=user,
+            acao=f"Cadastrou produto: {product.name}",
+            ip=request.client.host,
+            user_agent=request.headers.get("user-agent"),
+            tipo="operacional",
+        )
 
     return RedirectResponse("/products", status_code=HTTP_302_FOUND)
 
@@ -349,6 +370,8 @@ def edit_product_form(product_id: int, request: Request, db: Session = Depends(g
         joinedload(Product.stocks),
     ).filter(Product.id == product_id).first()
     if not product:
+        return RedirectResponse("/products")
+    if getattr(user_obj, "perfil", None) != "master" and product.municipio_id != user_obj.municipio_id:
         return RedirectResponse("/products")
     item = db.query(Item).filter(Item.product_id == product_id).first()
     product_items = list(product.items) if product.items else []
@@ -428,6 +451,8 @@ async def edit_product(
     # --- Produto ---
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
+        return RedirectResponse("/products")
+    if getattr(user_obj, "perfil", None) != "master" and product.municipio_id != user_obj.municipio_id:
         return RedirectResponse("/products")
 
     category_id = form_data.get("category_id")
@@ -592,7 +617,14 @@ async def edit_product(
         db.add(item)
         db.commit()
 
-    registrar_log(db, usuario=user, acao=f"Editou produto: {product.name}", ip=request.client.host)
+    registrar_log(
+        db,
+        usuario=user,
+        acao=f"Editou produto: {product.name}",
+        ip=request.client.host,
+        user_agent=request.headers.get("user-agent"),
+        tipo="operacional",
+    )
     return RedirectResponse("/products", status_code=HTTP_302_FOUND)
 
 @router.get("/tipos-por-categoria/{category_id}")
@@ -620,9 +652,15 @@ def delete_product(product_id: int, request: Request, db: Session = Depends(get_
     if not user:
         return JSONResponse({"success": False, "message": "Usuário não autenticado."})
 
+    user_obj = _user_obj(db, user)
+    if not user_obj:
+        return JSONResponse({"success": False, "message": "Usuário não autenticado."})
+
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         return JSONResponse({"success": False, "message": "Produto não encontrado."})
+    if getattr(user_obj, "perfil", None) != "master" and product.municipio_id != user_obj.municipio_id:
+        return JSONResponse({"success": False, "message": "Sem permissão para excluir este produto."})
 
     movimentacoes = db.query(Movement).filter(Movement.product_id == product.id).first()
     if movimentacoes:
@@ -639,5 +677,12 @@ def delete_product(product_id: int, request: Request, db: Session = Depends(get_
     db.delete(product)
     db.commit()
 
-    registrar_log(db, usuario=user, acao=f"Excluiu produto: {product.name}", ip=request.client.host)
+    registrar_log(
+        db,
+        usuario=user,
+        acao=f"Excluiu produto: {product.name}",
+        ip=request.client.host,
+        user_agent=request.headers.get("user-agent"),
+        tipo="operacional",
+    )
     return JSONResponse({"success": True})

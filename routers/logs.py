@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Request, Depends
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Request, Depends, Form
+from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from database import get_db
-from dependencies import get_current_user
+from dependencies import get_current_user, registrar_log
 import models
 from datetime import timezone, timedelta
 import pytz
+import os
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
@@ -14,16 +16,47 @@ import io
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
 from shared_templates import templates
+from cleanup_old_logs import cleanup_old_logs, estimate_old_logs
 
 router = APIRouter(prefix="/logs", tags=["Logs"])
+
+def _logs_scope_query(db: Session, user_obj: models.User):
+    """Escopo multi-tenant dos logs com fallback para registros legados sem municipio_id."""
+    logs_q = db.query(models.Log)
+    if user_obj.perfil == "master":
+        return logs_q
+
+    users_municipio = db.query(models.User.email).filter(
+        models.User.municipio_id == user_obj.municipio_id
+    )
+    return logs_q.filter(
+        (models.Log.municipio_id == user_obj.municipio_id)
+        | (
+            models.Log.municipio_id.is_(None)
+            & models.Log.usuario.in_(users_municipio)
+        )
+    )
+
+def _require_master_user(db: Session, user: str):
+    if not user:
+        return None
+    user_obj = db.query(models.User).filter(models.User.email == user).first()
+    if not user_obj or user_obj.perfil != "master":
+        return None
+    return user_obj
 
 @router.get("/")
 def listar_logs(request: Request, db: Session = Depends(get_db),
                 user: str = Depends(get_current_user)):
     if not user:
         return RedirectResponse("/login")
-    
-    logs = db.query(models.Log).order_by(models.Log.data_hora.desc()).all()
+
+    user_obj = db.query(models.User).filter(models.User.email == user).first()
+    if not user_obj:
+        return RedirectResponse("/login")
+
+    logs_q = _logs_scope_query(db, user_obj)
+    logs = logs_q.order_by(models.Log.data_hora.desc()).all()
     
     # Definir timezone GMT-3
     gmt3 = pytz.timezone("America/Sao_Paulo")
@@ -35,15 +68,101 @@ def listar_logs(request: Request, db: Session = Depends(get_db),
         # Converte para GMT-3
         log.data_hora = log.data_hora.astimezone(gmt3)
     
+    governanca = None
+    if user_obj.perfil == "master":
+        counts_rows = (
+            db.query(models.Log.tipo, func.count(models.Log.id))
+            .group_by(models.Log.tipo)
+            .all()
+        )
+        counts_map = {tipo or "operacional": total for tipo, total in counts_rows}
+        ultima_retencao = (
+            db.query(models.Log)
+            .filter(models.Log.tipo == "seguranca", models.Log.acao.ilike("Executou retenção de logs%"))
+            .order_by(models.Log.data_hora.desc())
+            .first()
+        )
+        dry_run = estimate_old_logs(
+            retention_days_operacional=int(os.getenv("LOG_RETENTION_DAYS_OPERACIONAL", "365")),
+            retention_days_seguranca=int(os.getenv("LOG_RETENTION_DAYS_SEGURANCA", "730")),
+        )
+        governanca = {
+            "ultima_retencao": ultima_retencao,
+            "total_operacional": counts_map.get("operacional", 0),
+            "total_seguranca": counts_map.get("seguranca", 0),
+            "total_logs": sum(counts_map.values()),
+            "dry_run": dry_run,
+        }
+
     return templates.TemplateResponse("logs_list.html", {
         "request": request,
         "logs": logs,
-        "user": user
+        "user": user,
+        "user_perfil": user_obj.perfil,
+        "governanca": governanca,
     })
+
+
+@router.post("/admin/retention/dry-run")
+def retention_dry_run(
+    retention_days_operacional: int = Form(365),
+    retention_days_seguranca: int = Form(730),
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    user_obj = _require_master_user(db, user)
+    if not user_obj:
+        return JSONResponse({"success": False, "message": "Apenas MASTER pode simular retenção."}, status_code=403)
+
+    result = estimate_old_logs(
+        retention_days_operacional=retention_days_operacional,
+        retention_days_seguranca=retention_days_seguranca,
+    )
+    return JSONResponse({"success": True, "result": result})
+
+
+@router.post("/admin/retention/run")
+def run_retention(
+    request: Request,
+    retention_days_operacional: int = Form(365),
+    retention_days_seguranca: int = Form(730),
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    user_obj = _require_master_user(db, user)
+    if not user_obj:
+        return JSONResponse({"success": False, "message": "Apenas MASTER pode executar retenção."}, status_code=403)
+
+    result = cleanup_old_logs(
+        retention_days_operacional=retention_days_operacional,
+        retention_days_seguranca=retention_days_seguranca,
+    )
+    registrar_log(
+        db=db,
+        usuario=user_obj.email,
+        acao=(
+            "Executou retenção de logs "
+            f"(operacional={retention_days_operacional}d, "
+            f"seguranca={retention_days_seguranca}d)"
+        ),
+        ip=request.client.host,
+        user_agent=request.headers.get("user-agent"),
+        tipo="seguranca",
+    )
+
+    return JSONResponse({"success": True, "result": result})
 
 @router.get("/export/pdf")
 def export_logs_pdf(db: Session = Depends(get_db), user: str = Depends(get_current_user)):
-    logs = db.query(models.Log).order_by(models.Log.data_hora.desc()).all()
+    if not user:
+        return RedirectResponse("/login")
+
+    user_obj = db.query(models.User).filter(models.User.email == user).first()
+    if not user_obj:
+        return RedirectResponse("/login")
+
+    logs_q = _logs_scope_query(db, user_obj)
+    logs = logs_q.order_by(models.Log.data_hora.desc()).all()
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4)
@@ -92,7 +211,12 @@ def export_logs_xlsx(db: Session = Depends(get_db), user: str = Depends(get_curr
     if not user:
         return RedirectResponse("/login")
 
-    logs = db.query(models.Log).order_by(models.Log.data_hora.desc()).all()
+    user_obj = db.query(models.User).filter(models.User.email == user).first()
+    if not user_obj:
+        return RedirectResponse("/login")
+
+    logs_q = _logs_scope_query(db, user_obj)
+    logs = logs_q.order_by(models.Log.data_hora.desc()).all()
 
     # Criar planilha
     wb = Workbook()

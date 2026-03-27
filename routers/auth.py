@@ -26,6 +26,7 @@ def login_post(
     db: Session = Depends(get_db)
 ):
     ip = request.client.host
+    user_agent = request.headers.get("user-agent")
 
     # Busca usuário
     user = db.query(models.User).filter(
@@ -34,7 +35,7 @@ def login_post(
 
     # ❌ Usuário não existe
     if not user:
-        registrar_log(db, usuario=username, acao="Tentativa de login falhou", ip=ip)
+        registrar_log(db, usuario=username, acao="Tentativa de login falhou", ip=ip, user_agent=user_agent, tipo="seguranca")
         return templates.TemplateResponse(
             "login.html",
             {"request": request, "error": "Usuário ou senha inválidos"}
@@ -42,14 +43,14 @@ def login_post(
 
     # ❌ Senha incorreta
     if not verify_password(password, user.password):
-        registrar_log(db, usuario=username, acao="Tentativa de login falhou", ip=ip)
+        registrar_log(db, usuario=username, acao="Tentativa de login falhou", ip=ip, user_agent=user_agent, tipo="seguranca")
         return templates.TemplateResponse(
             "login.html",
             {"request": request, "error": "Usuário ou senha inválidos"}
         )
 
     # 🔥 MIGRAÇÃO AUTOMÁTICA PARA BCRYPT (se for SHA-256 antigo)
-    if not user.password.startswith("$2b$"):
+    if not user.password.startswith("$2"):
         user.password = hash_password(password)
         db.commit()
 
@@ -67,7 +68,7 @@ def login_post(
         status_str = str(status)
 
     if not is_ativo:
-        registrar_log(db, usuario=username, acao=f"Login negado - status: {status_str}", ip=ip)
+        registrar_log(db, usuario=username, acao=f"Login negado - status: {status_str}", ip=ip, user_agent=user_agent, tipo="seguranca")
         return templates.TemplateResponse(
             "login.html",
             {
@@ -85,7 +86,7 @@ def login_post(
         else str(user.perfil)
     )
 
-    registrar_log(db, usuario=username, acao="Login bem-sucedido", ip=ip)
+    registrar_log(db, usuario=username, acao="Login bem-sucedido", ip=ip, user_agent=user_agent, tipo="seguranca")
 
     return RedirectResponse(url="/dashboard", status_code=HTTP_302_FOUND)
 
@@ -94,11 +95,12 @@ def login_post(
 def logout(request: Request, db: Session = Depends(get_db)):
     """Efetua logout do usuário"""
     ip = request.client.host
+    user_agent = request.headers.get("user-agent")
     
     # Registra logout antes de limpar sessão
     usuario = request.session.get("user")
     if usuario:
-        registrar_log(db, usuario=usuario, acao="Logout efetuado", ip=ip)
+        registrar_log(db, usuario=usuario, acao="Logout efetuado", ip=ip, user_agent=user_agent, tipo="seguranca")
     
     # ✅ Limpa a sessão do SessionMiddleware
     request.session.clear()
