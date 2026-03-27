@@ -16,6 +16,13 @@ from routers import products
 
 router = APIRouter(prefix="/movements", tags=["Movimentações"])
 
+def _user_obj(db: Session, user_email: str):
+    if not user_email:
+        return None
+    return db.query(User).filter(User.email == user_email).first()
+
+def _is_master(user_obj: User) -> bool:
+    return bool(user_obj and getattr(user_obj, "perfil", None) == "master")
 
 # -------------------------------
 # LISTAR MOVIMENTAÇÕES
@@ -26,7 +33,11 @@ def listar_movimentacoes(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    movements = (
+    user_obj = _user_obj(db, user)
+    if not user_obj:
+        return RedirectResponse("/login")
+
+    movements_q = (
         db.query(Movement)
         .options(
             joinedload(Movement.user),
@@ -35,6 +46,19 @@ def listar_movimentacoes(
             joinedload(Movement.unit_origem),
             joinedload(Movement.unit_destino),
         )
+    )
+    if not _is_master(user_obj):
+        movements_q = (
+            movements_q
+            .outerjoin(Product, Movement.product_id == Product.id)
+            .outerjoin(Item, Movement.item_id == Item.id)
+            .filter(
+                (Product.municipio_id == user_obj.municipio_id)
+                | (Item.municipio_id == user_obj.municipio_id)
+            )
+        )
+    movements = (
+        movements_q
         .order_by(Movement.data.desc())
         .all()
     )
@@ -58,9 +82,18 @@ def nova_movimentacao_form(
     if not user:
         return RedirectResponse("/login")
 
+    user_obj = _user_obj(db, user)
+    if not user_obj:
+        return RedirectResponse("/login")
+
     # Consulta produtos, unidades (Unidade = tabela unidades) e categorias
-    products = db.query(Product).all()
-    units = db.query(Unidade).order_by(Unidade.nome).all()
+    products_q = db.query(Product)
+    units_q = db.query(Unidade)
+    if not _is_master(user_obj):
+        products_q = products_q.filter(Product.municipio_id == user_obj.municipio_id)
+        units_q = units_q.join(Unidade.orgao).filter(Unidade.orgao.has(municipio_id=user_obj.municipio_id))
+    products = products_q.all()
+    units = units_q.order_by(Unidade.nome).all()
     categories = db.query(Category).all()
 
     products_js = []
@@ -158,10 +191,15 @@ def movimentacoes_submit(
         item = db.query(Item).filter(Item.id == item_id).first()
         if not item:
             return {"error": "Item não encontrado"}
+        if not _is_master(user) and item.municipio_id != user.municipio_id:
+            return {"error": "Sem permissão para movimentar este item"}
         product = item.product
     else:
         # Produto sem série
-        product = db.query(Product).filter(Product.type_id == type_id).first()
+        product_q = db.query(Product).filter(Product.type_id == type_id)
+        if not _is_master(user):
+            product_q = product_q.filter(Product.municipio_id == user.municipio_id)
+        product = product_q.first()
         if not product:
             return {"error": "Produto não encontrado"}
 
@@ -211,7 +249,9 @@ def movimentacoes_submit(
         db=db,
         usuario=user.email,
         acao=f"Registrou movimentação {tipo} do produto {product.name}",
-        ip=request.client.host
+        ip=request.client.host,
+        user_agent=request.headers.get("user-agent"),
+        tipo="operacional",
     )
 
     return RedirectResponse(url="/movements/", status_code=HTTP_302_FOUND)
@@ -236,8 +276,20 @@ def editar_movimentacao_form(
     if not movimento:
         return {"error": "Movimentação não encontrada"}
 
-    products = db.query(Product).all()
-    units = db.query(Unidade).order_by(Unidade.nome).all()
+    user_obj = _user_obj(db, user)
+    if not user_obj:
+        return RedirectResponse("/login")
+    mov_municipio_id = movimento.product.municipio_id if movimento.product else (movimento.item.municipio_id if movimento.item else None)
+    if not _is_master(user_obj) and mov_municipio_id != user_obj.municipio_id:
+        return RedirectResponse("/movements/")
+
+    products_q = db.query(Product)
+    units_q = db.query(Unidade)
+    if not _is_master(user_obj):
+        products_q = products_q.filter(Product.municipio_id == user_obj.municipio_id)
+        units_q = units_q.join(Unidade.orgao).filter(Unidade.orgao.has(municipio_id=user_obj.municipio_id))
+    products = products_q.all()
+    units = units_q.order_by(Unidade.nome).all()
     categories = db.query(Category).all()
 
     products_js = []
@@ -340,6 +392,9 @@ def movimentacoes_update(
     user = db.query(User).filter(User.email == username).first()
     if not user:
         return {"error": "Usuário não encontrado"}
+    mov_municipio_id = movimento.product.municipio_id if movimento.product else (movimento.item.municipio_id if movimento.item else None)
+    if not _is_master(user) and mov_municipio_id != user.municipio_id:
+        return {"error": "Sem permissão para editar esta movimentação"}
 
     product = None
     item = None
@@ -348,11 +403,16 @@ def movimentacoes_update(
         item = db.query(Item).filter(Item.id == item_id).first()
         if not item:
             return {"error": "Item físico não encontrado"}
+        if not _is_master(user) and item.municipio_id != user.municipio_id:
+            return {"error": "Sem permissão para editar item de outro município"}
         product = item.product
         unit_origem_id = item.unit_id
         quantidade = 1
     else:
-        product = db.query(Product).filter(Product.type_id == type_id).first()
+        product_q = db.query(Product).filter(Product.type_id == type_id)
+        if not _is_master(user):
+            product_q = product_q.filter(Product.municipio_id == user.municipio_id)
+        product = product_q.first()
         if not product:
             return {"error": "Produto não encontrado"}
         if product.controla_por_serie:
@@ -382,7 +442,9 @@ def movimentacoes_update(
         db=db,
         usuario=user.email,
         acao=f"Editou movimentação {tipo} do produto {product.name}",
-        ip=request.client.host
+        ip=request.client.host,
+        user_agent=request.headers.get("user-agent"),
+        tipo="operacional",
     )
 
     return RedirectResponse(url="/movements/", status_code=HTTP_302_FOUND)
@@ -392,11 +454,25 @@ def movimentacoes_update(
 # DELETE MOVIMENTAÇÃO
 # -------------------------------
 @router.post("/delete/{movement_id}")
-def delete_movement(movement_id: int, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
+def delete_movement(
+    movement_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    if not user:
+        return JSONResponse({"success": False, "message": "Usuário não autenticado."})
+
+    user_obj = _user_obj(db, user)
+    if not user_obj:
+        return JSONResponse({"success": False, "message": "Usuário não autenticado."})
 
     movement = db.query(Movement).filter(Movement.id == movement_id).first()
     if not movement:
         return JSONResponse({"success": False, "message": "Movimentação não encontrada."})
+    mov_municipio_id = movement.product.municipio_id if movement.product else (movement.item.municipio_id if movement.item else None)
+    if not _is_master(user_obj) and mov_municipio_id != user_obj.municipio_id:
+        return JSONResponse({"success": False, "message": "Sem permissão para excluir esta movimentação."})
 
     # Exemplo: bloquear exclusão se tiver regras específicas
     if movement.tipo == "Saída com Pendência":  # Exemplo
@@ -405,6 +481,15 @@ def delete_movement(movement_id: int, db: Session = Depends(get_db), user: str =
     db.delete(movement)
     db.commit()
 
+    registrar_log(
+        db=db,
+        usuario=user_obj.email,
+        acao=f"Excluiu movimentação ID {movement_id}",
+        ip=request.client.host,
+        user_agent=request.headers.get("user-agent"),
+        tipo="operacional",
+    )
+
     return JSONResponse({"success": True})
 
 
@@ -412,7 +497,10 @@ def delete_movement(movement_id: int, db: Session = Depends(get_db), user: str =
 # API AUXILIARES
 # -------------------------------
 @router.get("/movements/stock/type/{type_id}")
-def get_product_stock(type_id: int, db: Session = Depends(get_db)):
+def get_product_stock(type_id: int, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
+    user_obj = _user_obj(db, user)
+    if not user_obj:
+        return []
     result = []
 
     # 1️⃣ Estoque por unidades (Stock)
@@ -421,8 +509,10 @@ def get_product_stock(type_id: int, db: Session = Depends(get_db)):
         .join(Product)
         .join(Unit)
         .filter(Product.type_id == type_id, Stock.quantidade > 0)
-        .all()
     )
+    if not _is_master(user_obj):
+        stocks = stocks.filter(Product.municipio_id == user_obj.municipio_id)
+    stocks = stocks.all()
 
     for s in stocks:
         result.append({
@@ -437,9 +527,10 @@ def get_product_stock(type_id: int, db: Session = Depends(get_db)):
         .join(Product)
         .join(Unit, Item.unit_id == Unit.id)
         .filter(Product.type_id == type_id)
-        .group_by(Item.unit_id, Unit.name)
-        .all()
     )
+    if not _is_master(user_obj):
+        items = items.filter(Product.municipio_id == user_obj.municipio_id)
+    items = items.group_by(Item.unit_id, Unit.name).all()
 
     for i in items:
         # Se já existe no result (Stock), só somar quantidade? Ou ignorar duplicados
@@ -459,7 +550,10 @@ def get_product_stock(type_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/items/{type_id}")
-def get_product_items(type_id: int, db: Session = Depends(get_db)):
+def get_product_items(type_id: int, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
+    user_obj = _user_obj(db, user)
+    if not user_obj:
+        return []
     items_result = []
 
     # 1️⃣ Itens físicos já cadastrados (controla por série ou não)
@@ -468,8 +562,10 @@ def get_product_items(type_id: int, db: Session = Depends(get_db)):
         .join(Product)
         .join(Unidade, Item.unit_id == Unidade.id)  # Só itens cuja unidade existe
         .filter(Product.type_id == type_id)
-        .all()
     )
+    if not _is_master(user_obj):
+        items = items.filter(Product.municipio_id == user_obj.municipio_id)
+    items = items.all()
 
     for i in items:
         items_result.append({
@@ -484,8 +580,10 @@ def get_product_items(type_id: int, db: Session = Depends(get_db)):
     products_sem_serie = (
         db.query(Product)
         .filter(Product.type_id == type_id, Product.controla_por_serie == False)
-        .all()
     )
+    if not _is_master(user_obj):
+        products_sem_serie = products_sem_serie.filter(Product.municipio_id == user_obj.municipio_id)
+    products_sem_serie = products_sem_serie.all()
 
     for p in products_sem_serie:
         # Verifica se já existe um Item para este produto
@@ -508,20 +606,26 @@ def search_items(
     product_id: int,
     tipo: str,
     q: str = "",
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
 ):
+    user_obj = _user_obj(db, user)
+    if not user_obj:
+        return []
     is_tombo = tipo.upper() == "TOMBO"
 
     items = (
         db.query(Item)
+        .join(Product, Item.product_id == Product.id)
         .filter(
             Item.product_id == product_id,
             Item.tombo == is_tombo,
             Item.num_tombo_ou_serie.ilike(f"%{q}%")
         )
-        .limit(20)
-        .all()
     )
+    if not _is_master(user_obj):
+        items = items.filter(Product.municipio_id == user_obj.municipio_id)
+    items = items.limit(20).all()
 
     return [
         {

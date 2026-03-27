@@ -249,10 +249,17 @@ class Log(Base):
     __tablename__ = "logs"
 
     id = Column(Integer, primary_key=True, index=True)
+    municipio_id = Column(Integer, ForeignKey("municipios.id"), nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    tipo = Column(String(20), nullable=False, default="operacional", index=True)
     usuario = Column(String(50))
     acao = Column(String(255))
     ip = Column(String(50))
+    user_agent = Column(String(500))
     data_hora = Column(DateTime(timezone=True), server_default=func.now())
+
+    municipio = relationship("Municipio")
+    user_ref = relationship("User")
 
 
 # =====================================================

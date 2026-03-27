@@ -19,8 +19,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     if not hashed_password:
         return False
 
-    # Se já for bcrypt
-    if hashed_password.startswith("$2b$"):
+    # Se já for bcrypt ($2a$, $2b$, $2y$)
+    if hashed_password.startswith("$2"):
         return pwd_context.verify(plain_password, hashed_password)
 
     # Se for SHA-256 antigo

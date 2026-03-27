@@ -14,7 +14,8 @@ app = FastAPI()
 # ========================================
 # 2. ADICIONAR MIDDLEWARES (ANTES DE TUDO)
 # ========================================
-SECRET_KEY = os.getenv("SECRET_KEY", "sua-chave-secreta-aqui-mude-em-producao")
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-secret-key-change-in-production")
+SESSION_SECURE = os.getenv("SESSION_SECURE", "false").lower() == "true"
 
 # ✅ SessionMiddleware PRIMEIRO
 app.add_middleware(
@@ -23,7 +24,7 @@ app.add_middleware(
     session_cookie="session",
     max_age=3600 * 24,
     same_site="lax",
-    https_only=False
+    https_only=SESSION_SECURE
 )
 
 # ✅ MultiTenantMiddleware DEPOIS

@@ -6,9 +6,9 @@ from database import get_db
 from dependencies import get_current_user, registrar_log
 from models import User, Municipio, Orgao, Unidade
 from shared_templates import templates
+from security import hash_password
 from typing import Optional
 import re
-import hashlib
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -42,11 +42,6 @@ def validar_cpf(cpf: str) -> bool:
         return False
     
     return True
-
-
-def hash_senha(senha: str) -> str:
-    """Cria hash SHA256 da senha (em produção use bcrypt)"""
-    return hashlib.sha256(senha.encode()).hexdigest()
 
 
 def limpar_cpf(cpf: str) -> str:
@@ -226,7 +221,7 @@ def add_user(
         nome=nome,
         cpf=cpf_limpo,
         email=email,
-        password=hash_senha(senha),
+        password=hash_password(senha),
         municipio_id=municipio_id,
         orgao_id=orgao_id,
         unidade_id=unidade_id,
@@ -242,7 +237,9 @@ def add_user(
         db,
         usuario=current_user,
         acao=f"Cadastrou usuário {nome} (CPF: {cpf_limpo}, Perfil: {perfil})",
-        ip=request.client.host
+        ip=request.client.host,
+        user_agent=request.headers.get("user-agent"),
+        tipo="seguranca",
     )
 
     return RedirectResponse("/users", status_code=HTTP_302_FOUND)
@@ -390,7 +387,7 @@ def edit_user(
     
     # ✅ Atualiza senha apenas se fornecida
     if senha:
-        user.password = hash_senha(senha)
+        user.password = hash_password(senha)
     
     db.commit()
     
@@ -399,7 +396,9 @@ def edit_user(
         db,
         usuario=current_user,
         acao=f"Editou usuário {nome} (ID: {user_id})",
-        ip=request.client.host
+        ip=request.client.host,
+        user_agent=request.headers.get("user-agent"),
+        tipo="seguranca",
     )
     
     return RedirectResponse("/users", status_code=HTTP_302_FOUND)
@@ -453,7 +452,9 @@ def delete_user(
         db,
         usuario=current_user,
         acao=f"Excluiu usuário {user_to_delete.nome} (ID: {user_id})",
-        ip=request.client.host
+        ip=request.client.host,
+        user_agent=request.headers.get("user-agent"),
+        tipo="seguranca",
     )
     
     return JSONResponse({"success": True, "message": "Usuário excluído com sucesso"})
