@@ -144,3 +144,12 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* Evita zoom automático do iOS em campos */
+@media (max-width: 768px) {
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        font-size: 16px;
+    }
+}
