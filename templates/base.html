@@ -41,6 +41,7 @@
         /* Sidebar recolhida */
         body.sidebar-collapsed .sidebar {
             width: 72px;
+            min-width: 50px;
         }
 
         /* Cabeçalho do menu (título + toggle) */
@@ -68,6 +69,7 @@
             justify-content: center;
             box-shadow: none;
             transform: none;
+            margin-top: 1px;
         }
 
         .sidebar-toggle:hover {
@@ -107,18 +109,34 @@
             justify-content: center;
             padding-left: 0;
             padding-right: 0;
+            margin: 4px auto;
+            width: 52px;
+            border-radius: 10px;
         }
 
         body.sidebar-collapsed .sidebar a img {
             margin-right: 0;
+            width: 26px;
+            height: 26px;
         }
 
         body.sidebar-collapsed .sidebar-title {
             display: none;
         }
 
-        body.sidebar-collapsed .menu-label {
+        /* No modo recolhido, esconda somente os labels do menu principal (não os do painel do submenu) */
+        body.sidebar-collapsed .sidebar > a .menu-label {
             display: none;
+        }
+
+        body.sidebar-collapsed .sidebar-header {
+            justify-content: center;
+        }
+
+        body.sidebar-collapsed .sidebar-toggle {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
         }
 
         /* Título do menu */
@@ -148,7 +166,7 @@
         .submenu {
             display: flex;
             flex-direction: column;
-            margin: 5px 10px;
+            margin: -15px 10px; /* mesmo padrão dos links da sidebar */
         }
 
         /* Botão que abre o submenu */
@@ -165,6 +183,8 @@
             cursor: pointer;
             text-align: left;
             transition: background 0.3s;
+            width: 100%; /* ocupa a mesma largura do bloco */
+            box-sizing: border-box;
         }
 
         .submenu-btn:hover {
@@ -210,17 +230,25 @@
         /* Quando recolhido: submenu vira "painel" ao lado */
         body.sidebar-collapsed .submenu {
             position: relative;
+            width: 52px;           /* mesma largura do botão colapsado */
         }
         body.sidebar-collapsed .submenu-btn {
             justify-content: center;
-            padding-left: 0;
-            padding-right: 0;
+            padding: 0;
+            width: 52px;
+            height: 52px;
+            border-radius: 10px;
         }
         body.sidebar-collapsed .submenu-btn .menu-label {
             display: none;
         }
         body.sidebar-collapsed .submenu .caret {
             display: none;
+        }
+        body.sidebar-collapsed .submenu-btn img {
+            margin-right: 0;
+            width: 26px;
+            height: 26px;
         }
         body.sidebar-collapsed .submenu-content {
             position: absolute;
@@ -587,6 +615,30 @@
             transform: scale(1.05);
         }
 
+        /* Forms inline (ações em grids) não devem herdar estilo de "card" */
+        form.delete-form {
+            display: inline;
+            background: transparent;
+            padding: 0;
+            margin: 0;
+            border-radius: 0;
+            box-shadow: none;
+            max-width: none;
+        }
+        form.delete-form button {
+            margin-top: 0;
+            padding: 0;
+            background: none;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            transform: none;
+        }
+        form.delete-form button:hover {
+            background: none;
+            transform: none;
+        }
+
         /* =========================
            GRID DO FORMULÁRIO
         ========================== */
@@ -751,9 +803,20 @@
         {% if perfil_atual in ['master', 'gestor_segem'] %}
         <a href="/segem"><img width="32" height="32" src="https://img.icons8.com/fluency/48/services.png" alt="Segem" /><span class="menu-label">SEGEM</span></a>
         {% endif %}
+        <a href="/eprotocolo" ><img width="32" height="32" src="https://img.icons8.com/arcade/64/documents.png" alt="E-documents" /><span class="menu-label">E-Protocolo</span></a>
 
-        
-        <!-- Submenu Administração -->
+
+    <a href="/logs" style="display:inline-flex; align-items:center; gap:8px;">
+  <img
+    src="https://img.icons8.com/external-flaticons-lineal-color-flat-icons/32/external-logs-computer-programming-icons-flaticons-lineal-color-flat-icons.png"
+    alt="Logs"
+    width="32"
+    height="32"
+  >
+  <span class="menu-label">Logs</span>
+    </a>
+
+<!-- Submenu Administração -->
 <div class="submenu">
     <button class="submenu-btn">
         <img 
@@ -772,20 +835,6 @@
 
     </div>
 </div>
-        <a href="/eprotocolo" ><img width="32" height="32" src="https://img.icons8.com/arcade/64/documents.png" alt="E-documents" /><span class="menu-label">E-Protocolo</span></a>
-
-
-    <a href="/logs" style="display:inline-flex; align-items:center; gap:8px;">
-  <img
-    src="https://img.icons8.com/external-flaticons-lineal-color-flat-icons/32/external-logs-computer-programming-icons-flaticons-lineal-color-flat-icons.png"
-    alt="Logs"
-    width="32"
-    height="32"
-  >
-  <span class="menu-label">Logs</span>
-    </a>
-
-
     </div>
     <div class="sidebar-backdrop" id="sidebar-backdrop" aria-hidden="true"></div>
 
