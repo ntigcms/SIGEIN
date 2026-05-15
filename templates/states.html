@@ -1,44 +1,117 @@
 {% extends "base.html" %}
 
-{% block title %}Estado{% endblock %}
+{% block title %}Estados (Equipamentos){% endblock %}
 
 {% block content %}
 <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 20px;">
-    <h2>Estado</h2>
-    <a href="/states/add">
-        <button class="animated-btn">Cadastrar Novo</button>
-    </a>
+    <h2>Estados (Equipamentos)</h2>
+    <a href="/states/add"><button class="animated-btn">Cadastrar Novo</button></a>
 </div>
 
-<table style="width:100%; border-collapse: collapse; text-align:left;">
-    <thead>
-        <tr style="background-color: #004080; color:white;">
-            <th style="width: 10%;">ID</th>
-            <th style="width: 70%;">Estado</th>
-            <th style="width: 20%;">Ações</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for estado in states %}
-        <tr style="border-bottom:1px solid #ccc;">
-            <td>{{ estado.id }}</td>
-            <td>{{ estado.nome }}</td>
-            <td>
-                <a href="/states/edit/{{ estado.id }}" title="Editar">
-                    <i class="fas fa-pen" style="color:#ffaa00; font-size: 18px; margin-right: 10px; cursor:pointer;"></i>
-                </a>
-                <a href="/states/delete/{{ estado.id }}" title="Excluir"
-                   onclick="return confirm('Tem certeza que deseja excluir este estado?');">
-                    <i class="fas fa-trash" style="color:#cc0000; font-size: 18px; cursor:pointer;"></i>
-                </a>
-            </td>
-        </tr>
-        {% else %}
-        <tr>
-            <td colspan="3" style="text-align:center; padding:20px; color:#666;">Nenhum estado cadastrado.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<!-- FILTROS -->
+<div class="filtros-container">
+    <div class="filtro-item">
+        <label>Nome</label>
+        <input type="text" id="filter-nome" placeholder="Filtrar por nome..." class="filter-search" style="padding: 8px 12px;">
+    </div>
+    <div style="display:flex; align-items:center;">
+        <button id="clear-filters" class="clear-btn">🧹 Limpar Filtros</button>
+    </div>
+</div>
 
+<div class="table-section">
+    <h4>Lista de Estados</h4>
+    <table id="statesTable" style="width:100%; border-collapse: collapse; text-align:left;">
+        <thead>
+            <tr style="background-color: #0d6efd; color:white;">
+                <th>ID</th>
+                <th>Estado</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for estado in states %}
+            <tr>
+                <td>{{ estado.id }}</td>
+                <td>{{ estado.nome }}</td>
+                <td>
+                    <a href="/states/edit/{{ estado.id }}" title="Editar">
+                        <i class="fas fa-pen" style="color:#ffaa00; font-size: 18px; margin-right: 10px; cursor:pointer;"></i></a>
+                    <form class="delete-form" data-id="{{ estado.id }}" method="post" style="display:inline;">
+                        <button type="submit" style="background:none; border:none; padding:0; cursor:pointer;">
+                            <i class="fas fa-trash" style="color:#cc0000; font-size:18px;"></i>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="3" style="text-align:center; padding:20px; color:#666;">Nenhum estado cadastrado.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<style>
+.filtro-item { display: flex; flex-direction: column; min-width: 180px; flex: 1; }
+.filtro-item label { font-size: 13px; font-weight: 600; color: #004080; margin-bottom: 5px; }
+#statesTable tbody tr:nth-child(even) { background-color: #f2f2f2; }
+#statesTable tbody tr:hover { background-color: #d9e6f2; }
+#statesTable, #statesTable th, #statesTable td { border: 1px solid #ccc; padding: 10px; }
+.swal2-container { z-index: 99999 !important; }
+</style>
+
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="{{ request.url_for('static', path='css/equipamentos-grid.css') }}">
+
+<script>
+$(document).ready(function() {
+    var table = $('#statesTable').DataTable({
+        order: [[1, "asc"]],
+        columnDefs: [{ orderable: false, targets: 2 }],
+        language: {
+            emptyTable: "Nenhum estado encontrado",
+            info: "Mostrando _START_ a _END_ de _TOTAL_",
+            infoEmpty: "Mostrando 0 a 0 de 0",
+            lengthMenu: "Mostrar registros _MENU_",
+            zeroRecords: "Nenhum estado encontrado",
+            paginate: { first: "Primeiro", last: "Último", next: "Próximo", previous: "Anterior" }
+        },
+        pageLength: 10,
+        dom: 'rt<"bottom"l<"info-wrapper"ip>><"clear">'
+    });
+
+    $('#filter-nome').on('keyup', function() { table.search(this.value).draw(); });
+
+    $('#clear-filters').on('click', function() {
+        $('#filter-nome').val('');
+        table.search('').draw();
+    });
+});
+
+$(document).on("submit", ".delete-form", function(e) {
+    e.preventDefault();
+    const form = $(this);
+    const id = form.data("id");
+    Swal.fire({
+        title: 'Tem certeza?',
+        text: "Essa ação não poderá ser desfeita.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#cc0000',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sim, excluir',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = '/states/delete/' + id;
+        }
+    });
+});
+</script>
 {% endblock %}

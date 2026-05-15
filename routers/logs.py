@@ -1,9 +1,8 @@
-﻿from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import get_current_user
-from templating import templates
 import models
 from datetime import timezone, timedelta
 import pytz
@@ -14,9 +13,9 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
 import io
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
+from templating import templates
 
 router = APIRouter(prefix="/logs", tags=["Logs"])
-
 
 @router.get("/")
 def listar_logs(request: Request, db: Session = Depends(get_db),

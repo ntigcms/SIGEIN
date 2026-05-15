@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Request, Form, Depends
+from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import RedirectResponse
 from starlette.status import HTTP_302_FOUND
 from sqlalchemy.orm import Session
@@ -9,6 +9,9 @@ from templating import templates
 
 # Cria o roteador para Tipos de Equipamentos
 router = APIRouter(prefix="/equipment-types", tags=["Equipment Types"])
+
+
+# ============================================================
 # LISTAR TIPOS DE EQUIPAMENTOS
 # ------------------------------------------------------------
 # Exibe uma tabela com todos os tipos de equipamentos cadastrados.
@@ -19,7 +22,7 @@ def list_equipment_types(request: Request, db: Session = Depends(get_db), user: 
     if not user:
         return RedirectResponse("/login")
 
-    tipos = db.query(EquipmentType).all()
+    tipos = db.query(EquipmentType).order_by(EquipmentType.nome).all()
     return templates.TemplateResponse(
         "equipment_types.html",
         {"request": request, "equipment_types": tipos, "user": user}

@@ -1,7 +1,7 @@
-Ôªø# EXEMPLOS DE USO DO SISTEMA DE PERMISS√ïES
+# EXEMPLOS DE USO DO SISTEMA DE PERMISS’ES
 
 """
-Este arquivo mostra como usar os decorators e dependencies de permiss√£o
+Este arquivo mostra como usar os decorators e dependencies de permiss„o
 nas rotas do sistema.
 """
 
@@ -31,16 +31,16 @@ async def add_product_form(
     request: Request,
     db: Session = Depends(get_db),
     current_user: str = Depends(get_current_user),
-    user_obj: User = None  # Ser√° injetado pelo decorator
+    user_obj: User = None  # Ser· injetado pelo decorator
 ):
     """
-    Apenas usu√°rios com permiss√£o CRIAR_PRODUTO podem acessar
+    Apenas usu·rios com permiss„o CRIAR_PRODUTO podem acessar
     
     Perfis permitidos: master, admin_municipal, gestor_estoque, gestor_geral
     Perfis negados: gestor_protocolo, operador
     """
-    # user_obj j√° vem validado do decorator
-    return {"message": f"Ol√° {user_obj.nome}, voc√™ pode criar produtos!"}
+    # user_obj j· vem validado do decorator
+    return {"message": f"Ol· {user_obj.nome}, vocÍ pode criar produtos!"}
 
 
 # ========================================
@@ -53,12 +53,12 @@ async def relatorio_geral(
     request: Request,
     db: Session = Depends(get_db),
     current_user: str = Depends(get_current_user),
-    user_obj: User = None  # Ser√° injetado pelo decorator
+    user_obj: User = None  # Ser· injetado pelo decorator
 ):
     """
     Apenas MASTER e ADMIN_MUNICIPAL podem acessar
     """
-    return {"message": "Relat√≥rio dispon√≠vel apenas para gestores municipais"}
+    return {"message": "RelatÛrio disponÌvel apenas para gestores municipais"}
 
 
 # ========================================
@@ -74,13 +74,13 @@ def create_product(
     """
     Usa dependency injection - mais limpo e moderno
     
-    user_obj j√° vem validado com a permiss√£o
-    Se n√£o tiver permiss√£o, HTTPException 403 √© lan√ßada automaticamente
+    user_obj j· vem validado com a permiss„o
+    Se n„o tiver permiss„o, HTTPException 403 È lanÁada automaticamente
     """
-    # C√≥digo de cria√ß√£o do produto
+    # CÛdigo de criaÁ„o do produto
     product = Product(
         name="Novo Produto",
-        municipio_id=user_obj.municipio_id,  # Automaticamente do usu√°rio
+        municipio_id=user_obj.municipio_id,  # Automaticamente do usu·rio
         orgao_id=user_obj.orgao_id,
         created_by=user_obj.id
     )
@@ -100,13 +100,13 @@ def admin_settings(
     user_obj: User = Depends(UsuarioComPerfil("master", "admin_municipal"))
 ):
     """
-    Apenas perfis espec√≠ficos podem acessar
+    Apenas perfis especÌficos podem acessar
     """
-    return {"message": f"Configura√ß√µes do munic√≠pio {user_obj.municipio.nome}"}
+    return {"message": f"ConfiguraÁıes do municÌpio {user_obj.municipio.nome}"}
 
 
 # ========================================
-# EXEMPLO 5: Verifica√ß√£o Manual de Permiss√£o
+# EXEMPLO 5: VerificaÁ„o Manual de Permiss„o
 # ========================================
 
 @router.get("/{product_id}")
@@ -117,26 +117,26 @@ def get_product(
     current_user: str = Depends(get_current_user)
 ):
     """
-    Verifica permiss√£o manualmente quando precisa de l√≥gica condicional
+    Verifica permiss„o manualmente quando precisa de lÛgica condicional
     """
     user_obj = db.query(User).filter(User.email == current_user).first()
     
     product = db.query(Product).filter(Product.id == product_id).first()
     
-    # Verifica se usu√°rio pode visualizar o produto
+    # Verifica se usu·rio pode visualizar o produto
     if not usuario_tem_permissao(user_obj, Permissao.VISUALIZAR_ESTOQUE):
-        return {"error": "Sem permiss√£o para visualizar estoque"}
+        return {"error": "Sem permiss„o para visualizar estoque"}
     
-    # Verifica se produto √© do mesmo munic√≠pio (exceto MASTER)
+    # Verifica se produto È do mesmo municÌpio (exceto MASTER)
     perfil = user_obj.perfil
     if perfil != "master" and product.municipio_id != user_obj.municipio_id:
-        return {"error": "Produto de outro munic√≠pio"}
+        return {"error": "Produto de outro municÌpio"}
     
     return {"product": product}
 
 
 # ========================================
-# EXEMPLO 6: Combinando M√∫ltiplas Verifica√ß√µes
+# EXEMPLO 6: Combinando M˙ltiplas VerificaÁıes
 # ========================================
 
 @router.delete("/{product_id}")
@@ -151,24 +151,24 @@ async def delete_product(
 ):
     """
     Combina dois decorators:
-    1. Verifica se tem permiss√£o de excluir
-    2. Verifica se o produto √© do mesmo munic√≠pio
+    1. Verifica se tem permiss„o de excluir
+    2. Verifica se o produto È do mesmo municÌpio
     """
     product = db.query(Product).filter(Product.id == product_id).first()
     
-    # Verifica munic√≠pio (se n√£o for MASTER)
+    # Verifica municÌpio (se n„o for MASTER)
     perfil = user_obj.perfil
     if perfil != "master" and product.municipio_id != user_obj.municipio_id:
-        return {"error": "N√£o pode excluir produto de outro munic√≠pio"}
+        return {"error": "N„o pode excluir produto de outro municÌpio"}
     
     db.delete(product)
     db.commit()
     
-    return {"message": "Produto exclu√≠do com sucesso"}
+    return {"message": "Produto excluÌdo com sucesso"}
 
 
 # ========================================
-# EXEMPLO 7: Verifica√ß√£o Condicional por Perfil
+# EXEMPLO 7: VerificaÁ„o Condicional por Perfil
 # ========================================
 
 @router.get("/")
@@ -178,22 +178,22 @@ def list_products(
     user_obj: User = Depends(UsuarioComPermissao(Permissao.VISUALIZAR_ESTOQUE))
 ):
     """
-    Lista produtos com filtro autom√°tico por munic√≠pio
+    Lista produtos com filtro autom·tico por municÌpio
     """
     perfil = user_obj.perfil
     
     if perfil == "master":
-        # MASTER v√™ todos os produtos de todos os munic√≠pios
+        # MASTER vÍ todos os produtos de todos os municÌpios
         products = db.query(Product).all()
     
     elif perfil == "admin_municipal":
-        # ADMIN v√™ todos os produtos do munic√≠pio
+        # ADMIN vÍ todos os produtos do municÌpio
         products = db.query(Product).filter(
             Product.municipio_id == user_obj.municipio_id
         ).all()
     
     else:
-        # Outros perfis veem apenas do seu √≥rg√£o
+        # Outros perfis veem apenas do seu Ûrg„o
         products = db.query(Product).filter(
             Product.municipio_id == user_obj.municipio_id,
             Product.orgao_id == user_obj.orgao_id
@@ -203,7 +203,7 @@ def list_products(
 
 
 # ========================================
-# EXEMPLO 8: Permiss√µes Din√¢micas em Templates
+# EXEMPLO 8: Permissıes Din‚micas em Templates
 # ========================================
 
 @router.get("/dashboard")
@@ -213,11 +213,11 @@ def dashboard(
     current_user: str = Depends(get_current_user)
 ):
     """
-    Passa permiss√µes para o template para mostrar/ocultar bot√µes
+    Passa permissıes para o template para mostrar/ocultar botıes
     """
     user_obj = db.query(User).filter(User.email == current_user).first()
     
-    # Cria dicion√°rio de permiss√µes para o template
+    # Cria dicion·rio de permissıes para o template
     permissoes = {
         "pode_criar": usuario_tem_permissao(user_obj, Permissao.CRIAR_PRODUTO),
         "pode_editar": usuario_tem_permissao(user_obj, Permissao.EDITAR_PRODUTO),
@@ -236,20 +236,20 @@ def dashboard(
 
 
 # ========================================
-# RESUMO DE BOAS PR√ÅTICAS
+# RESUMO DE BOAS PR¡TICAS
 # ========================================
 
 """
-‚úÖ Use @requer_permissao() para verifica√ß√µes de permiss√µes espec√≠ficas
-‚úÖ Use @requer_perfil() para verifica√ß√µes de perfis
-‚úÖ Use UsuarioComPermissao() para dependency injection moderna
-‚úÖ Use UsuarioComPerfil() para dependency com perfis
-‚úÖ Use usuario_tem_permissao() para verifica√ß√µes manuais/condicionais
-‚úÖ Sempre filtre dados por munic√≠pio (exceto perfil MASTER)
-‚úÖ Passe permiss√µes para templates para controle de UI
-‚úÖ Combine m√∫ltiplos decorators quando necess√°rio
+? Use @requer_permissao() para verificaÁıes de permissıes especÌficas
+? Use @requer_perfil() para verificaÁıes de perfis
+? Use UsuarioComPermissao() para dependency injection moderna
+? Use UsuarioComPerfil() para dependency com perfis
+? Use usuario_tem_permissao() para verificaÁıes manuais/condicionais
+? Sempre filtre dados por municÌpio (exceto perfil MASTER)
+? Passe permissıes para templates para controle de UI
+? Combine m˙ltiplos decorators quando necess·rio
 
-‚ùå N√£o confie apenas no frontend - SEMPRE valide no backend
-‚ùå N√£o hardcode perfis em strings - use a classe Permissao
-‚ùå N√£o esque√ßa de filtrar por munic√≠pio em consultas ao banco
+? N„o confie apenas no frontend - SEMPRE valide no backend
+? N„o hardcode perfis em strings - use a classe Permissao
+? N„o esqueÁa de filtrar por municÌpio em consultas ao banco
 """

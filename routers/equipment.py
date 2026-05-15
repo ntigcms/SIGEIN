@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Request, Form, Depends
+from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import RedirectResponse
 from starlette.status import HTTP_302_FOUND
 from sqlalchemy.orm import Session
@@ -8,6 +8,8 @@ from models import Equipment, EquipmentType, Brand, EquipmentState, Unit, Produc
 from templating import templates
 
 router = APIRouter(prefix="/equipment", tags=["Equipment"])
+
+# ============================
 # Listar equipamentos
 # ============================
 @router.get("/")

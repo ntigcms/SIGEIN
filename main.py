@@ -40,17 +40,18 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.state.templates = templates
 
 # ========================================
-# 5. DATABASE
+# 5. DATABASE (import models para registrar todas as tabelas)
 # ========================================
+import models  # noqa: F401 - registra modelos no Base.metadata
 Base.metadata.create_all(bind=engine)
 
 # ========================================
 # 6. ROUTERS (POR ÚLTIMO)
 # ========================================
 from routers import (
-    auth, dashboard, users, units, movements, logs, root,
+    auth, dashboard, users, units, orgaos, movements, logs, root,
     equipment_types, brands, states, products, stock,
-    categories, eprotocolo, api_geografica
+    categories, eprotocolo, api_geografica, segem
 )
 
 app.include_router(root.router)
@@ -58,6 +59,7 @@ app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(users.router)
 app.include_router(units.router)
+app.include_router(orgaos.router)
 app.include_router(movements.router)
 app.include_router(categories.router)
 app.include_router(equipment_types.router)
@@ -68,3 +70,4 @@ app.include_router(stock.router)
 app.include_router(eprotocolo.router)
 app.include_router(api_geografica.router)
 app.include_router(logs.router)
+app.include_router(segem.router)

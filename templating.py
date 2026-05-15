@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates as _Jinja2Templates
+
+from database import SessionLocal
+from models import User
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
 
@@ -21,8 +24,72 @@ PERFIL_LABELS = {
 }
 
 
+def tempo_recebido(dt):
+    """Formata datetime como 'Recebido há X dias/meses/anos'."""
+    if not dt:
+        return "-"
+    agora = datetime.utcnow()
+    if dt.tzinfo:
+        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+    diff = agora - dt
+    dias = diff.days
+    if dias == 0:
+        return "Recebido hoje"
+    if dias == 1:
+        return "Recebido há 1 dia"
+    if dias < 30:
+        return f"Recebido há {dias} dias"
+    if dias < 365:
+        meses = dias // 30
+        return f"Recebido há {meses} {'mês' if meses == 1 else 'meses'}"
+    anos = dias // 365
+    return f"Recebido há {anos} {'ano' if anos == 1 else 'anos'}"
+
+
+def get_user_display_name(request: Request) -> str:
+    email = request.session.get("user")
+    if not email:
+        return ""
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.email == email).first()
+        return u.nome if u else email
+    finally:
+        db.close()
+
+
 def get_logged_user(request: Request):
     return request.session.get("user")
+
+
+def get_meus_dados(request: Request):
+    email = request.session.get("user")
+    if not email:
+        return None
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.email == email).first()
+        if not u:
+            return None
+        municipio_nome = u.municipio.nome if u.municipio else ""
+        orgao_nome = (u.orgao.sigla or u.orgao.nome) if u.orgao else ""
+        unidade_nome = (u.unidade.sigla or u.unidade.nome) if u.unidade else ""
+        perfil = u.perfil
+        perfil_str = perfil.value if hasattr(perfil, "value") else str(perfil or "")
+        status = u.status
+        status_str = status.value if hasattr(status, "value") else str(status or "")
+        return {
+            "id": u.id,
+            "nome": u.nome or "",
+            "email": u.email or "",
+            "perfil": perfil_str,
+            "status": status_str,
+            "municipio": municipio_nome,
+            "orgao": orgao_nome,
+            "unidade": unidade_nome,
+        }
+    finally:
+        db.close()
 
 
 def inject_user_context(request: Request) -> dict[str, Any]:
@@ -78,3 +145,6 @@ class Jinja2Templates(_Jinja2Templates):
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
 templates.context_processors.append(inject_user_context)
 templates.env.globals["get_logged_user"] = get_logged_user
+templates.env.globals["get_user_display_name"] = get_user_display_name
+templates.env.globals["get_meus_dados"] = get_meus_dados
+templates.env.filters["tempo_recebido"] = tempo_recebido

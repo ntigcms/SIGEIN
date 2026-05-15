@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% set hide_app_header = True %}
+
+{# Template base para páginas do E-Protocolo - inclui botão Voltar #}
+{# Uso: {% extends "eprotocolo/eprotocolo_base.html" %} #}
+{# Defina voltar_url e voltar_text no bloco antes do content se precisar customizar #}
+
+{% block content %}
+<div class="eprotocolo-page-wrapper">
+    <div class="eprotocolo-page-top">
+        {% include "eprotocolo/partials/voltar_btn.html" %}
+    </div>
+    {% block eprotocolo_content %}{% endblock %}
+</div>
+{% endblock %}

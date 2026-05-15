@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Request, Form, Depends
+from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import RedirectResponse
 from starlette.status import HTTP_302_FOUND
 from sqlalchemy.orm import Session
@@ -8,12 +8,15 @@ from models import EquipmentState
 from templating import templates
 
 router = APIRouter(prefix="/states", tags=["States"])
+
+
+# LISTAR ESTADOS
 @router.get("/")
 def list_states(request: Request, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
     if not user:
         return RedirectResponse("/login")
 
-    states = db.query(EquipmentState).all()
+    states = db.query(EquipmentState).order_by(EquipmentState.nome).all()
     return templates.TemplateResponse(
         "states.html",
         {"request": request, "states": states, "user": user}

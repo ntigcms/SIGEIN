@@ -1,9 +1,8 @@
-﻿import hashlib
+import hashlib
 import re
 
 from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import RedirectResponse
-from templating import templates
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_302_FOUND
@@ -12,6 +11,7 @@ import models
 from dependencies import registrar_log
 from security import verify_password
 from models import StatusUsuarioEnum
+from templating import templates
 
 router = APIRouter()
 
@@ -35,7 +35,6 @@ def _senha_confere(senha_digitada: str, senha_armazenada: str) -> bool:
 
 @router.get("/login")
 def login_form(request: Request):
-    """Exibe o formulário de login"""
     return templates.TemplateResponse("login.html", {"request": request})
 
 
@@ -46,7 +45,6 @@ def login_post(
     password: str = Form(...),
     db: Session = Depends(get_db),
 ):
-    """Processa login do usuário (e-mail ou CPF + senha bcrypt ou legado SHA256)"""
     ip = request.client.host
     login = username.strip()
     cpf = re.sub(r"\D", "", login)
@@ -62,7 +60,7 @@ def login_post(
         registrar_log(db, usuario=login, acao="Tentativa de login falhou", ip=ip)
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "error": "Usuário ou senha inválidos"},
+            {"request": request, "error": "Usuario ou senha invalidos"},
         )
 
     try:
@@ -87,7 +85,7 @@ def login_post(
             "login.html",
             {
                 "request": request,
-                "error": f"Usuário {status_str}. Entre em contato com o administrador.",
+                "error": f"Usuario {status_str}. Entre em contato com o administrador.",
             },
         )
 
@@ -100,19 +98,14 @@ def login_post(
     )
 
     registrar_log(db, usuario=user.email, acao="Login bem-sucedido", ip=ip)
-
     return RedirectResponse(url="/dashboard", status_code=HTTP_302_FOUND)
 
 
 @router.get("/logout")
 def logout(request: Request, db: Session = Depends(get_db)):
-    """Efetua logout do usuário"""
     ip = request.client.host
-
     usuario = request.session.get("user")
     if usuario:
         registrar_log(db, usuario=usuario, acao="Logout efetuado", ip=ip)
-
     request.session.clear()
-
     return RedirectResponse(url="/login", status_code=HTTP_302_FOUND)

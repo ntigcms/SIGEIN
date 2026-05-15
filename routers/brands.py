@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Request, Form, Depends
+from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import RedirectResponse
 from starlette.status import HTTP_302_FOUND
 from sqlalchemy.orm import Session
@@ -8,12 +8,15 @@ from models import Brand
 from templating import templates
 
 router = APIRouter(prefix="/brands", tags=["Brands"])
+
+
+# LISTAR MARCAS
 @router.get("/")
 def list_brands(request: Request, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
     if not user:
         return RedirectResponse("/login")
 
-    brands = db.query(Brand).all()
+    brands = db.query(Brand).order_by(Brand.nome).all()
     return templates.TemplateResponse(
         "brands.html",
         {"request": request, "brands": brands, "user": user}

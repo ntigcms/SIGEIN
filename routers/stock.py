@@ -1,15 +1,14 @@
-﻿from fastapi import APIRouter, Request, Form, Depends
+from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import RedirectResponse
 from starlette.status import HTTP_302_FOUND
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy.orm import Session, aliased, joinedload
 from sqlalchemy import func, literal, Integer, case
 from services.audit_service import AuditService
 
 from database import get_db
 from dependencies import get_current_user, registrar_log
-from models import EquipmentType, Stock, Product, Unit, Item
+from models import EquipmentType, Stock, Product, Unit, Unidade, Item
 from templating import templates
-
 
 router = APIRouter(prefix="/stock", tags=["Stock"])
 
@@ -88,6 +87,7 @@ def get_stock_by_product(
 ):
     stocks = (
         db.query(Stock)
+        .options(joinedload(Stock.unit))
         .filter(Stock.product_id == product_id)
         .all()
     )
@@ -95,7 +95,7 @@ def get_stock_by_product(
     return [
         {
             "unit_id": s.unit_id,
-            "unit_name": s.unit.name,
+            "unit_name": s.unit.nome if s.unit else None,
             "quantidade": s.quantidade
         }
         for s in stocks
@@ -116,62 +116,66 @@ def stock_overview(db: Session = Depends(get_db), user: str = Depends(get_curren
     for p in produtos:
 
         # 🔹 PRODUTO CONTROLADO POR SÉRIE
+        # Agrupa por product_id + unit_id para que cada produto tenha sua própria linha
+        # (permite movimentar 1 item sem confundir com itens de outros produtos do mesmo tipo)
         if p.controla_por_serie:
             items = (
                 db.query(
-                    Unit.id.label("unit_id"),
-                    Unit.name.label("unit_name"),
+                    Unidade.id.label("unit_id"),
+                    Unidade.nome.label("unit_name"),
                     func.count(Item.id).label("quantidade")
                 )
-                .join(Unit, Unit.id == Item.unit_id)
+                .select_from(Item)
+                .join(Unidade, Unidade.id == Item.unit_id)
                 .filter(Item.product_id == p.id)
-                .group_by(Unit.id, Unit.name)
+                .group_by(Unidade.id, Unidade.nome)
                 .all()
             )
 
             for i in items:
-                # ✅ Chave única: type_id + unit_id
-                chave = f"{p.type_id}_{i.unit_id}"
+                # Chave única: product_id + unit_id (cada produto = linha separada)
+                chave = f"{p.id}_{i.unit_id}"
                 
                 if chave not in agrupamentos:
                     agrupamentos[chave] = {
                         "type_id": p.type_id,
+                        "product_id": p.id,
                         "product_type": p.type.nome if p.type else None,
+                        "product_name": p.name,
                         "unit_id": i.unit_id,
                         "unit_name": i.unit_name,
                         "quantidade": 0,
                         "quantidade_minima": 0,
                         "controla_por_serie": True,
-                        "product_ids": []  # ✅ lista de IDs de produtos desse tipo
+                        "product_ids": [p.id]
                     }
                 
                 agrupamentos[chave]["quantidade"] += i.quantidade
-                if p.id not in agrupamentos[chave]["product_ids"]:
-                    agrupamentos[chave]["product_ids"].append(p.id)
 
         # 🔹 PRODUTO NORMAL (USA STOCK)
         else:
             stocks = (
                 db.query(Stock)
-                .join(Unit)
+                .options(joinedload(Stock.unit))
                 .filter(Stock.product_id == p.id)
                 .all()
             )
 
             for s in stocks:
-                # ✅ Chave única: type_id + unit_id
-                chave = f"{p.type_id}_{s.unit_id}"
+                chave = f"{p.id}_{s.unit_id}"
                 
                 if chave not in agrupamentos:
                     agrupamentos[chave] = {
                         "type_id": p.type_id,
+                        "product_id": p.id,
                         "product_type": p.type.nome if p.type else None,
+                        "product_name": p.name,
                         "unit_id": s.unit_id,
-                        "unit_name": s.unit.name,
+                        "unit_name": s.unit.nome if s.unit else None,
                         "quantidade": 0,
                         "quantidade_minima": s.quantidade_minima or 0,
                         "controla_por_serie": False,
-                        "product_ids": []
+                        "product_ids": [p.id]
                     }
                 
                 agrupamentos[chave]["quantidade"] += s.quantidade
@@ -179,8 +183,6 @@ def stock_overview(db: Session = Depends(get_db), user: str = Depends(get_curren
                     agrupamentos[chave]["quantidade_minima"], 
                     s.quantidade_minima or 0
                 )
-                if p.id not in agrupamentos[chave]["product_ids"]:
-                    agrupamentos[chave]["product_ids"].append(p.id)
 
     # ✅ Converte agrupamentos em lista e calcula status
     for item in agrupamentos.values():
@@ -198,47 +200,51 @@ def stock_overview(db: Session = Depends(get_db), user: str = Depends(get_curren
 
 @router.get("/items-by-type")
 def items_by_type(
-    type_id: int,
-    unit_name: str,
+    type_id: int = None,
+    product_id: int = None,
+    unit_name: str = None,
     db: Session = Depends(get_db)
 ):
-    """Retorna todos os itens de um tipo de produto em uma unidade específica"""
+    """Retorna itens em uma unidade. Use product_id para filtrar por produto específico (evita misturar itens de produtos diferentes do mesmo tipo)."""
     
-    # Busca um produto desse tipo para pegar metadados
-    product_sample = db.query(Product).filter(Product.type_id == type_id).first()
+    if product_id:
+        product_sample = db.query(Product).filter(Product.id == product_id).first()
+    else:
+        product_sample = db.query(Product).filter(Product.type_id == type_id).first()
     
     if not product_sample:
-        return {"error": "Tipo de produto não encontrado"}
+        return {"error": "Produto não encontrado"}
     
     if product_sample.controla_por_serie:
-        # Busca todos os items desse type_id na unidade
-        items = (
+        # Busca itens do produto específico na unidade (não por type_id)
+        q = (
             db.query(Item)
-            .join(Product, Product.id == Item.product_id)
-            .join(Unit, Unit.id == Item.unit_id)
-            .filter(Product.type_id == type_id, Unit.name == unit_name)
-            .all()
+            .join(Unidade, Unidade.id == Item.unit_id)
+            .filter(Item.product_id == product_sample.id, Unidade.nome == unit_name)
         )
+        items = q.all()
         
         return {
             "controla_por_serie": True,
             "product_type": product_sample.type.nome if product_sample.type else None,
+            "product_name": product_sample.name,
             "items": [
                 {
                     "id": i.id,
                     "num": i.num_tombo_ou_serie,
-                    "unit": i.unit.name if i.unit else None,
+                    "unit": i.unit.nome if i.unit else None,
                     "tombo": i.tombo
                 } for i in items
             ]
         }
     
     # Produto sem série - busca stocks agrupados
+    filter_expr = (Product.id == product_sample.id) if product_id else (Product.type_id == type_id)
     stocks = (
         db.query(Stock)
         .join(Product, Product.id == Stock.product_id)
-        .join(Unit, Unit.id == Stock.unit_id)
-        .filter(Product.type_id == type_id, Unit.name == unit_name)
+        .join(Unidade, Unidade.id == Stock.unit_id)
+        .filter(filter_expr, Unidade.nome == unit_name)
         .all()
     )
     
@@ -272,10 +278,10 @@ def stock_by_product(
         return {"error": "Produto não encontrado"}
 
     if product.controla_por_serie:
-        query = db.query(Item).join(Unit).filter(Item.product_id == product_id)
+        query = db.query(Item).join(Unidade, Unidade.id == Item.unit_id).filter(Item.product_id == product_id)
         
         if unit_name:
-            query = query.filter(Unit.name == unit_name)
+            query = query.filter(Unidade.nome == unit_name)
         
         items = query.all()
 
@@ -289,7 +295,7 @@ def stock_by_product(
                 {
                     "id": i.id,
                     "num": i.num_tombo_ou_serie,
-                    "unit": i.unit.name if i.unit else None,
+                    "unit": i.unit.nome if i.unit else None,
                     "tombo": i.tombo
                 } for i in items
             ]
@@ -297,7 +303,7 @@ def stock_by_product(
 
     stocks = (
         db.query(Stock)
-        .join(Unit)
+        .options(joinedload(Stock.unit))
         .filter(Stock.product_id == product_id)
         .all()
     )
@@ -310,7 +316,7 @@ def stock_by_product(
         "product_model": product.model,  # ✅ adicione
         "stock": [
             {
-                "unit": s.unit.name,
+                "unit": s.unit.nome if s.unit else None,
                 "quantidade": s.quantidade,
                 "minimo": s.quantidade_minima
             } for s in stocks
@@ -336,7 +342,7 @@ def get_item_details(
         "modelo": item.product.model if item.product else None,
         "estado": item.estado.nome if item.estado else None,
         "status": item.status,
-        "unidade": item.unit.name if item.unit else None,
+        "unidade": item.unit.nome if item.unit else None,
         "tombo": item.tombo,
         "numero": item.num_tombo_ou_serie,
         "observacao": item.observacao,
@@ -349,7 +355,7 @@ def get_item_details(
 def stock_alerts(db: Session = Depends(get_db)):
     alerts = (
         db.query(Stock)
-        .join(Product)
+        .options(joinedload(Stock.product), joinedload(Stock.unit))
         .filter(Stock.quantidade <= Stock.quantidade_minima)
         .all()
     )
@@ -357,7 +363,7 @@ def stock_alerts(db: Session = Depends(get_db)):
     return [
         {
             "product": s.product.name,
-            "unit": s.unit.name,
+            "unit": s.unit.nome if s.unit else None,
             "quantidade": s.quantidade,
             "minimo": s.quantidade_minima
         }

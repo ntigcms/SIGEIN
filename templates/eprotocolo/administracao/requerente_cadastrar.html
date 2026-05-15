@@ -1,0 +1,127 @@
+{% extends "eprotocolo/eprotocolo_base.html" %}
+
+{% block title %}{{ 'Editar' if requerente else 'Cadastrar' }} Requerente - E-Protocolo{% endblock %}
+
+{% block eprotocolo_content %}
+<div class="requerente-cadastro-page">
+    <div class="page-badge">{{ 'EDITAR' if requerente else 'CADASTRAR' }} REQUERENTE</div>
+
+    <form method="post" action="{% if requerente %}/eprotocolo/administracao/requerentes/{{ requerente.id }}/editar{% else %}/eprotocolo/administracao/requerentes/cadastrar{% endif %}" class="requerente-form">
+        <div class="form-grid">
+            <div class="form-group full">
+                <label for="nome">NOME *</label>
+                <input type="text" id="nome" name="nome" required value="{{ requerente.nome if requerente else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="tipo_documento">TIPO *</label>
+                <select id="tipo_documento" name="tipo_documento" required>
+                    <option value="">SELECIONE</option>
+                    <option value="CPF" {% if requerente and requerente.tipo_documento == 'CPF' %}selected{% endif %}>CPF</option>
+                    <option value="CNPJ" {% if requerente and requerente.tipo_documento == 'CNPJ' %}selected{% endif %}>CNPJ</option>
+                    <option value="RG" {% if requerente and requerente.tipo_documento == 'RG' %}selected{% endif %}>RG</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="numero_documento">CPF/CNPJ *</label>
+                <input type="text" id="numero_documento" name="numero_documento" required value="{{ requerente.numero_documento if requerente else '' }}" placeholder="">
+            </div>
+            <div class="form-group full">
+                <label for="email">E-MAIL</label>
+                <input type="email" id="email" name="email" value="{{ requerente.email if requerente else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="cep">CEP *</label>
+                <input type="text" id="cep" name="cep" required value="{{ requerente.cep if requerente else '' }}" maxlength="9">
+            </div>
+            <div class="form-group flex-2">
+                <label for="endereco">ENDEREÇO *</label>
+                <input type="text" id="endereco" name="endereco" required value="{{ requerente.endereco if requerente else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="numero_endereco">NÚMERO *</label>
+                <input type="text" id="numero_endereco" name="numero_endereco" required value="{{ requerente.numero_endereco if requerente else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="bairro">BAIRRO *</label>
+                <input type="text" id="bairro" name="bairro" required value="{{ requerente.bairro if requerente else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="complemento">COMPLEMENTO</label>
+                <input type="text" id="complemento" name="complemento" value="{{ requerente.complemento if requerente else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="cidade">CIDADE *</label>
+                <input type="text" id="cidade" name="cidade" required value="{{ requerente.cidade if requerente else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="uf">UF *</label>
+                <input type="text" id="uf" name="uf" required value="{{ requerente.uf if requerente else '' }}" maxlength="2" placeholder="Ex: SP">
+            </div>
+            <div class="form-group">
+                <label for="telefone1">TELEFONE</label>
+                <input type="text" id="telefone1" name="telefone1" value="{{ requerente.telefone1 if requerente else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="telefone2">TELEFONE</label>
+                <input type="text" id="telefone2" name="telefone2" value="{{ requerente.telefone2 if requerente else '' }}">
+            </div>
+        </div>
+        <div class="form-actions">
+            <a href="/eprotocolo/administracao/requerentes" class="btn-cancelar">Cancelar</a>
+            <button type="submit" class="btn-cadastrar">CADASTRAR</button>
+        </div>
+    </form>
+</div>
+
+<style>
+.requerente-cadastro-page { padding: 24px; max-width: 800px; margin: 0 auto; }
+.page-badge {
+    background: #0d6efd;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 24px;
+    display: inline-block;
+}
+.requerente-form { background: #f8f9fa; padding: 24px; border-radius: 8px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; }
+.form-group { display: flex; flex-direction: column; }
+.form-group.full { grid-column: 1 / -1; }
+.form-group.flex-2 { grid-column: span 2; }
+.form-group label { font-size: 12px; font-weight: 600; margin-bottom: 6px; color: #333; }
+.form-group input, .form-group select {
+    padding: 10px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 14px;
+}
+.form-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+.btn-cancelar { padding: 10px 20px; color: #6c757d; text-decoration: none; }
+.btn-cancelar:hover { color: #333; }
+.btn-cadastrar { background: #0d6efd; color: white; border: none; padding: 10px 24px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-cadastrar:hover { background: #0b5ed7; }
+@media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } .form-group.flex-2 { grid-column: span 1; } }
+</style>
+
+<script>
+// ViaCEP - preenchimento automático de endereço
+document.getElementById('cep').addEventListener('blur', function() {
+    const cep = this.value.replace(/\D/g, '');
+    if (cep.length !== 8) return;
+    fetch('https://viacep.com.br/ws/' + cep + '/json/')
+        .then(r => r.json())
+        .then(data => {
+            if (!data.erro) {
+                document.getElementById('endereco').value = data.logradouro || '';
+                document.getElementById('bairro').value = data.bairro || '';
+                document.getElementById('cidade').value = data.localidade || '';
+                document.getElementById('uf').value = data.uf || '';
+            }
+        })
+        .catch(() => {});
+});
+</script>
+{% endblock %}

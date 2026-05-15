@@ -116,6 +116,12 @@ class User(Base):
             PerfilEnum.GESTOR_GERAL.value,
         }
 
+    def pode_acessar_segem(self):
+        return self._perfil_valor() in {
+            PerfilEnum.MASTER.value,
+            PerfilEnum.GESTOR_SEGEM.value,
+        }
+
     def pode_gerenciar_usuarios(self):
         return self._perfil_valor() in {
             PerfilEnum.MASTER.value,
@@ -369,14 +375,31 @@ class Processo(Base):
     orgao_atual_id = Column(Integer, ForeignKey("orgaos.id"), nullable=False)
     unidade_atual_id = Column(Integer, ForeignKey("unidades.id"), nullable=False)
     
+    # Status: Em tramitação | Recebido | Em edição | Assinado
     status = Column(String(50), default="Em tramitação")
     urgente = Column(Boolean, default=False)
     nivel_acesso = Column(String(20), default="Público")  # Público/Restrito
     
+    # Controle de leitura (aba "Lidos" / "Não lidos")
+    lido_at = Column(DateTime, nullable=True)
+    # Atribuição (aba "Não atribuídos" / "Atribuídos")
+    atribuido_to_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(Integer, ForeignKey("users.id"))
     
+    # Apensamento: quando preenchido, este processo está apensado ao processo principal
+    processo_principal_id = Column(Integer, ForeignKey("processos.id"), nullable=True)
+    
+    # Arquivamento
+    arquivado = Column(Boolean, default=False)
+    arquivado_at = Column(DateTime, nullable=True)
+    arquivado_por_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    
     # Relacionamentos
+    atribuido_to = relationship("User", foreign_keys=[atribuido_to_id])
+    processo_principal = relationship("Processo", remote_side="Processo.id", foreign_keys=[processo_principal_id], back_populates="apensos")
+    apensos = relationship("Processo", back_populates="processo_principal", foreign_keys=[processo_principal_id])
     municipio_origem = relationship("Municipio", foreign_keys=[municipio_origem_id])
     municipio_atual = relationship("Municipio", foreign_keys=[municipio_atual_id])
     orgao_origem = relationship("Orgao", foreign_keys=[orgao_origem_id])
@@ -385,7 +408,21 @@ class Processo(Base):
     unidade_atual = relationship("Unidade", foreign_keys=[unidade_atual_id])
     
     tramites = relationship("Tramite", back_populates="processo")
-    creator = relationship("User")
+    assinantes = relationship("ProcessoAssinante", back_populates="processo")
+    creator = relationship("User", foreign_keys=[created_by])
+    arquivado_por = relationship("User", foreign_keys=[arquivado_por_id])
+
+
+class ProcessoAssinante(Base):
+    """Assinantes do processo (usuários que devem assinar)"""
+    __tablename__ = "processo_assinantes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    processo_id = Column(Integer, ForeignKey("processos.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    processo = relationship("Processo", back_populates="assinantes")
+    user = relationship("User")
 
 
 class Tramite(Base):
@@ -413,6 +450,10 @@ class Tramite(Base):
     
     processo = relationship("Processo", back_populates="tramites")
     usuario = relationship("User")
+    orgao_origem = relationship("Orgao", foreign_keys=[orgao_origem_id])
+    unidade_origem = relationship("Unidade", foreign_keys=[unidade_origem_id])
+    orgao_destino = relationship("Orgao", foreign_keys=[orgao_destino_id])
+    unidade_destino = relationship("Unidade", foreign_keys=[unidade_destino_id])
 
 
 class Circular(Base):
@@ -450,7 +491,70 @@ class CircularDestinatario(Base):
     arquivado = Column(Boolean, default=False)
     
     circular = relationship("Circular", back_populates="destinatarios")
+
+
+class Requerente(Base):
+    """Requerentes para processos do E-Protocolo"""
+    __tablename__ = "requerentes"
     
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(200), nullable=False)
+    tipo_documento = Column(String(20), nullable=False)  # CPF, CNPJ, RG
+    numero_documento = Column(String(20), nullable=False)
+    email = Column(String(200))
+    cep = Column(String(10), nullable=False)
+    endereco = Column(String(300), nullable=False)
+    numero_endereco = Column(String(20), nullable=False)
+    bairro = Column(String(100), nullable=False)
+    complemento = Column(String(100))
+    cidade = Column(String(200), nullable=False)
+    uf = Column(String(2), nullable=False)
+    telefone1 = Column(String(20))
+    telefone2 = Column(String(20))
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# =====================================================
+# CATEGORIA (GRUPO > ASSUNTO > SUBASSUNTO)
+# =====================================================
+
+class Grupo(Base):
+    """Grupo de categorização (nível superior)"""
+    __tablename__ = "grupos"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(200), nullable=False)
+    ativo = Column(Boolean, default=True)
+    
+    assuntos = relationship("Assunto", back_populates="grupo")
+
+
+class Assunto(Base):
+    """Assunto vinculado a um Grupo"""
+    __tablename__ = "assuntos"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    grupo_id = Column(Integer, ForeignKey("grupos.id"), nullable=False)
+    nome = Column(String(200), nullable=False)
+    ativo = Column(Boolean, default=True)
+    
+    grupo = relationship("Grupo", back_populates="assuntos")
+    subassuntos = relationship("Subassunto", back_populates="assunto")
+
+
+class Subassunto(Base):
+    """Subassunto vinculado a um Assunto"""
+    __tablename__ = "subassuntos"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    assunto_id = Column(Integer, ForeignKey("assuntos.id"), nullable=False)
+    nome = Column(String(200), nullable=False)
+    ativo = Column(Boolean, default=True)
+    
+    assunto = relationship("Assunto", back_populates="subassuntos")
+
+
 # =====================================================
 # HIERARQUIA GEOGRÁFICA/ADMINISTRATIVA
 # =====================================================
@@ -541,12 +645,68 @@ class Unidade(Base):
         "Movement",
         foreign_keys="Movement.unit_origem_id",
         back_populates="unit_origem",
+        overlaps="unit_origem",
     )
     movimentos_destino = relationship(
         "Movement",
         foreign_keys="Movement.unit_destino_id",
         back_populates="unit_destino",
+        overlaps="unit_destino",
     )
+
+
+# =====================================================
+# SEGEM (Sistema de Gestão de Materiais)
+# =====================================================
+
+class SegemItem(Base):
+    __tablename__ = "segem_itens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    municipio_id = Column(Integer, ForeignKey("municipios.id"), nullable=False)
+    orgao_id = Column(Integer, ForeignKey("orgaos.id"), nullable=False)
+
+    ano = Column(Integer)  # ANO
+    num_tombo_gcm = Column(String(50))  # Nº TOMBO (GCM)
+    local = Column(String(200))  # LOCAL
+    codigo = Column(String(100))  # CÓDIGO
+    descricao = Column(Text)  # DESCRIÇÃO
+    situacao = Column(String(100))  # SITUAÇÃO
+    valor_rs = Column(Float)  # VALOR R$
+    entrada_no_siga = Column(String(100))  # ENTRADA NO SIGA
+    nota_de_empenho = Column(String(100))  # NOTA DE EMPENHO
+    valor_nota_empenho = Column(Float)  # VALOR DA NOTA DE EMPENHO
+    num_nota_fiscal = Column(String(100))  # N° NOTA FISCAL
+    nome_empresa = Column(String(200))  # NOME DA EMPRESA
+    classificacao_asi = Column(String(100))  # CLASSIFICAÇÃO ASI
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(Integer, ForeignKey("users.id"))
+
+    municipio = relationship("Municipio")
+    orgao = relationship("Orgao")
+    produtos = relationship("SegemItemProduto", back_populates="segem_item", cascade="all, delete-orphan")
+
+
+class SegemItemProduto(Base):
+    """Produtos adicionais do registro SEGEM (Nº Tombo + Valor), linha do bloco Produto."""
+    __tablename__ = "segem_itens_produtos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    segem_item_id = Column(Integer, ForeignKey("segem_itens.id"), nullable=False)
+    num_tombo_gcm = Column(String(50))
+    valor_rs = Column(Float)
+
+    segem_item = relationship("SegemItem", back_populates="produtos")
+
+
+class ProdutoSegem(Base):
+    """Catálogo de produtos SEGEM (código + descrição) para preenchimento automático no formulário."""
+    __tablename__ = "produtos_segem"
+
+    id = Column(Integer, primary_key=True, index=True)
+    codigo = Column(String(100), unique=True, nullable=False, index=True)
+    descricao = Column(Text)
 
 
 # Alias legado: vários routers ainda importam Unit

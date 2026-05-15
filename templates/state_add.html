@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Estado{% endblock %}
+{% block title %}{{ 'Editar' if action == 'edit' else 'Cadastrar' }} Estado{% endblock %}
 
 {% block content %}
 <div class="form-container">
@@ -21,37 +21,34 @@
             <legend>Informações do Estado</legend>
 
             <div class="form-grid">
-
-                <!-- Nome do Estado -->
                 <div class="form-group full">
                     <label for="nome">Nome do Estado *</label>
-                    <input type="text"
-                           id="nome"
-                           name="nome"
-                           placeholder="Ex: Disponível, Em Manutenção, Inutilizado"
+                    <input type="text" id="nome" name="nome" required
                            value="{% if action == 'edit' %}{{ estado.nome }}{% endif %}"
-                           required>
+                           placeholder="Ex: Disponível, Em Manutenção, Inutilizado">
                 </div>
-
             </div>
         </fieldset>
 
-        <!-- Ações -->
         <div class="form-actions">
             <button type="submit" class="btn-primary">
-                {% if action == "edit" %}
-                    Salvar Alterações
-                {% else %}
-                    Cadastrar
-                {% endif %}
+                {% if action == "edit" %}Atualizar{% else %}Cadastrar{% endif %}
             </button>
-
-            <a href="/states" class="btn-secondary">
-                Cancelar
-            </a>
+            <a href="/states" class="btn-secondary">Cancelar</a>
         </div>
 
     </form>
 
 </div>
+
+<style>
+.form-card fieldset { border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin-bottom: 20px; background: #fafafa; }
+.form-card legend { font-weight: 600; color: #0d6efd; padding: 0 10px; font-size: 16px; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
+.form-group { display: flex; flex-direction: column; }
+.form-group.full { grid-column: 1 / -1; }
+.form-group label { font-size: 13px; font-weight: 600; color: #004080; margin-bottom: 5px; }
+.form-group input { padding: 8px 12px; border: 1px solid #aaa; border-radius: 6px; font-size: 14px; }
+.form-actions { margin-top: 20px; display: flex; gap: 10px; }
+</style>
 {% endblock %}

@@ -1,9 +1,9 @@
-﻿from templating import templates
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from dependencies import get_current_user
 from database import get_db
+from templating import templates
 from models import Stock, Movement, Product, User
 from datetime import datetime, timedelta
 
@@ -45,10 +45,11 @@ def dashboard_overview(
             status = "CRITICO"
 
         if status in ("ZERADO", "CRITICO"):
+            unit_name = getattr(s.unit, "nome", None) or getattr(s.unit, "name", "")
             critical_stock.append(
                 {
                     "product_name": s.product.name,
-                    "unit_name": s.unit.name,
+                    "unit_name": unit_name,
                     "quantidade": s.quantidade,
                     "quantidade_minima": s.quantidade_minima,
                     "status": status,

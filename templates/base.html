@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
-    <!-- ================= META BÁSICA ================= -->
+    <!-- ================= META B├üSICA ================= -->
     <meta charset="UTF-8">
     <title>{% block title %}SIGEIN{% endblock %}</title>
 
@@ -12,7 +12,7 @@
     <style>
 
         /* =========================
-           RESET E CORPO DA PÁGINA
+           RESET E CORPO DA P├üGINA
         ========================== */
         body {
             margin: 0;
@@ -21,13 +21,13 @@
         }
 
         /* =========================
-           CONTEÚDO PRINCIPAL (margem da sidebar em sidebar.css)
+           CONTE├ÜDO PRINCIPAL (margem da sidebar em sidebar.css)
         ========================== */
         .main-content {
             min-height: 100vh;
         }
 
-        /* Container central padrão */
+        /* Container central padr├úo */
         .container {
             background: #ffffff;
             padding: 30px 40px;
@@ -45,7 +45,7 @@
             color: #ffffff;
             padding: 1px 20px;
             text-align: center;
-            margin-bottom: 40px; /* 👈 ESPAÇO ENTRE HEADER E CONTEÚDO */
+            margin-bottom: 40px; /* ­ƒæê ESPA├çO ENTRE HEADER E CONTE├ÜDO */
         }
 
         .app-header-content {
@@ -97,7 +97,7 @@
         }
 
         /* =========================
-           MENU DO USUÁRIO (TOPO)
+           MENU DO USU├üRIO (TOPO)
         ========================== */
         .user-menu {
             position: fixed;
@@ -255,8 +255,103 @@
             color: #dc2626;
         }
 
+        .meus-dados-modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 9998;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .meus-dados-modal-backdrop.show {
+            display: flex;
+        }
+
+        .meus-dados-modal {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            max-width: 420px;
+            width: 90%;
+            max-height: 90vh;
+            overflow: auto;
+        }
+
+        .meus-dados-modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e9ecef;
+            font-size: 18px;
+            font-weight: 700;
+            color: #212529;
+        }
+
+        .meus-dados-modal-body {
+            padding: 24px;
+        }
+
+        .meus-dados-field {
+            margin-bottom: 16px;
+        }
+
+        .meus-dados-section-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #495057;
+            margin: 20px 0 12px 0;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .meus-dados-field label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #6c757d;
+            margin-bottom: 4px;
+        }
+
+        .meus-dados-field .value {
+            font-size: 14px;
+            color: #212529;
+            padding: 10px 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .meus-dados-modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .meus-dados-modal-footer .btn-fechar {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            background: #fff;
+            color: #495057;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .meus-dados-modal-footer .btn-editar {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background: #0077cc;
+            color: #fff;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+        }
+
         /* =========================
-           CAMPOS DE FORMULÁRIO
+           CAMPOS DE FORMUL├üRIO
         ========================== */
         input[type="text"],
         input[type="password"],
@@ -272,7 +367,7 @@
             box-sizing: border-box;
         }
 
-        /* Botões padrão do sistema */
+        /* Bot├Áes padr├úo do sistema */
         button {
             padding: 12px;
             border: none;
@@ -290,7 +385,7 @@
         }
 
         /* =========================
-           GRID DO FORMULÁRIO
+           GRID DO FORMUL├üRIO
         ========================== */
         .form-grid {
             display: grid;
@@ -340,7 +435,7 @@
                 <span class="sidebar__logo-icon"><i class="fas fa-cubes"></i></span>
                 <span class="sidebar__logo-text">
                     <strong>SIGEIN</strong>
-                    <small>Gestão de Estoque e Inventário</small>
+                    <small>Gest├úo de Estoque e Invent├írio</small>
                 </span>
             </a>
         </div>
@@ -355,10 +450,10 @@
             </div>
 
             <div class="sidebar__section">
-                <span class="sidebar__label">Inventário</span>
+                <span class="sidebar__label">Invent├írio</span>
                 <a href="/users" class="sidebar-nav__link{% if path.startswith('/users') %} is-active{% endif %}">
                     <i class="fas fa-users nav-icon"></i>
-                    <span>Usuários</span>
+                    <span>Usu├írios</span>
                 </a>
                 <a href="/units" class="sidebar-nav__link{% if path.startswith('/units') %} is-active{% endif %}">
                     <i class="fas fa-building nav-icon"></i>
@@ -366,7 +461,7 @@
                 </a>
                 <a href="/movements" class="sidebar-nav__link{% if path.startswith('/movements') %} is-active{% endif %}">
                     <i class="fas fa-right-left nav-icon"></i>
-                    <span>Movimentações</span>
+                    <span>Movimenta├º├Áes</span>
                 </a>
                 <a href="/products" class="sidebar-nav__link{% if path.startswith('/products') %} is-active{% endif %}">
                     <i class="fas fa-box nav-icon"></i>
@@ -376,14 +471,21 @@
                     <i class="fas fa-warehouse nav-icon"></i>
                     <span>Estoque</span>
                 </a>
+                {% set perfil_atual = get_meus_dados(request).perfil if get_meus_dados(request) else (current_user_perfil or '') %}
+                {% if perfil_atual in ['master', 'gestor_segem'] %}
+                <a href="/segem" class="sidebar-nav__link{% if path.startswith('/segem') %} is-active{% endif %}">
+                    <i class="fas fa-shield-halved nav-icon"></i>
+                    <span>SEGEM</span>
+                </a>
+                {% endif %}
             </div>
 
             <div class="sidebar__section">
                 <span class="sidebar__label">Cadastros</span>
-                <div class="sidebar-submenu{% if path.startswith('/equipment-types') or path.startswith('/brands') or path.startswith('/states') or path.startswith('/categories') %} open{% endif %}" id="sidebarAdmin">
-                    <button type="button" class="sidebar-submenu__btn" aria-expanded="{% if path.startswith('/equipment-types') or path.startswith('/brands') or path.startswith('/states') or path.startswith('/categories') %}true{% else %}false{% endif %}">
+                <div class="sidebar-submenu{% if path.startswith('/equipment-types') or path.startswith('/brands') or path.startswith('/states') or path.startswith('/categories') or path.startswith('/orgaos') %} open{% endif %}" id="sidebarAdmin">
+                    <button type="button" class="sidebar-submenu__btn" aria-expanded="{% if path.startswith('/equipment-types') or path.startswith('/brands') or path.startswith('/states') or path.startswith('/categories') or path.startswith('/orgaos') %}true{% else %}false{% endif %}">
                         <i class="fas fa-sliders nav-icon"></i>
-                        <span>Administração</span>
+                        <span>Administra├º├úo</span>
                         <i class="fas fa-chevron-down sidebar-submenu__caret"></i>
                     </button>
                     <div class="sidebar-submenu__content">
@@ -404,6 +506,10 @@
                                 <i class="fas fa-folder nav-icon"></i>
                                 <span>Categorias</span>
                             </a>
+                            <a href="/orgaos" class="sidebar-nav__link{% if path.startswith('/orgaos') %} is-active{% endif %}">
+                                <i class="fas fa-landmark nav-icon"></i>
+                                <span>Órgãos</span>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -423,7 +529,7 @@
         </nav>
 
         <div class="sidebar__footer">
-            <small>NTI — Guarda Civil Municipal<br>Salvador / BA</small>
+            <small>NTI ÔÇö Guarda Civil Municipal<br>Salvador / BA</small>
         </div>
     </aside>
 
@@ -432,9 +538,9 @@
     </button>
 
 
-    <!-- ===== CONTEÚDO PRINCIPAL ===== -->
+    <!-- ===== CONTE├ÜDO PRINCIPAL ===== -->
     <div class="main-content">
-        <!-- Título da aplicação -->
+        <!-- T├¡tulo da aplica├º├úo -->
 {% if not hide_app_header %}
 <div class="app-header">
     <div class="app-header-content">
@@ -443,11 +549,11 @@
             SIGEIN
         </h1>
         <p class="app-subtitle">
-            Sistema Integrado de Gestão de Estoque e Inventário
+            Sistema Integrado de Gest├úo de Estoque e Invent├írio
         </p>
         <div class="app-divider"></div>
         <p class="app-org">
-            Núcleo de Tecnologia da Informação<br>
+            N├║cleo de Tecnologia da Informa├º├úo<br>
             Guarda Civil Municipal de Salvador
         </p>
     </div>
@@ -455,12 +561,13 @@
 {% endif %}
 
 
+        {% set meus_dados = get_meus_dados(request) %}
         {% if is_logged_in or request.session.get('user') %}
         <div class="user-menu" id="userMenu">
             <button type="button" class="user-menu__trigger" id="userMenuBtn" aria-expanded="false" aria-haspopup="true">
                 <span class="user-menu__avatar"><i class="fas fa-user-circle"></i></span>
                 <span class="user-menu__info">
-                    <span class="user-menu__welcome">{{ user_saudacao or 'Olá' }}{% set _nome = current_user_nome or request.session.get('user_nome') or request.session.get('user') %}{% if _nome %}, {{ _nome.split()[0] }}{% endif %}</span>
+                    <span class="user-menu__welcome">{{ user_saudacao or 'Ol├í' }}{% set _nome = current_user_nome or request.session.get('user_nome') or request.session.get('user') %}{% if _nome %}, {{ _nome.split()[0] }}{% endif %}</span>
                     <span class="user-menu__name">{{ current_user_nome or request.session.get('user_nome') or request.session.get('user') }}</span>
                 </span>
                 <i class="fas fa-chevron-down user-menu__caret"></i>
@@ -475,8 +582,11 @@
                 </div>
                 {% set _uid = current_user_id or request.session.get('user_id') %}
                 {% if _uid %}
-                <a href="/users/edit/{{ _uid }}" role="menuitem">
+                <a href="#" id="btn-meus-dados" role="menuitem">
                     <i class="fas fa-id-card"></i> Meus dados
+                </a>
+                <a href="/users/edit/{{ _uid }}" role="menuitem">
+                    <i class="fas fa-pen"></i> Editar perfil
                 </a>
                 {% endif %}
                 <a href="/dashboard" role="menuitem">
@@ -489,7 +599,52 @@
         </div>
         {% endif %}
 
-        <!-- Bloco para conteúdo específico de cada página -->
+        {% if meus_dados %}
+        <div class="meus-dados-modal-backdrop" id="meus-dados-modal" aria-hidden="true">
+            <div class="meus-dados-modal">
+                <div class="meus-dados-modal-header">Meus Dados</div>
+                <div class="meus-dados-modal-body">
+                    <div class="meus-dados-field">
+                        <label>Nome</label>
+                        <div class="value">{{ meus_dados.nome }}</div>
+                    </div>
+                    <div class="meus-dados-field">
+                        <label>E-mail</label>
+                        <div class="value">{{ meus_dados.email }}</div>
+                    </div>
+                    <div class="meus-dados-field">
+                        <label>Perfil</label>
+                        <div class="value">{{ meus_dados.perfil }}</div>
+                    </div>
+                    {% if meus_dados.status %}
+                    <div class="meus-dados-field">
+                        <label>Status</label>
+                        <div class="value">{{ meus_dados.status }}</div>
+                    </div>
+                    {% endif %}
+                    <div class="meus-dados-section-title">Lotação administrativa</div>
+                    <div class="meus-dados-field">
+                        <label>Município</label>
+                        <div class="value">{{ meus_dados.municipio or '-' }}</div>
+                    </div>
+                    <div class="meus-dados-field">
+                        <label>Órgão</label>
+                        <div class="value">{{ meus_dados.orgao or '-' }}</div>
+                    </div>
+                    <div class="meus-dados-field">
+                        <label>Unidade</label>
+                        <div class="value">{{ meus_dados.unidade or '-' }}</div>
+                    </div>
+                </div>
+                <div class="meus-dados-modal-footer">
+                    <button type="button" class="btn-fechar" id="meus-dados-fechar">Fechar</button>
+                    <a href="/users/edit/{{ meus_dados.id }}" class="btn-editar">Editar</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Bloco para conte├║do espec├¡fico de cada p├ígina -->
         {% block content %}
         {% endblock %}
     </div>
@@ -542,6 +697,38 @@
                     btn.setAttribute('aria-expanded', 'false');
                 }
             });
+        })();
+
+        (function () {
+            var btnMeusDados = document.getElementById('btn-meus-dados');
+            var modal = document.getElementById('meus-dados-modal');
+            var btnFechar = document.getElementById('meus-dados-fechar');
+            var menu = document.getElementById('userMenu');
+
+            function fecharModalMeusDados() {
+                if (modal) {
+                    modal.classList.remove('show');
+                    modal.setAttribute('aria-hidden', 'true');
+                }
+            }
+
+            if (btnMeusDados) {
+                btnMeusDados.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    if (menu) menu.classList.remove('open');
+                    if (modal) {
+                        modal.classList.add('show');
+                        modal.setAttribute('aria-hidden', 'false');
+                    }
+                });
+            }
+
+            if (btnFechar) btnFechar.addEventListener('click', fecharModalMeusDados);
+            if (modal) {
+                modal.addEventListener('click', function (e) {
+                    if (e.target === modal) fecharModalMeusDados();
+                });
+            }
         })();
     </script>
 
