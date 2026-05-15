@@ -224,6 +224,7 @@ def segem_home(
             "situacoes": situacoes,
             "valor_fmt": _valor_fmt,
             "all_tombos": _all_tombos,
+            "hide_app_header": True,
         },
     )
 

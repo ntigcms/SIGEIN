@@ -52,6 +52,7 @@ def list_orgaos(
             "request": request,
             "orgaos": orgaos_data,
             "user": user,
+            "hide_app_header": True,
         },
     )
 

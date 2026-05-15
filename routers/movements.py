@@ -1,4 +1,4 @@
-from fastapi.responses import RedirectResponse, JSONResponse
+﻿from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi import APIRouter, Request, Form, Depends
 from urllib.parse import quote
 from sqlalchemy.orm import Session, joinedload
@@ -41,7 +41,7 @@ def listar_movimentacoes(
 
     return templates.TemplateResponse(
         "movements_list.html",
-        {"request": request, "movements": movements, "user": user}
+        {"request": request, "movements": movements, "user": user, "hide_app_header": True}
     )
 
 
@@ -307,7 +307,7 @@ def editar_movimentacao_form(
             "products": products_js,
             "units": units,
             "categories": categories,
-            "user": user
+            "user": user,
         }
     )
 

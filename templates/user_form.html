@@ -99,13 +99,13 @@
                     <label for="perfil">Perfil*</label>
                     <select name="perfil" id="perfil" required onchange="mostrarDescricaoPerfil()">
                         <option value="">-- Selecione --</option>
-                        <option value="master" {% if (form_data and form_data.perfil == 'master') or (user and user.perfil == 'master') %}selected{% endif %}>MASTER - Acesso Total ao Sistema</option>
-                        <option value="admin_municipal" {% if (form_data and form_data.perfil == 'admin_municipal') or (user and user.perfil == 'admin_municipal') %}selected{% endif %}>ADMIN MUNICIPAL - Gerencia Município Completo</option>
-                        <option value="gestor_estoque" {% if (form_data and form_data.perfil == 'gestor_estoque') or (user and user.perfil == 'gestor_estoque') %}selected{% endif %}>GESTOR DE ESTOQUE - Gerencia Inventário</option>
-                        <option value="gestor_protocolo" {% if (form_data and form_data.perfil == 'gestor_protocolo') or (user and user.perfil == 'gestor_protocolo') %}selected{% endif %}>GESTOR DE PROTOCOLO - Gerencia E-Protocolo</option>
-                        <option value="gestor_geral" {% if (form_data and form_data.perfil == 'gestor_geral') or (user and user.perfil == 'gestor_geral') %}selected{% endif %}>GESTOR GERAL - Estoque + Protocolo</option>
-                        <option value="gestor_segem" {% if (form_data and form_data.perfil == 'gestor_segem') or (user and user.perfil == 'gestor_segem') %}selected{% endif %}>GESTOR SEGEM - Módulo SEGEM</option>
-                        <option value="operador" {% if (form_data and form_data.perfil == 'operador') or (user and user.perfil == 'operador') %}selected{% endif %}>OPERADOR - Acesso Básico</option>
+                        <option value="master" {% if (form_data and form_data.perfil == 'master') or (user and user.perfil|enum_value == 'master') %}selected{% endif %}>MASTER - Acesso Total ao Sistema</option>
+                        <option value="admin_municipal" {% if (form_data and form_data.perfil == 'admin_municipal') or (user and user.perfil|enum_value == 'admin_municipal') %}selected{% endif %}>ADMIN MUNICIPAL - Gerencia Município Completo</option>
+                        <option value="gestor_estoque" {% if (form_data and form_data.perfil == 'gestor_estoque') or (user and user.perfil|enum_value == 'gestor_estoque') %}selected{% endif %}>GESTOR DE ESTOQUE - Gerencia Inventário</option>
+                        <option value="gestor_protocolo" {% if (form_data and form_data.perfil == 'gestor_protocolo') or (user and user.perfil|enum_value == 'gestor_protocolo') %}selected{% endif %}>GESTOR DE PROTOCOLO - Gerencia E-Protocolo</option>
+                        <option value="gestor_geral" {% if (form_data and form_data.perfil == 'gestor_geral') or (user and user.perfil|enum_value == 'gestor_geral') %}selected{% endif %}>GESTOR GERAL - Estoque + Protocolo</option>
+                        <option value="gestor_segem" {% if (form_data and form_data.perfil == 'gestor_segem') or (user and user.perfil|enum_value == 'gestor_segem') %}selected{% endif %}>GESTOR SEGEM - Módulo SEGEM</option>
+                        <option value="operador" {% if (form_data and form_data.perfil == 'operador') or (user and user.perfil|enum_value == 'operador') %}selected{% endif %}>OPERADOR - Acesso Básico</option>
                     </select>
                 </div>
 
@@ -113,10 +113,10 @@
                     <label for="status">Status*</label>
                     <select name="status" id="status" required>
                         <option value="">-- Selecione --</option>
-                        <option value="ativo" {% if (form_data and form_data.status == 'ativo') or (user and user.status == 'ativo') %}selected{% endif %}>Ativo</option>
-                        <option value="inativo" {% if (form_data and form_data.status == 'inativo') or (user and user.status == 'inativo') %}selected{% endif %}>Inativo</option>
-                        <option value="bloqueado" {% if (form_data and form_data.status == 'bloqueado') or (user and user.status == 'bloqueado') %}selected{% endif %}>Bloqueado</option>
-                        <option value="pendente" {% if (form_data and form_data.status == 'pendente') or (user and user.status == 'pendente') %}selected{% endif %}>Pendente Aprovação</option>
+                        <option value="ativo" {% if (form_data and form_data.status == 'ativo') or (user and user.status|enum_value == 'ativo') %}selected{% endif %}>Ativo</option>
+                        <option value="inativo" {% if (form_data and form_data.status == 'inativo') or (user and user.status|enum_value == 'inativo') %}selected{% endif %}>Inativo</option>
+                        <option value="bloqueado" {% if (form_data and form_data.status == 'bloqueado') or (user and user.status|enum_value == 'bloqueado') %}selected{% endif %}>Bloqueado</option>
+                        <option value="pendente" {% if (form_data and form_data.status == 'pendente') or (user and user.status|enum_value == 'pendente') %}selected{% endif %}>Pendente Aprovação</option>
                     </select>
                 </div>
             </div>

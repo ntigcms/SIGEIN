@@ -1,0 +1,114 @@
+{% macro assets() %}
+{% include "includes/mod_list_assets.html" with context %}
+{% endmacro %}
+
+{% macro header(title, subtitle='', add_url=none, add_label='Novo', add_icon='fa-plus', show_clear=true) %}
+<header class="mod-header">
+  <div class="mod-header__title">
+    <h1>{{ title }}</h1>
+    {% if subtitle %}<p>{{ subtitle }}</p>{% endif %}
+  </div>
+  <div class="mod-header__actions">
+    {% if show_clear %}
+    <button type="button" id="clear-filters" class="mod-btn mod-btn--ghost">
+      <i class="fas fa-filter-circle-xmark"></i> Limpar filtros
+    </button>
+    {% endif %}
+    {% if add_url %}
+    <a href="{{ add_url }}" class="mod-btn mod-btn--primary">
+      <i class="fas {{ add_icon }}"></i> {{ add_label }}
+    </a>
+    {% endif %}
+  </div>
+</header>
+{% endmacro %}
+
+{% macro filters_start() %}
+<section class="mod-filters" aria-label="Filtros">
+  <div class="mod-filters__head">
+    <h2><i class="fas fa-sliders"></i> Filtros rápidos</h2>
+  </div>
+  <div class="mod-filters__grid">
+{% endmacro %}
+
+{% macro filters_end() %}
+  </div>
+</section>
+{% endmacro %}
+
+{% macro filter_col(label, col, placeholder='Selecionar...', input_id=none) %}
+<div class="mod-filtro">
+  <label{% if input_id %} for="{{ input_id }}"{% endif %}>{{ label }}</label>
+  <div class="search-container" data-col="{{ col }}">
+    <input type="text"{% if input_id %} id="{{ input_id }}"{% endif %} placeholder="{{ placeholder }}" class="filter-search" autocomplete="off">
+    <span class="arrow">▼</span>
+    <div class="options"></div>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro filter_text(label, col, placeholder='Digite...', input_id=none) %}
+<div class="mod-filtro">
+  <label{% if input_id %} for="{{ input_id }}"{% endif %}>{{ label }}</label>
+  <input type="text"{% if input_id %} id="{{ input_id }}"{% endif %} data-dt-col="{{ col }}" placeholder="{{ placeholder }}" class="filter-search" autocomplete="off">
+</div>
+{% endmacro %}
+
+{% macro filter_checkbox_options(label, col, filter_key, options, placeholder='Clique para selecionar...') %}
+<div class="mod-filtro">
+  <label>{{ label }}</label>
+  <div class="search-container" data-col="{{ col }}" data-filter="{{ filter_key }}">
+    <input type="text" placeholder="{{ placeholder }}" class="filter-search" autocomplete="off">
+    <span class="arrow">▼</span>
+    <div class="options" style="display:none;">
+      {% for opt in options %}
+      <div class="option">
+        <input type="checkbox" value="{{ opt }}">
+        <label>{{ opt }}</label>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro panel_start(title, count_id='mod-count') %}
+<section class="mod-panel">
+  <div class="mod-panel__head">
+    <h2>{{ title }}</h2>
+    <span class="mod-panel__count" id="{{ count_id }}"></span>
+  </div>
+  <div class="mod-table-wrap">
+{% endmacro %}
+
+{% macro panel_end() %}
+  </div>
+</section>
+{% endmacro %}
+
+{% macro actions(edit_url, delete_id=none) %}
+<div class="mod-actions">
+  <a href="{{ edit_url }}" class="mod-action-btn mod-action-btn--edit" title="Editar">
+    <i class="fas fa-pen"></i>
+  </a>
+  {% if delete_id is not none %}
+  <form class="delete-form" data-id="{{ delete_id }}" method="post" style="display:inline;">
+    <button type="submit" class="mod-action-btn mod-action-btn--delete delete-form-btn" title="Excluir">
+      <i class="fas fa-trash"></i>
+    </button>
+  </form>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% macro empty_state(message, add_url=none, add_label='Cadastrar') %}
+<div class="mod-empty">
+  <i class="fas fa-inbox"></i>
+  <p>{{ message }}</p>
+  {% if add_url %}
+  <a href="{{ add_url }}" class="mod-btn mod-btn--primary" style="margin-top:1rem;">
+    <i class="fas fa-plus"></i> {{ add_label }}
+  </a>
+  {% endif %}
+</div>
+{% endmacro %}

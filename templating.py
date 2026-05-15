@@ -24,6 +24,16 @@ PERFIL_LABELS = {
 }
 
 
+def enum_value(val) -> str:
+    if val is None:
+        return ""
+    return val.value if hasattr(val, "value") else str(val)
+
+
+def enum_label(val) -> str:
+    return enum_value(val).replace("_", " ").capitalize()
+
+
 def tempo_recebido(dt):
     """Formata datetime como 'Recebido há X dias/meses/anos'."""
     if not dt:
@@ -148,3 +158,5 @@ templates.env.globals["get_logged_user"] = get_logged_user
 templates.env.globals["get_user_display_name"] = get_user_display_name
 templates.env.globals["get_meus_dados"] = get_meus_dados
 templates.env.filters["tempo_recebido"] = tempo_recebido
+templates.env.filters["enum_value"] = enum_value
+templates.env.filters["enum_label"] = enum_label

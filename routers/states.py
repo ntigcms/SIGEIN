@@ -19,7 +19,7 @@ def list_states(request: Request, db: Session = Depends(get_db), user: str = Dep
     states = db.query(EquipmentState).order_by(EquipmentState.nome).all()
     return templates.TemplateResponse(
         "states.html",
-        {"request": request, "states": states, "user": user}
+        {"request": request, "states": states, "user": user, "hide_app_header": True}
     )
 
 

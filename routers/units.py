@@ -63,7 +63,8 @@ def list_units(
         {
             "request": request,
             "units": units_data,
-            "user": user
+            "user": user,
+            "hide_app_header": True,
         }
     )
 

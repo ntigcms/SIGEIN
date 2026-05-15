@@ -14,7 +14,7 @@ def list_categories(request: Request, db: Session = Depends(get_db)):
     categories = db.query(Category).order_by(Category.nome).all()
     return templates.TemplateResponse(
         "categories_list.html",
-        {"request": request, "categories": categories}
+        {"request": request, "categories": categories, "hide_app_header": True}
     )
 
 

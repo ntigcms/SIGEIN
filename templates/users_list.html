@@ -1,298 +1,111 @@
 {% extends "base.html" %}
-{% block title %}Usuários{% endblock %}
+{% import "macros/mod_list.html" as mod %}
+
+{% block title %}Usuários — SIGEIN{% endblock %}
 
 {% block content %}
-<div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 20px;">
-    <h2>Usuários</h2>
-    <a href="/users/add">
-        <button class="animated-btn">Cadastrar Novo</button>
-    </a>
-</div>
+<link rel="stylesheet" href="/static/css/users.css">
+{{ mod.assets() }}
 
-<!-- Filtros com estilo de campo de pesquisa -->
-<div class="filtros-container">
+<div class="mod-page users-page">
 
-    <div class="filtro-item">
-        <label>Nome</label>
-        <div class="search-container" data-col="2">
-            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
-            <span class="arrow">▼</span>
-            <div class="options" style="display:none;"></div>
-    </div>
-    </div>
-    <div class="filtro-item">
-        <label>Email</label>
-        <div class="search-container" data-col="3">
-            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
-            <span class="arrow">▼</span>
-            <div class="options" style="display:none;"></div>
-        </div>
-    </div>
-    <div class="filtro-item">
-        <label>Perfil</label>
-        <div class="search-container" data-col="4">
-            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
-            <span class="arrow">▼</span>
-            <div class="options" style="display:none;"></div>
-        </div>
-    </div>
-    <div class="filtro-item">
-        <label>Status</label>
-        <div class="search-container" data-col="5">
-            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
-            <span class="arrow">▼</span>
-            <div class="options" style="display:none;"></div>
-        </div>
-    </div>
+  
 
-    <!-- Botão para limpar filtros -->
-    <div style="display:flex; align-items:center;">
-        <button id="clear-filters" class="clear-btn">🧹 Limpar Filtros</button>
-    </div>
-</div>
+  {{ mod.header("Usuários", "Gerencie contas, perfis de acesso e status no sistema.", "/users/add", "Novo usuário", "fa-user-plus") }}
+  
+  <section class="users-kpi-grid" aria-label="Resumo de usuários">
+    <article class="users-kpi users-kpi--total">
+      <div class="users-kpi__icon"><i class="fas fa-users"></i></div>
+      <div>
+        <div class="users-kpi__value">{{ total_users }}</div>
+        <div class="users-kpi__label">Total cadastrados</div>
+      </div>
+    </article>
+    <article class="users-kpi users-kpi--active">
+      <div class="users-kpi__icon"><i class="fas fa-circle-check"></i></div>
+      <div>
+        <div class="users-kpi__value">{{ active_count }}</div>
+        <div class="users-kpi__label">Ativos</div>
+      </div>
+    </article>
+    <article class="users-kpi users-kpi--pending">
+      <div class="users-kpi__icon"><i class="fas fa-clock"></i></div>
+      <div>
+        <div class="users-kpi__value">{{ pending_count }}</div>
+        <div class="users-kpi__label">Pendentes</div>
+      </div>
+    </article>
+    <article class="users-kpi users-kpi--inactive">
+      <div class="users-kpi__icon"><i class="fas fa-user-slash"></i></div>
+      <div>
+        <div class="users-kpi__value">{{ inactive_count }}</div>
+        <div class="users-kpi__label">Inativos / bloqueados</div>
+      </div>
+    </article>
+  </section>
+  
+  {{ mod.filters_start() }}
+  {{ mod.filter_col("Nome", 0, "Selecionar...") }}
+  {{ mod.filter_col("E-mail", 1, "Selecionar...") }}
+  {{ mod.filter_col("Perfil", 2, "Selecionar...") }}
+  {{ mod.filter_col("Status", 3, "Selecionar...") }}
+  {{ mod.filters_end() }}
 
-<!-- TABELA (ENVOLVIDA EM CARD VISUAL) -->
-<div class="table-section">
-    <h4>Lista de Usuários</h4>
-<table id="usuariosTable" class="data-grid display" style="width:100%; border-collapse: collapse; text-align:left;">
+  {{ mod.panel_start("Lista de usuários", "users-count") }}
+  {% if users %}
+  <table id="usuariosTable" class="display" style="width:100%;">
     <thead>
-        <tr style="background-color: #0d6efd; color:white;">
-            <th><input type="checkbox" id="select-all" onclick="toggleAll(this)"></th>
-            <th>ID</th>
-            <th>Nome</th>
-            <th>Email</th>
-            <th>Perfil</th>
-            <th>Status</th>
-            <th>Ações</th>
-        </tr>
+      <tr>
+        <th>Usuário</th>
+        <th>E-mail</th>
+        <th>Perfil</th>
+        <th>Status</th>
+        <th data-orderable="false">Ações</th>
+      </tr>
     </thead>
     <tbody>
-        {% for user in users %}
-        <tr style="border-bottom:1px solid #ccc;">
-            <td><input type="checkbox" class="select-item"></td>
-        <td>{{ user.id }}</td>
-        <td>{{ user.nome }}</td>
-        <td>{{ user.email }}</td>
-        <td>{{ user.perfil.capitalize() }}</td>
-        <td>{{ user.status.capitalize() }}</td>
-            <td>
-                <a href="/users/edit/{{ user.id }}" title="Editar">
-                    <i class="fas fa-pen" style="color:#ffaa00; font-size: 18px; margin-right: 10px; cursor:pointer;"></i></a>
-                    
-                    <form class="delete-form" data-id="{{ user.id }}"  method="post" style="display:inline;">
-                        <button type="submit" style="background:none; border:none; padding:0; cursor:pointer;">
-                            <i class="fas fa-trash" style="color:#cc0000; font-size:18px;"></i>
-                        </button>
-                    </form>
-            </td>
-        </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>,
-
-<style>
-    .dataTables_length label {
-    display: flex;
-    align-items: center;
-    gap: 6px; /* espaço entre texto e select */
-}
-
-    .dataTables_length select {
-    width: auto;
-    display: inline-block;
-}
-</style>
-
-<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-
-<!-- DataTables -->
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"/>
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<!-- CSS VISUAL (SEM DUPLICAÇÃO) -->
-<link rel="stylesheet" href="{{ request.url_for('static', path='css/equipamentos-grid.css') }}">
-
-
+      {% for u in users %}
+      {% set perfil_key = u.perfil|enum_value %}
+      {% set status_key = u.status|enum_value %}
+      <tr>
+        <td data-search="{{ u.nome }}">
+          <div class="users-cell-user">
+            <span class="users-avatar" aria-hidden="true">{{ (u.nome or '?')[0] }}</span>
+            <div>
+              <div class="users-cell-user__name">{{ u.nome }}</div>
+              <div class="users-cell-user__meta">ID #{{ u.id }}</div>
+            </div>
+          </div>
+        </td>
+        <td data-search="{{ u.email }}"><span class="users-email">{{ u.email }}</span></td>
+        <td data-search="{{ perfil_key }}" data-filter-label="{{ u.perfil|enum_label }}">
+          <span class="users-badge users-badge--{{ perfil_key }}">{{ u.perfil|enum_label }}</span>
+        </td>
+        <td data-search="{{ status_key }}" data-filter-label="{{ u.status|enum_label }}">
+          <span class="users-badge users-badge--{{ status_key }}">{{ u.status|enum_label }}</span>
+        </td>
+        <td>{{ mod.actions("/users/edit/" ~ u.id, u.id) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  {{ mod.empty_state("Nenhum usuário cadastrado.", "/users/add", "Cadastrar primeiro usuário") }}
+  {% endif %}
+  {{ mod.panel_end() }}
+</div>
 
 <script>
-function toggleAll(source) {
-    let checkboxes = document.getElementsByClassName('select-item');
-    for (let i = 0; i < checkboxes.length; i++) {
-        checkboxes[i].checked = source.checked;
-    }
-}
-
-$(document).ready(function() {
-    var table = $('#usuariosTable').DataTable({
-        order: [[1, "asc"]],
-        columnDefs: [
-                    { orderable: false, targets: [0, 6] },
-                    { visible: false, targets: [0, 1] } // checkbox oculto
-                    ],
-        language: {
-            emptyTable: "Nenhum usuário encontrado",
-            info: "Mostrando _START_ até _END_ de _TOTAL_ usuários",
-            infoEmpty: "Mostrando 0 até 0 de 0 usuários",
-            lengthMenu: "Mostrar usuários _MENU_",
-            zeroRecords: "Nenhum usuário correspondente encontrado",
-            paginate: { first:"Primeira", last:"Última", next:"Próxima", previous:"Anterior" }
-        },
-        pageLength: 10,
-        dom: 'rt<"bottom"l<"info-wrapper"ip>><"clear">'
-    });
-
-    // === Inicializa filtros customizados ===
-    $('.search-container').each(function() {
-        const container = $(this);
-        const input = container.find('.filter-search');
-        const optionsDiv = container.find('.options');
-        const arrow = container.find('.arrow');
-        const colIndex = container.data('col');
-        const column = table.column(colIndex);
-        let selecionados = [];
-
-        const valores = column.data().unique().sort().toArray();
-
-        function renderOptions(lista) {
-            optionsDiv.empty();
-            lista.forEach(v => {
-                const checked = selecionados.includes(v) ? 'checked' : '';
-                optionsDiv.append(`
-                    <div class="option">
-                        <input type="checkbox" value="${v}" ${checked}>
-                        <label>${v}</label>
-                    </div>
-                `);
-            });
-            optionsDiv.show();
-            arrow.addClass('open');
-        }
-    // Abrir filtro e fechar os outros
-    input.on("click", function(e){
-    e.stopPropagation();
-
-    // Fecha todos os outros filtros
-    $('.search-container').not(container).find('.options').hide();
-
-    // Alterna o filtro atual
-    if (optionsDiv.is(":visible")) {
-        optionsDiv.hide();
-        arrow.removeClass('open');
-    } else {
-        renderOptions(valores);
-    }
-});
-
-        input.on('input', function() {
-            const query = input.val().toLowerCase();
-            const filtradas = valores.filter(v => v.toLowerCase().includes(query));
-            renderOptions(filtradas);
-        });
-
-        optionsDiv.on('change', 'input[type="checkbox"]', function() {
-            const val = $(this).val();
-            if (this.checked) selecionados.push(val);
-            else selecionados = selecionados.filter(v => v !== val);
-            input.val(selecionados.join(', '));
-            aplicarFiltro();
-        });
-
-        function aplicarFiltro() {
-            if (selecionados.length > 0) {
-                const regex = selecionados.map(v => '^' + $.fn.dataTable.util.escapeRegex(v) + '$').join('|');
-                column.search(regex, true, false).draw();
-            } else {
-                column.search('').draw();
-            }
-        }
-
-        $(document).on('click', function(e) {
-            if (!$(e.target).closest(container).length) {
-                optionsDiv.hide();
-                arrow.removeClass('open');
-            }
-        });
-
-        // Salva referência para resetar depois
-        container.data('reset', function() {
-            selecionados = [];
-            input.val('');
-            column.search('').draw();
-            optionsDiv.hide();
-            arrow.removeClass('open');
-        });
-    });
-
-    // === Botão "Limpar Filtros" ===
-    $('#clear-filters').on('click', function() {
-        $('.search-container').each(function() {
-            const resetFn = $(this).data('reset');
-            if (typeof resetFn === 'function') resetFn();
-        });
-    });
+$(function () {
+  {% if users %}
+  var table = SIGENModList.initTable("#usuariosTable", {
+    order: [[0, "asc"]],
+    columnDefs: [{ orderable: false, targets: 4 }],
+    countSelector: "#users-count",
+  });
+  SIGENModList.initColumnFilters(table, { useDataSearch: true });
+  SIGENModList.initClearFilters();
+  {% endif %}
 });
 </script>
-
-<script>
-    // DELETE MODERNO
-$(document).on("submit", ".delete-form", function(e) {
-    e.preventDefault();
-
-    const form = $(this);
-    const userId = form.data("id");
-
-    Swal.fire({
-        title: 'Tem certeza?',
-        text: "Essa ação não poderá ser desfeita.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#cc0000',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sim, excluir',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-
-            fetch(`/users/delete/${userId}`, {
-                method: "POST"
-            })
-            .then(response => response.json())
-            .then(data => {
-
-                if (data.success) {
-
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Excluído!',
-                        text: 'Usuário removido com sucesso.',
-                        timer: 1500,
-                        showConfirmButton: false
-                    }).then(() => {
-                        location.reload();
-                    });
-
-                } else {
-
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Não permitido',
-                        text: data.message
-                    });
-
-                }
-
-            });
-        }
-    });
-});
-</script>
-
-<style>
-    /* Garante que o SweetAlert fique acima de tudo */
-.swal2-container {
-    z-index: 99999 !important;
-}
-</style>
 {% endblock %}

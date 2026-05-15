@@ -25,7 +25,7 @@ def list_equipment_types(request: Request, db: Session = Depends(get_db), user: 
     tipos = db.query(EquipmentType).order_by(EquipmentType.nome).all()
     return templates.TemplateResponse(
         "equipment_types.html",
-        {"request": request, "equipment_types": tipos, "user": user}
+        {"request": request, "equipment_types": tipos, "user": user, "hide_app_header": True}
     )
 
 

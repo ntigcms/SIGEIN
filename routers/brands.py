@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Form, Depends
+﻿from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import RedirectResponse
 from starlette.status import HTTP_302_FOUND
 from sqlalchemy.orm import Session
@@ -19,7 +19,7 @@ def list_brands(request: Request, db: Session = Depends(get_db), user: str = Dep
     brands = db.query(Brand).order_by(Brand.nome).all()
     return templates.TemplateResponse(
         "brands.html",
-        {"request": request, "brands": brands, "user": user}
+        {"request": request, "brands": brands, "user": user, "hide_app_header": True}
     )
 
 

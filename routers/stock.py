@@ -22,7 +22,7 @@ def list_stock(request: Request, db: Session = Depends(get_db),
     stock = db.query(Stock).all()
     return templates.TemplateResponse(
         "stock_list.html",
-        {"request": request, "stock": stock, "user": user}
+        {"request": request, "stock": stock, "user": user, "hide_app_header": True},
     )
 
 
@@ -41,7 +41,8 @@ def add_stock_form(request: Request, db: Session = Depends(get_db),
             "request": request,
             "products": products,
             "units": units,
-            "user": user
+            "user": user,
+            "hide_app_header": True,
         }
     )
 

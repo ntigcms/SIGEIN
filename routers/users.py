@@ -1,16 +1,28 @@
-from fastapi import APIRouter, Request, Depends, Form, HTTPException
+﻿from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_302_FOUND
 from database import get_db
 from dependencies import get_current_user, registrar_log
-from models import User, Municipio, Orgao, Unidade
+from models import User, Municipio, Orgao, Unidade, PerfilEnum, StatusUsuarioEnum
 from templating import templates
 from typing import Optional
 import re
 import hashlib
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+
+def _perfil_valor(user: User) -> str:
+    return user._perfil_valor()
+
+
+def _is_master(user: User) -> bool:
+    return _perfil_valor(user) == PerfilEnum.MASTER.value
+
+
+def _is_admin_municipal(user: User) -> bool:
+    return _perfil_valor(user) == PerfilEnum.ADMIN_MUNICIPAL.value
 
 
 # ========================================
@@ -92,32 +104,44 @@ def list_users(
     if not user_obj:
         return RedirectResponse("/login")
 
-    perfil = user_obj.perfil
+    if not user_obj.pode_gerenciar_usuarios():
+        return HTMLResponse(
+            "<h2>Acesso Negado</h2><p>Você não tem permissão para gerenciar usuários.</p>",
+            status_code=403,
+        )
 
-    if perfil == "master":
+    if _is_master(user_obj):
         users = db.query(User).order_by(User.nome).all()
-
-    elif perfil == "admin_municipal":
+    else:
         users = (
             db.query(User)
             .filter(User.municipio_id == user_obj.municipio_id)
             .order_by(User.nome)
             .all()
         )
-    else:
-        return HTMLResponse(
-            "<h2>Acesso Negado</h2><p>Você não tem permissão para gerenciar usuários.</p>",
-            status_code=403
-        )
+
+    def _status_val(u: User) -> str:
+        s = u.status
+        return s.value if hasattr(s, "value") else str(s)
+
+    total_users = len(users)
+    active_count = sum(1 for u in users if _status_val(u) == StatusUsuarioEnum.ATIVO.value)
+    pending_count = sum(1 for u in users if _status_val(u) == StatusUsuarioEnum.PENDENTE.value)
+    inactive_count = total_users - active_count - pending_count
 
     return templates.TemplateResponse(
         "users_list.html",
         {
             "request": request,
+            "hide_app_header": True,
             "users": users,
             "user": current_user,
-            "user_perfil": perfil
-        }
+            "user_perfil": _perfil_valor(user_obj),
+            "total_users": total_users,
+            "active_count": active_count,
+            "pending_count": pending_count,
+            "inactive_count": inactive_count,
+        },
     )
 
 
@@ -137,7 +161,7 @@ def add_user_form(
 
     user_obj = db.query(User).filter(User.email == current_user).first()
 
-    if user_obj.perfil not in ["master", "admin_municipal"]:
+    if not user_obj.pode_gerenciar_usuarios():
         return HTMLResponse("Acesso Negado", status_code=403)
 
     return templates.TemplateResponse(
@@ -176,7 +200,7 @@ def add_user(
 
     user_obj = db.query(User).filter(User.email == current_user).first()
 
-    if user_obj.perfil not in ["master", "admin_municipal"]:
+    if not user_obj.pode_gerenciar_usuarios():
         raise HTTPException(status_code=403, detail="Sem permissão")
 
     cpf_limpo = limpar_cpf(cpf)
@@ -216,10 +240,10 @@ def add_user(
             "form_data": form_data, "errors": ["Este e-mail já está cadastrado."]
         })
 
-    if user_obj.perfil == "admin_municipal" and municipio_id != user_obj.municipio_id:
+    if _is_admin_municipal(user_obj) and municipio_id != user_obj.municipio_id:
         raise HTTPException(status_code=403, detail="Você só pode criar usuários do seu município")
 
-    if perfil == "master" and user_obj.perfil != "master":
+    if perfil == PerfilEnum.MASTER.value and not _is_master(user_obj):
         raise HTTPException(status_code=403, detail="Apenas MASTER pode criar outros usuários MASTER")
 
     novo_usuario = User(
@@ -265,7 +289,7 @@ def edit_user_form(
     user_obj = db.query(User).filter(User.email == current_user).first()
     
     # ✅ Verifica permissão
-    if user_obj.perfil not in ["master", "admin_municipal"]:
+    if not user_obj.pode_gerenciar_usuarios():
         return HTMLResponse("Acesso Negado", status_code=403)
     
     # ✅ Busca usuário a editar
@@ -276,14 +300,11 @@ def edit_user_form(
     # ✅ ADMIN_MUNICIPAL só pode editar usuários do seu município
     # ❌ ANTES: if user_obj.perfil.value == "admin_municipal":
     # ✅ DEPOIS:
-    if user_obj.perfil == "admin_municipal":
+    if _is_admin_municipal(user_obj):
         if user_to_edit.municipio_id != user_obj.municipio_id:
             return HTMLResponse("Você só pode editar usuários do seu município", status_code=403)
     
-    # ✅ Ninguém (exceto MASTER) pode editar outro MASTER
-    # ❌ ANTES: if user_to_edit.perfil.value == "master" and user_obj.perfil.value != "master":
-    # ✅ DEPOIS:
-    if user_to_edit.perfil == "master" and user_obj.perfil != "master":
+    if _is_master(user_to_edit) and not _is_master(user_obj):
         return HTMLResponse("Apenas MASTER pode editar outros MASTER", status_code=403)
     
     return templates.TemplateResponse(
@@ -324,7 +345,7 @@ def edit_user(
     user_obj = db.query(User).filter(User.email == current_user).first()
     
     # ✅ Verifica permissão
-    if str(user_obj.perfil) not in ["master", "admin_municipal"]:
+    if not user_obj.pode_gerenciar_usuarios():
         raise HTTPException(status_code=403, detail="Sem permissão")
     
     # ✅ Busca usuário
@@ -386,7 +407,6 @@ def edit_user(
     user.unidade_id = unidade_id
     user.perfil = perfil
     user.status = status
-    user.email = email
     
     # ✅ Atualiza senha apenas se fornecida
     if senha:
@@ -422,7 +442,7 @@ def delete_user(
     user_obj = db.query(User).filter(User.email == current_user).first()
     
     # ✅ Verifica permissão
-    if user_obj.perfil not in ["master", "admin_municipal"]:
+    if not user_obj.pode_gerenciar_usuarios():
         return JSONResponse({"success": False, "message": "Sem permissão"})
     
     # ✅ Busca usuário a excluir
@@ -437,11 +457,10 @@ def delete_user(
     # ✅ Apenas MASTER pode excluir outro MASTER
     # ❌ ANTES: if user_to_delete.perfil.value == "master" and user_obj.perfil.value != "master":
     # ✅ DEPOIS:
-    if user_to_delete.perfil == "master" and user_obj.perfil != "master":
+    if _is_master(user_to_delete) and not _is_master(user_obj):
         return JSONResponse({"success": False, "message": "Apenas MASTER pode excluir outro MASTER"})
     
-    # ✅ ADMIN_MUNICIPAL só pode excluir usuários do seu município
-    if user_obj.perfil == "admin_municipal":
+    if _is_admin_municipal(user_obj):
         if user_to_delete.municipio_id != user_obj.municipio_id:
             return JSONResponse({"success": False, "message": "Você só pode excluir usuários do seu município"})
     

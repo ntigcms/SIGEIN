@@ -1,368 +1,99 @@
 {% extends "base.html" %}
+{% import "macros/mod_list.html" as mod %}
 
-{% block title %}Movimentações{% endblock %}
+{% block title %}Movimentações — SIGEIN{% endblock %}
 
 {% block content %}
+{{ mod.assets() }}
 
-<div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 20px;">
-    <h2>Movimentações</h2>
-    <a href="/movements/nova">
-        <button class="animated-btn">Nova Movimentação</button>
-    </a>
-</div>
+<div class="mod-page">
+  {{ mod.header("Movimentações", "Histórico de transferências e alterações de itens.", "/movements/nova", "Nova movimentação", "fa-arrows-turn-right") }}
 
-<!-- FILTROS -->
-<div class="filtros-container">
+  {{ mod.filters_start() }}
+  {{ mod.filter_col("Tipo", 1) }}
+  {{ mod.filter_col("Origem", 2) }}
+  {{ mod.filter_col("Destino", 3) }}
+  {{ mod.filter_col("Tombo / série", "4,5") }}
+  {{ mod.filter_col("Tipo de movimentação", 6) }}
+  {{ mod.filter_col("Usuário", 7) }}
+  {{ mod.filter_col("Data", 8) }}
+  {{ mod.filters_end() }}
 
-    <div class="filtro-item">
-        <label>Tipo</label>
-        <div class="search-container" data-col="1">
-            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
-            <span class="arrow">▼</span>
-            <div class="options"></div>
-        </div>
-    </div>
-
-    <div class="filtro-item">
-        <label>Origem</label>
-        <div class="search-container" data-col="2">
-            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
-            <span class="arrow">▼</span>
-            <div class="options"></div>
-        </div>
-    </div>
-
-    <div class="filtro-item">
-        <label>Destino</label>
-        <div class="search-container" data-col="3">
-            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
-            <span class="arrow">▼</span>
-            <div class="options"></div>
-        </div>
-    </div>
-
-    <div class="filtro-item">
-        <label>Tombo/Serie</label>
-        <div class="search-container" data-col="4,5">
-            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
-            <span class="arrow">▼</span>
-            <div class="options"></div>
-        </div>
-    </div>
-
-    <div class="filtro-item">
-        <label>Tipo de Movimentação</label>
-        <div class="search-container" data-col="6">
-            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
-            <span class="arrow">▼</span>
-            <div class="options"></div>
-        </div>
-    </div>
-
-    <div class="filtro-item">
-        <label>Usuário</label>
-        <div class="search-container" data-col="7">
-            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
-            <span class="arrow">▼</span>
-            <div class="options"></div>
-        </div>
-    </div>
-
-    <div class="filtro-item">
-        <label>Data</label>
-        <div class="search-container" data-col="8">
-            <input type="text" placeholder="Clique para selecionar..." class="filter-search">
-            <span class="arrow">▼</span>
-            <div class="options"></div>
-        </div>
-    </div>
-
-    <div style="display:flex; align-items:center; ">
-        <button id="clear-filters" class="clear-btn">🧹 Limpar Filtros</button>
-    </div>
-
-</div>
-
-<!-- TABELA -->
-<div class="table-section">
-    <h4>Lista de Movimentações</h4>
-
-    <table id="movementsTable" class="data-grid display">
+  {{ mod.panel_start("Lista de movimentações", "movements-count") }}
+  {% if movements %}
+  <table id="movementsTable" class="display" style="width:100%;">
     <thead>
-        <tr>
-            <th>ID</th>
-            <th>Tipo</th>
-            <th>Origem</th>
-            <th>Destino</th>
-            <th>N.º Série</th>
-            <th>N.º Tombo</th>
-            <th>Tipo de Movimentação</th>
-            <th>Usuário</th>
-            <th>Data</th>
-            <th>Ações</th>
-        </tr>
+      <tr>
+        <th>ID</th>
+        <th>Tipo</th>
+        <th>Origem</th>
+        <th>Destino</th>
+        <th>N.º série</th>
+        <th>N.º tombo</th>
+        <th>Movimentação</th>
+        <th>Usuário</th>
+        <th>Data</th>
+        <th data-orderable="false">Ações</th>
+      </tr>
     </thead>
     <tbody>
-    {% for m in movements %}
-        <tr>
-            <td>{{ m.id }}</td>
-            <td>{{ m.product.type.nome if m.product else '-' }}</td>
-            <td>{{ m.unit_origem.nome if m.unit_origem else '-' }}</td>
-            <td>{{ m.unit_destino.nome if m.unit_destino else '-' }}</td>
-            <td>{{ m.item.num_tombo_ou_serie if m.item and not m.item.tombo else '-' }}</td>
-            <td>{{ m.item.num_tombo_ou_serie if m.item and m.item.tombo else '-' }}</td>
-            <td>{{ m.tipo }}</td>
-            <td>{{ m.user.nome if m.user else '-' }}</td>
-            <td class="data-utc" data-utc="{{ m.data.isoformat() }}">
-                {{ m.data.strftime('%d/%m/%Y %H:%M') }}
-            </td>
-
-        <td>
-            <a href="/movements/edit/{{ m.id }}" title="Editar">
-                <i class="fas fa-pen" style="color:#ffaa00; font-size:18px;"></i></a>
-            <form class="delete-form" data-id="{{ m.id }}" style="display:inline;">
-    <button type="submit" style="background:none; border:none; padding:0; cursor:pointer;">
-        <i class="fas fa-trash" style="color:#cc0000; font-size:18px;"></i>
-    </button>
-</form>
-        </td>
-    </tr>
-{% endfor %}
-</tbody>
-    </table>
-</div>,
-
-<style>
-    .dataTables_length label {
-    display: flex;
-    align-items: center;
-    gap: 6px; /* espaço entre texto e select */
-}
-
-    .dataTables_length select {
-    width: auto;
-    display: inline-block;
-}
-
-
-    /* Garante que o SweetAlert fique acima de tudo */
-.swal2-container {
-    z-index: 99999 !important;
-}
-
-</style>
-
-<!-- LIBS -->
-<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-
-<!-- CSS -->
-<link rel="stylesheet" href="{{ request.url_for('static', path='css/equipamentos-grid.css') }}">
-
-<script>
-function toggleAll(source) {
-    let checkboxes = document.getElementsByClassName('select-item');
-    for (let i = 0; i < checkboxes.length; i++) {
-        checkboxes[i].checked = source.checked;
-    }
-}
-
-$(document).ready(function() {
-    var table = $('#movementsTable').DataTable({
-        order: [[8, "desc"]],
-        columnDefs: [
-                { orderable: false, targets: [0,9] },
-                { visible: false, targets: [0] }
-            ],
-        language: {
-            emptyTable: "Nenhuma movimentação encontrada",
-            info: "Mostrando _START_ a _END_ de _TOTAL_",
-            infoEmpty: "Mostrando 0 a 0 de 0",
-            lengthMenu: "Mostrar registros _MENU_",
-            zeroRecords: "Nenhuma movimentação encontrada",
-            paginate: {
-                first:"Primeiro", last:"Último",
-                next:"Próximo", previous:"Anterior"
-            }
-        },
-        pageLength: 10,
-        dom: 'rt<"bottom"l<"info-wrapper"ip>><"clear">'
-    });
-
-    // FILTROS
-    $('.search-container').each(function() {
-        const container = $(this);
-        const input = container.find('.filter-search');
-        const optionsDiv = container.find('.options');
-        const arrow = container.find('.arrow');
-        const colIndexes = container.data('col')
-                .toString()
-                .split(',')
-                .map(c => parseInt(c.trim()));
-        const columns = colIndexes.map(i => table.column(i));
-
-        let selecionados = [];
-        let valores = [];
-
-columns.forEach(col => {
-    valores = valores.concat(col.data().toArray());
-});
-
-valores = [...new Set(valores)].sort();
-
-
-        function renderOptions(lista) {
-            optionsDiv.empty();
-            lista.forEach(v => {
-                const checked = selecionados.includes(v) ? 'checked' : '';
-                optionsDiv.append(`
-                    <div class="option">
-                        <input type="checkbox" value="${v}" ${checked}>
-                        <label>${v}</label>
-                    </div>
-                `);
-            });
-            optionsDiv.show();
-            arrow.addClass('open');
-        }
-
-        input.on("click", function(e){
-            e.stopPropagation();
-            $('.search-container').not(container).find('.options').hide();
-            optionsDiv.is(":visible") ? optionsDiv.hide() : renderOptions(valores);
-        });
-
-        input.on('input', function() {
-            const query = input.val().toLowerCase();
-            renderOptions(valores.filter(v => v.toLowerCase().includes(query)));
-        });
-
-        optionsDiv.on('change', 'input[type="checkbox"]', function() {
-            const val = $(this).val();
-            this.checked ? selecionados.push(val) :
-                selecionados = selecionados.filter(v => v !== val);
-            input.val(selecionados.join(', '));
-            if (selecionados.length) {
-    const regex = selecionados
-        .map(v => '^' + $.fn.dataTable.util.escapeRegex(v) + '$')
-        .join('|');
-
-    columns.forEach(col => col.search(regex, true, false));
-} else {
-    columns.forEach(col => col.search(''));
-}
-
-table.draw();
-
-        });
-
-        $(document).on('click', function(e) {
-            if (!$(e.target).closest(container).length) {
-                optionsDiv.hide();
-                arrow.removeClass('open');
-            }
-        });
-
-        container.data('reset', function() {
-            selecionados = [];
-            input.val('');
-            columns.forEach(col => col.search(''));
-            table.draw();
-            optionsDiv.hide();
-            arrow.removeClass('open');
-        });
-    });
-
-    $('#clear-filters').on('click', function() {
-        $('.search-container').each(function() {
-            const resetFn = $(this).data('reset');
-            if (typeof resetFn === 'function') resetFn();
-        });
-    });
-});
-</script>
+      {% for m in movements %}
+      <tr>
+        <td>{{ m.id }}</td>
+        <td>{{ m.product.type.nome if m.product and m.product.type else '—' }}</td>
+        <td>{{ m.unit_origem.nome if m.unit_origem else '—' }}</td>
+        <td>{{ m.unit_destino.nome if m.unit_destino else '—' }}</td>
+        <td>{{ m.item.num_tombo_ou_serie if m.item and not m.item.tombo else '—' }}</td>
+        <td>{{ m.item.num_tombo_ou_serie if m.item and m.item.tombo else '—' }}</td>
+        <td>{{ m.tipo }}</td>
+        <td>{{ m.user.nome if m.user else '—' }}</td>
+        <td class="data-utc" data-utc="{{ m.data.isoformat() }}">{{ m.data.strftime('%d/%m/%Y %H:%M') }}</td>
+        <td>{{ mod.actions("/movements/edit/" ~ m.id, m.id) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  {{ mod.empty_state("Nenhuma movimentação registrada.", "/movements/nova", "Registrar movimentação") }}
+  {% endif %}
+  {{ mod.panel_end() }}
+</div>
 
 <script>
 function formatToGMT3(utcString) {
-    const date = new Date(utcString);
-    // Ajusta para GMT-3
-    date.setHours(date.getHours() - 3);
-
-    return date.toLocaleString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    }).replace(',', ''); // <- remove a vírgula
+  var date = new Date(utcString);
+  date.setHours(date.getHours() - 3);
+  return date
+    .toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+    .replace(",", "");
 }
 
-$(document).ready(function () {
-    $('.data-utc').each(function () {
-        const utc = $(this).data('utc');
-        if (utc) {
-            $(this).text(formatToGMT3(utc));
-        }
-    });
+$(function () {
+  {% if movements %}
+  var table = SIGENModList.initTable("#movementsTable", {
+    order: [[8, "desc"]],
+    columnDefs: [
+      { orderable: false, targets: 9 },
+      { visible: false, targets: 0 },
+    ],
+    countSelector: "#movements-count",
+  });
+  SIGENModList.initColumnFilters(table);
+  SIGENModList.initClearFilters();
+
+  $(".data-utc").each(function () {
+    var utc = $(this).data("utc");
+    if (utc) $(this).text(formatToGMT3(utc));
+  });
+  {% endif %}
+
+  SIGENModList.initDelete(function (id) { return "/movements/delete/" + id; });
 });
 </script>
-
-<script>
-    // DELETE MODERNO PARA MOVIMENTAÇÕES
-$(document).on("submit", ".delete-form", function(e) {
-    e.preventDefault();
-
-    const form = $(this);
-    const movementId = form.data("id");
-
-    Swal.fire({
-        title: 'Tem certeza?',
-        text: "Essa ação não poderá ser desfeita.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#cc0000',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sim, excluir',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            fetch(`/movements/delete/${movementId}`, {
-                method: "POST"
-            })
-            .then(response => response.json())
-            .then(data => {
-
-                if (data.success) {
-
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Excluído!',
-                        text: 'Movimentação removida com sucesso.',
-                        timer: 1500,
-                        showConfirmButton: false
-                    }).then(() => {
-                        location.reload();
-                    });
-
-                } else {
-
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Não permitido',
-                        text: data.message
-                    });
-
-                }
-
-            });
-        }
-    });
-});
-</script>
-
-
 {% endblock %}

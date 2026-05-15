@@ -51,7 +51,8 @@ def list_products(request: Request, db: Session = Depends(get_db), user: str = D
             "tipos": tipos,
             "marcas": marcas,
             "estados": estados,
-            "status_list": status_list
+            "status_list": status_list,
+            "hide_app_header": True,
         }
     )
 
