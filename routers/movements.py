@@ -1,10 +1,11 @@
 ﻿from fastapi.responses import RedirectResponse, JSONResponse
-from fastapi import APIRouter, Request, Form, Depends
+from fastapi import APIRouter, Request, Form, Depends, Query
 from urllib.parse import quote
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from models import Product, Unit, Category, Movement, User, Stock, Item, Unidade
 from services.stock_service import StockService
+from services.movement_form_data import build_movement_form_context
 from database import get_db
 from datetime import datetime
 from dependencies import get_current_user, registrar_log
@@ -52,74 +53,55 @@ def listar_movimentacoes(
 def nova_movimentacao_form(
     request: Request,
     error: Optional[str] = None,
+    type_id_q: Optional[int] = Query(None, alias="type"),
+    product_id: Optional[int] = None,
+    unit_id: Optional[int] = None,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
     if not user:
         return RedirectResponse("/login")
 
-    # Consulta produtos, unidades (Unidade = tabela unidades) e categorias
-    products = db.query(Product).all()
-    units = db.query(Unidade).order_by(Unidade.nome).all()
-    categories = db.query(Category).all()
+    prefill = {}
+    product = None
+    if product_id:
+        product = (
+            db.query(Product)
+            .options(joinedload(Product.type))
+            .filter(Product.id == product_id)
+            .first()
+        )
+    elif type_id_q:
+        product = (
+            db.query(Product)
+            .options(joinedload(Product.type))
+            .filter(Product.type_id == type_id_q)
+            .first()
+        )
+    if product:
+        prefill = {
+            "category_id": product.category_id,
+            "type_id": product.type_id,
+            "product_id": product.id,
+            "unit_origem_id": unit_id,
+            "controla_por_serie": product.controla_por_serie,
+        }
 
-    products_js = []
+    ctx = build_movement_form_context(db)
 
-    for p in products:
-        units_options = []
-
-        if p.controla_por_serie:
-            # Produto com série: pega unidades dos itens existentes (só itens com unidade válida)
-            units_set = set()
-            for item in p.items:
-                if item.unit_id and item.unit_id not in units_set and item.unit:
-                    units_options.append({
-                        "unit_id": item.unit.id,
-                        "unit_name": item.unit.nome
-                    })
-                    units_set.add(item.unit_id)
-        else:
-            # Produto sem série: pega todas as unidades que possuem este produto
-            units_set = set()
-            # Unidades com estoque
-            stocks = db.query(Stock).filter(
-                Stock.product_id == p.id,
-                Stock.quantidade > 0
-                ).all()
-            for s in stocks:
-                if s.unit_id and s.unit_id not in units_set and s.unit:
-                    units_options.append({"unit_id": s.unit.id, "unit_name": s.unit.nome})
-                    units_set.add(s.unit_id)
-            # Unidades de itens existentes (só itens com unidade válida)
-            items = db.query(Item).filter(Item.product_id == p.id).all()
-            for i in items:
-                if i.unit_id and i.unit_id not in units_set and i.unit:
-                    units_options.append({"unit_id": i.unit.id, "unit_name": i.unit.nome})
-                    units_set.add(i.unit_id)
-
-        # Adiciona o produto ao JS
-        products_js.append({
-            "id": p.id,
-            "name": p.name,
-            "type_id": p.type_id,
-            "type_name": p.type.nome if p.type else None,
-            "category_id": p.category_id,
-            "controla_por_serie": p.controla_por_serie,
-            "units_options": units_options
-        })
-
-    # Renderiza o template
     return templates.TemplateResponse(
         "movement_form.html",
         {
             "request": request,
-            "movimento": {},  # dict vazio para nova movimentação
-            "products": products_js,
-            "units": units,
-            "categories": categories,
+            "movimento": {},
+            "prefill": prefill,
+            "products": ctx["products"],
+            "movement_units": ctx["units"],
+            "movement_categories": ctx["categories"],
             "user": user,
-            "error": error
-        }
+            "error": error,
+            "hide_app_header": True,
+        },
     )
 
 
@@ -127,16 +109,24 @@ def nova_movimentacao_form(
 # -------------------------------
 # SUBMIT NOVA MOVIMENTAÇÃO
 # -------------------------------
+def _movement_wants_json(request: Request, ajax: Optional[str]) -> bool:
+    if ajax == "1":
+        return True
+    return "application/json" in (request.headers.get("accept") or "")
+
+
 @router.post("/")
 def movimentacoes_submit(
     request: Request,
     type_id: int = Form(...),
+    product_id: Optional[str] = Form(None),
     unit_origem_id: int = Form(None),
     unit_destino_id: int = Form(None),
     item_id: Optional[str] = Form(None),  # recebe string
     tipo: str = Form(...),
     quantidade: int = Form(1),
     observacao: str = Form(""),
+    ajax: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     username: str = Depends(get_current_user)
 ):
@@ -153,30 +143,48 @@ def movimentacoes_submit(
     else:
         item_id = int(item_id)
 
+    product_id_int = None
+    if product_id and str(product_id).strip().isdigit():
+        product_id_int = int(product_id)
+
     # Descobre produto
     if item_id:
         item = db.query(Item).filter(Item.id == item_id).first()
         if not item:
             return {"error": "Item não encontrado"}
         product = item.product
+    elif product_id_int:
+        product = db.query(Product).filter(Product.id == product_id_int).first()
+        if not product:
+            err = "Produto não encontrado"
+            if _movement_wants_json(request, ajax):
+                return JSONResponse({"success": False, "message": err}, status_code=400)
+            return {"error": err}
     else:
-        # Produto sem série
         product = db.query(Product).filter(Product.type_id == type_id).first()
         if not product:
-            return {"error": "Produto não encontrado"}
+            err = "Produto não encontrado"
+            if _movement_wants_json(request, ajax):
+                return JSONResponse({"success": False, "message": err}, status_code=400)
+            return {"error": err}
 
+    if not item_id:
         if product.controla_por_serie:
-            return {"error": "Item físico obrigatório para produtos controlados por série"}
+            err = "Item físico obrigatório para produtos controlados por série"
+            if _movement_wants_json(request, ajax):
+                return JSONResponse({"success": False, "message": err}, status_code=400)
+            return {"error": err}
 
-        # Se produto sem série e não existe item, cria item "virtual"
         item = db.query(Item).filter(Item.product_id == product.id).first()
         if not item:
             item = Item(
                 product_id=product.id,
+                municipio_id=product.municipio_id,
+                orgao_id=product.orgao_id,
                 tombo=False,
                 num_tombo_ou_serie=f"Produto sem série - {product.name}",
                 unit_id=unit_origem_id,
-                status="Disponível"
+                status="Disponível",
             )
             db.add(item)
             db.commit()
@@ -202,9 +210,11 @@ def movimentacoes_submit(
 
     except Exception as e:
         err_msg = str(e)
+        if _movement_wants_json(request, ajax):
+            return JSONResponse({"success": False, "message": err_msg}, status_code=400)
         return RedirectResponse(
             url=f"/movements/nova?error={quote(err_msg)}",
-            status_code=HTTP_302_FOUND
+            status_code=HTTP_302_FOUND,
         )
 
     registrar_log(
@@ -214,6 +224,11 @@ def movimentacoes_submit(
         ip=request.client.host
     )
 
+    if _movement_wants_json(request, ajax):
+        return JSONResponse({
+            "success": True,
+            "message": "Movimentação registrada com sucesso.",
+        })
     return RedirectResponse(url="/movements/", status_code=HTTP_302_FOUND)
 
 
@@ -236,44 +251,7 @@ def editar_movimentacao_form(
     if not movimento:
         return {"error": "Movimentação não encontrada"}
 
-    products = db.query(Product).all()
-    units = db.query(Unidade).order_by(Unidade.nome).all()
-    categories = db.query(Category).all()
-
-    products_js = []
-
-    for p in products:
-        units_options = []
-
-        if p.controla_por_serie:
-            units_set = set()
-            for item in p.items:
-                if item.unit_id and item.unit_id not in units_set and item.unit:
-                    units_options.append({
-                        "unit_id": item.unit.id,
-                        "unit_name": item.unit.nome
-                    })
-                    units_set.add(item.unit_id)
-        else:
-            units_set = set()
-            stocks = db.query(Stock).filter(
-                Stock.product_id == p.id,
-                Stock.quantidade > 0
-            ).all()
-            for s in stocks:
-                if s.unit_id and s.unit_id not in units_set and s.unit:
-                    units_options.append({"unit_id": s.unit.id, "unit_name": s.unit.nome})
-                    units_set.add(s.unit_id)
-
-        products_js.append({
-            "id": p.id,
-            "name": p.name,
-            "type_id": p.type_id,
-            "type_name": p.type.nome if p.type else None,
-            "category_id": p.category_id,
-            "controla_por_serie": p.controla_por_serie,
-            "units_options": units_options  # ✅ igual ao /nova
-        })
+    ctx = build_movement_form_context(db)
 
     movimento_dict = {
         "id": movimento.id,
@@ -304,9 +282,10 @@ def editar_movimentacao_form(
         {
             "request": request,
             "movimento": movimento_dict,
-            "products": products_js,
-            "units": units,
-            "categories": categories,
+            "prefill": {},
+            "products": ctx["products"],
+            "movement_units": ctx["units"],
+            "movement_categories": ctx["categories"],
             "user": user,
         }
     )
@@ -459,17 +438,26 @@ def get_product_stock(type_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/items/{type_id}")
-def get_product_items(type_id: int, db: Session = Depends(get_db)):
+def get_product_items(
+    type_id: int,
+    product_id: Optional[int] = None,
+    unit_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
     items_result = []
 
     # 1️⃣ Itens físicos já cadastrados (controla por série ou não)
-    items = (
+    q = (
         db.query(Item)
         .join(Product)
         .join(Unidade, Item.unit_id == Unidade.id)  # Só itens cuja unidade existe
         .filter(Product.type_id == type_id)
-        .all()
     )
+    if product_id:
+        q = q.filter(Item.product_id == product_id)
+    if unit_id:
+        q = q.filter(Item.unit_id == unit_id)
+    items = q.all()
 
     for i in items:
         items_result.append({

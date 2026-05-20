@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% set hide_app_header = True %}
 {% block title %}{{ 'Editar' if action == 'edit' else 'Cadastrar' }} Produto{% endblock %}
 
 {% block content %}
@@ -35,13 +36,8 @@
     <div class="form-row">
         <div class="form-group">
             <label for="brand_id">Marca*</label>
-            <select name="brand_id" required>
-                <option value="">-- Selecione --</option>
-                {% for marca in marcas %}
-                    <option value="{{ marca.id }}" {% if product and product.brand_id == marca.id %}selected{% endif %}>
-                        {{ marca.nome }}
-                    </option>
-                {% endfor %}
+            <select name="brand_id" id="brand_id" required disabled>
+                <option value="">-- Selecione o tipo primeiro --</option>
             </select>
         </div>
 
@@ -355,7 +351,7 @@
 
             <div class="form-group">
                 <label for="observacao">Observação</label>
-                <textarea name="observacao" required id="observacao" rows="3">{{ item.observacao if item else '' }}</textarea>
+                <textarea name="observacao" id="observacao" rows="3">{{ item.observacao if item else '' }}</textarea>
             </div>
         </fieldset>
 
@@ -400,6 +396,7 @@ legend {
 .form-row-three .form-group input {
     height: 38px;
     box-sizing: border-box;
+    margin-top: 5px;
 }
 
 .form-group {
@@ -598,36 +595,82 @@ function adicionarNumero() {
     }
 }
 
+function resetBrandSelect() {
+    const brandSelect = document.getElementById('brand_id');
+    brandSelect.innerHTML = '<option value="">-- Selecione o tipo primeiro --</option>';
+    brandSelect.disabled = true;
+    brandSelect.value = '';
+}
+
+async function carregarMarcas() {
+    const typeId = document.getElementById('type_id').value;
+    const brandSelect = document.getElementById('brand_id');
+    const selectedBrandId = brandSelect.dataset.selectedBrand || '';
+
+    if (!typeId) {
+        resetBrandSelect();
+        return;
+    }
+
+    try {
+        let url = `/products/marcas-por-tipo/${typeId}`;
+        const preserveId = brandSelect.dataset.preserveBrand;
+        if (preserveId) {
+            url += `?include_brand_id=${preserveId}`;
+        }
+
+        const response = await fetch(url);
+        const marcas = await response.json();
+
+        brandSelect.innerHTML = '<option value="">-- Selecione --</option>';
+        marcas.forEach(function (marca) {
+            const option = document.createElement('option');
+            option.value = marca.id;
+            option.textContent = marca.nome;
+            brandSelect.appendChild(option);
+        });
+        brandSelect.disabled = false;
+
+        if (selectedBrandId) {
+            brandSelect.value = selectedBrandId;
+        }
+    } catch (error) {
+        console.error('Erro ao carregar marcas:', error);
+        brandSelect.innerHTML = '<option value="">Erro ao carregar marcas</option>';
+        brandSelect.disabled = true;
+    }
+}
+
 async function carregarTipos() {
     const categoryId = document.getElementById('category_id').value;
     const typeSelect = document.getElementById('type_id');
-    
-    // Limpa e desabilita se não tiver categoria
+
+    resetBrandSelect();
+
     if (!categoryId) {
         typeSelect.innerHTML = '<option value="">-- Selecione a categoria primeiro --</option>';
         typeSelect.disabled = true;
         return;
     }
-    
+
     try {
-        // Busca tipos da categoria selecionada
         const response = await fetch(`/products/tipos-por-categoria/${categoryId}`);
         const tipos = await response.json();
-        
-        // Limpa o select
+
         typeSelect.innerHTML = '<option value="">-- Selecione --</option>';
-        
-        // Preenche com os tipos da categoria
-        tipos.forEach(tipo => {
+        tipos.forEach(function (tipo) {
             const option = document.createElement('option');
             option.value = tipo.id;
             option.textContent = tipo.nome;
             typeSelect.appendChild(option);
         });
-        
-        // Habilita o campo
         typeSelect.disabled = false;
-        
+        typeSelect.onchange = function () {
+            const brandSelect = document.getElementById('brand_id');
+            delete brandSelect.dataset.selectedBrand;
+            delete brandSelect.dataset.preserveBrand;
+            carregarMarcas();
+        };
     } catch (error) {
         console.error('Erro ao carregar tipos:', error);
         typeSelect.innerHTML = '<option value="">Erro ao carregar tipos</option>';
@@ -722,15 +765,26 @@ async function carregarUnidadesLotacao(section) {
     } catch (e) { console.error(e); }
 }
 
-// ✅ Carrega tipos ao abrir a página (modo edição) e seleciona o tipo do produto
+// Carrega tipos e marcas ao abrir a página (modo edição)
 document.addEventListener('DOMContentLoaded', function() {
     const categoryId = document.getElementById('category_id').value;
     const productTypeId = '{{ product.type_id if product else "" }}';
+    const productBrandId = '{{ product.brand_id if product else "" }}';
+    const brandSelect = document.getElementById('brand_id');
+
+    if (productBrandId) {
+        brandSelect.dataset.preserveBrand = productBrandId;
+        brandSelect.dataset.selectedBrand = productBrandId;
+    }
+
     if (categoryId) {
         carregarTipos().then(function() {
             if (productTypeId) {
                 const typeSelect = document.getElementById('type_id');
-                if (typeSelect) typeSelect.value = productTypeId;
+                if (typeSelect) {
+                    typeSelect.value = productTypeId;
+                    return carregarMarcas();
+                }
             }
         });
     }

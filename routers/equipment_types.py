@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import RedirectResponse
 from starlette.status import HTTP_302_FOUND
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from database import get_db
 from dependencies import get_current_user, registrar_log
-from models import EquipmentType  # Modelo correspondente
+from models import EquipmentType, Category
 from templating import templates
 
 # Cria o roteador para Tipos de Equipamentos
@@ -22,10 +22,22 @@ def list_equipment_types(request: Request, db: Session = Depends(get_db), user: 
     if not user:
         return RedirectResponse("/login")
 
-    tipos = db.query(EquipmentType).order_by(EquipmentType.nome).all()
+    tipos = (
+        db.query(EquipmentType)
+        .options(joinedload(EquipmentType.category))
+        .order_by(EquipmentType.nome)
+        .all()
+    )
+    categorias = sorted({t.category.nome for t in tipos if t.category})
     return templates.TemplateResponse(
         "equipment_types.html",
-        {"request": request, "equipment_types": tipos, "user": user, "hide_app_header": True}
+        {
+            "request": request,
+            "equipment_types": tipos,
+            "categorias": categorias,
+            "user": user,
+            "hide_app_header": True,
+        },
     )
 
 
@@ -34,8 +46,6 @@ def list_equipment_types(request: Request, db: Session = Depends(get_db), user: 
 # ------------------------------------------------------------
 # Exibe o formulário para criação de um novo tipo de equipamento.
 # ============================================================
-from models import Category
-
 @router.get("/add")
 def add_equipment_type_form(request: Request, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
     if not user:

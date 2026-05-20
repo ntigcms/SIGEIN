@@ -10,18 +10,18 @@
   {{ mod.header("Categorias", "Organize produtos e equipamentos por categoria.", "/categories/add", "Nova categoria", "fa-folder") }}
 
   {{ mod.filters_start() }}
-  {{ mod.filter_text("Nome", 1, "Filtrar por nome...", "filter-nome") }}
+  {{ mod.filter_text("Nome", 0, "Filtrar por nome...", "filter-nome") }}
   {{ mod.filters_end() }}
 
   {{ mod.panel_start("Lista de categorias", "categories-count") }}
   {% if categories %}
-  <table id="categoriesTable" class="display" style="width:100%;">
+  <table id="categoriesTable" class="display mod-table--layout-cols" style="width:100%;">
     <thead>
       <tr>
-        <th>Nome</th>
-        <th>Descrição</th>
-        <th>Status</th>
-        <th data-orderable="false">Ações</th>
+        <th class="mod-col-main">Nome</th>
+        <th class="mod-col-desc">Descrição</th>
+        <th class="mod-col-status">Status</th>
+        <th class="mod-col-actions" data-orderable="false">Ações</th>
       </tr>
     </thead>
     <tbody>
@@ -52,7 +52,13 @@ $(function () {
   {% if categories %}
   var table = SIGENModList.initTable("#categoriesTable", {
     order: [[0, "asc"]],
-    columnDefs: [{ orderable: false, targets: 3 }],
+    autoWidth: false,
+    columnDefs: [
+      { targets: 0, className: "mod-col-main" },
+      { targets: 1, className: "mod-col-desc" },
+      { targets: 2, width: "7.5rem", className: "mod-col-status" },
+      { orderable: false, targets: 3, width: "5.75rem", className: "mod-col-actions" },
+    ],
     countSelector: "#categories-count"
   });
   SIGENModList.initTextFilter(table, 0, "#filter-nome");

@@ -1,54 +1,270 @@
 {% extends "base.html" %}
+
 {% import "macros/mod_list.html" as mod %}
+
+
 
 {% block title %}Tipos de equipamento — SIGEIN{% endblock %}
 
+
+
 {% block content %}
+
 {{ mod.assets() }}
 
+
+
 <div class="mod-page">
-  {{ mod.header("Tipos de equipamento", "Classificação dos equipamentos do inventário.", "/equipment-types/add", "Novo tipo", "fa-laptop") }}
+
+  {{ mod.header("Tipos de equipamentos", "Classificação dos equipamentos do inventário.", "/equipment-types/add", "Novo tipo", "fa-laptop") }}
+
+
 
   {{ mod.filters_start() }}
+
   {{ mod.filter_text("Nome", 0, "Filtrar por nome...", "filter-nome") }}
+
+  {{ mod.filter_checkbox_options("Categoria", 1, "categoria", categorias) }}
+
   {{ mod.filters_end() }}
 
+
+
   {{ mod.panel_start("Lista de tipos", "equipment-types-count") }}
+
   {% if equipment_types %}
-  <table id="equipmentTypesTable" class="display" style="width:100%;">
+
+  <table id="equipmentTypesTable" class="display mod-table--layout-cols" style="width:100%;">
+
     <thead>
+
       <tr>
-        <th>Tipo de equipamento</th>
-        <th data-orderable="false">Ações</th>
+
+        <th class="mod-col-main">Tipo de equipamento</th>
+
+        <th>Categoria</th>
+
+        <th class="mod-col-actions" data-orderable="false">Ações</th>
+
       </tr>
+
     </thead>
+
     <tbody>
+
       {% for tipo in equipment_types %}
+
       <tr>
+
         <td><strong>{{ tipo.nome }}</strong></td>
+
+        <td>{{ tipo.category.nome if tipo.category else '—' }}</td>
+
         <td>{{ mod.actions("/equipment-types/edit/" ~ tipo.id, tipo.id) }}</td>
+
       </tr>
+
       {% endfor %}
+
     </tbody>
+
   </table>
+
   {% else %}
+
   {{ mod.empty_state("Nenhum tipo de equipamento cadastrado.", "/equipment-types/add", "Cadastrar tipo") }}
+
   {% endif %}
+
   {{ mod.panel_end() }}
+
 </div>
 
+
+
 <script>
+
 $(function () {
-  {% if equipment_types %}
+  var equipmentTypesTableEl = document.getElementById("equipmentTypesTable");
+  if (!equipmentTypesTableEl) {
+    SIGENModList.initDelete(function (id) { return "/equipment-types/delete/" + id; }, { method: "GET" });
+    return;
+  }
+
   var table = SIGENModList.initTable("#equipmentTypesTable", {
+
     order: [[0, "asc"]],
-    columnDefs: [{ orderable: false, targets: 1 }],
+
+    autoWidth: false,
+
+    columnDefs: [
+
+      { targets: 0, className: "mod-col-main" },
+
+      { orderable: false, targets: 2, width: "5.75rem", className: "mod-col-actions" },
+
+    ],
+
     countSelector: "#equipment-types-count"
+
   });
+
   SIGENModList.initTextFilter(table, 0, "#filter-nome");
+
+
+
+  $(".mod-page .search-container[data-filter]").each(function () {
+
+    var container = $(this);
+
+    var input = container.find(".filter-search");
+
+    var optionsDiv = container.find(".options");
+
+    var arrow = container.find(".arrow");
+
+    var filterType = container.data("filter");
+
+    var selecionados = [];
+
+
+
+    function renderOptions(query) {
+
+      optionsDiv.find(".option").each(function () {
+
+        var val = $(this).find("input").val().toLowerCase();
+
+        $(this).toggle(!query || val.indexOf(query) !== -1);
+
+      });
+
+      optionsDiv.show();
+
+      arrow.addClass("open");
+
+    }
+
+
+
+    input.on("click", function (e) {
+
+      e.stopPropagation();
+
+      $(".mod-page .search-container")
+
+        .not(container)
+
+        .find(".options")
+
+        .hide()
+
+        .end()
+
+        .find(".arrow")
+
+        .removeClass("open");
+
+      if (optionsDiv.is(":visible")) {
+
+        optionsDiv.hide();
+
+        arrow.removeClass("open");
+
+      } else {
+
+        renderOptions("");
+
+      }
+
+    });
+
+
+
+    input.on("input", function () {
+
+      renderOptions(input.val().toLowerCase());
+
+    });
+
+
+
+    optionsDiv.on("change", 'input[type="checkbox"]', function () {
+
+      var val = $(this).val();
+
+      if (this.checked) {
+
+        if (selecionados.indexOf(val) === -1) selecionados.push(val);
+
+      } else {
+
+        selecionados = selecionados.filter(function (v) { return v !== val; });
+
+      }
+
+      input.val(selecionados.join(", "));
+
+
+
+      if (filterType !== "categoria") return;
+
+
+
+      var searchValue = selecionados
+
+        .map(function (v) { return v.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"); })
+
+        .join("|");
+
+
+
+      table.column(1).search(selecionados.length ? searchValue : "", true, false).draw();
+
+    });
+
+
+
+    $(document).on("click.equipmentTypesFilter", function (e) {
+
+      if (!$(e.target).closest(container).length) {
+
+        optionsDiv.hide();
+
+        arrow.removeClass("open");
+
+      }
+
+    });
+
+
+
+    container.data("reset", function () {
+
+      selecionados = [];
+
+      input.val("");
+
+      optionsDiv.find('input[type="checkbox"]').prop("checked", false);
+
+      table.column(1).search("").draw();
+
+      optionsDiv.hide();
+
+      arrow.removeClass("open");
+
+    });
+
+  });
+
+
+
   SIGENModList.initClearFilters();
-  {% endif %}
+
   SIGENModList.initDelete(function (id) { return "/equipment-types/delete/" + id; }, { method: "GET" });
 });
+
 </script>
+
 {% endblock %}
+

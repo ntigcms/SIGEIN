@@ -146,7 +146,9 @@ class StockService:
                 stock_destino = Stock(
                     product_id=product.id,
                     unit_id=unit_destino_id,
-                    quantidade=0
+                    municipio_id=product.municipio_id,
+                    orgao_id=product.orgao_id,
+                    quantidade=0,
                 )
                 db.add(stock_destino)
 

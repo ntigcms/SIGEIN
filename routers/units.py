@@ -1,22 +1,63 @@
 from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
 from starlette.status import HTTP_302_FOUND
+from sqlalchemy import text
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.exc import IntegrityError
 import re
 
 from database import get_db
 from dependencies import get_current_user, registrar_log
 from models import (
-    User,           # ✅ Para verificar permissões
-    Unit,           # ✅ Modelo legado (se ainda usar)
-    Unidade,        # ✅ Modelo novo
-    Orgao,          # ✅ Para relacionamentos
-    Municipio,      # ✅ Para relacionamentos
-    Estado          # ✅ Para relacionamentos
+    User,
+    Unit,
+    Unidade,
+    Orgao,
+    Municipio,
+    Estado,
+    PerfilEnum,
+    Stock,
+    Item,
+    Movement,
+    Processo,
+    Tramite,
+    CircularDestinatario,
 )
 from templating import templates
 
 router = APIRouter(prefix="/units", tags=["Unidades Administrativas"])
+
+
+def _perfil_valor(user: User) -> str:
+    return user._perfil_valor()
+
+
+def _liberar_vinculos_unidade(db: Session, unit_id: int) -> None:
+    """Remove ou desvincula registros antes de excluir a unidade."""
+    db.query(Stock).filter(Stock.unit_id == unit_id).delete(synchronize_session=False)
+
+    db.query(Movement).filter(Movement.unit_origem_id == unit_id).update(
+        {Movement.unit_origem_id: None}, synchronize_session=False
+    )
+    db.query(Movement).filter(Movement.unit_destino_id == unit_id).update(
+        {Movement.unit_destino_id: None}, synchronize_session=False
+    )
+
+    db.query(Processo).filter(Processo.unidade_origem_id == unit_id).update(
+        {Processo.unidade_origem_id: None}, synchronize_session=False
+    )
+    db.query(Processo).filter(Processo.unidade_atual_id == unit_id).update(
+        {Processo.unidade_atual_id: None}, synchronize_session=False
+    )
+
+    db.query(Tramite).filter(Tramite.unidade_origem_id == unit_id).update(
+        {Tramite.unidade_origem_id: None}, synchronize_session=False
+    )
+
+    db.execute(
+        text("UPDATE products SET unidade_id = NULL WHERE unidade_id = :uid"),
+        {"uid": unit_id},
+    )
 
 
 # LISTAR UNIDADES ADMINISTRATIVAS (tabela 'unidades')
@@ -234,8 +275,11 @@ def delete_unit(
     # Busca usuário para verificar permissão
     user_obj = db.query(User).filter(User.email == current_user).first()
     
-    # ✅ Verifica permissão (apenas MASTER e ADMIN_MUNICIPAL)
-    if user_obj.perfil not in ["master", "admin_municipal"]:
+    if not user_obj:
+        return JSONResponse({"success": False, "message": "Usuário não encontrado"})
+
+    perfil = _perfil_valor(user_obj)
+    if perfil not in (PerfilEnum.MASTER.value, PerfilEnum.ADMIN_MUNICIPAL.value):
         return JSONResponse({
             "success": False,
             "message": "Você não tem permissão para excluir unidades"
@@ -251,25 +295,58 @@ def delete_unit(
         })
     
     # ✅ ADMIN_MUNICIPAL só pode excluir do seu município
-    if user_obj.perfil == "admin_municipal":
+    if perfil == PerfilEnum.ADMIN_MUNICIPAL.value:
         if unidade.orgao.municipio_id != user_obj.municipio_id:
             return JSONResponse({
                 "success": False,
                 "message": "Você só pode excluir unidades do seu município"
             })
     
-    # ✅ Verifica se há usuários vinculados
     usuarios_vinculados = db.query(User).filter(User.unidade_id == unit_id).count()
     if usuarios_vinculados > 0:
         return JSONResponse({
             "success": False,
             "message": f"Não é possível excluir. Existem {usuarios_vinculados} usuário(s) vinculado(s) a esta unidade."
         })
-    
-    # Exclui
+
+    itens_vinculados = db.query(Item).filter(Item.unit_id == unit_id).count()
+    if itens_vinculados > 0:
+        return JSONResponse({
+            "success": False,
+            "message": f"Não é possível excluir. Existem {itens_vinculados} item(ns) de inventário vinculado(s) a esta unidade."
+        })
+
+    tramites_destino = db.query(Tramite).filter(Tramite.unidade_destino_id == unit_id).count()
+    if tramites_destino > 0:
+        return JSONResponse({
+            "success": False,
+            "message": f"Não é possível excluir. Existem {tramites_destino} trâmite(s) de protocolo com esta unidade como destino."
+        })
+
+    circulares = db.query(CircularDestinatario).filter(
+        CircularDestinatario.unidade_id == unit_id
+    ).count()
+    if circulares > 0:
+        return JSONResponse({
+            "success": False,
+            "message": f"Não é possível excluir. Existem {circulares} destinatário(s) de circular vinculado(s) a esta unidade."
+        })
+
     nome_unidade = unidade.nome
-    db.delete(unidade)
-    db.commit()
+
+    try:
+        _liberar_vinculos_unidade(db, unit_id)
+        db.delete(unidade)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return JSONResponse({
+            "success": False,
+            "message": (
+                "Não foi possível excluir: a unidade ainda possui vínculos "
+                "no sistema (estoque, movimentações ou outros registros)."
+            ),
+        })
     
     # Log
     registrar_log(

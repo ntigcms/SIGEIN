@@ -3,6 +3,7 @@ from templating import templates
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware  # ✅ Import no topo
 from middleware import MultiTenantMiddleware
+from middleware_audit import AuditMiddleware
 from database import Base, engine
 import os
 
@@ -28,6 +29,9 @@ app.add_middleware(
 
 # ✅ MultiTenantMiddleware DEPOIS
 #app.add_middleware(MultiTenantMiddleware)
+
+# Auditoria de ações (POST/DELETE etc. sem log explícito no router)
+app.add_middleware(AuditMiddleware)
 
 # ========================================
 # 3. STATIC FILES

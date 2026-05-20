@@ -97,15 +97,20 @@
 
 <script>
 $(function () {
-  {% if users %}
-  var table = SIGENModList.initTable("#usuariosTable", {
-    order: [[0, "asc"]],
-    columnDefs: [{ orderable: false, targets: 4 }],
-    countSelector: "#users-count",
+  var usersTableEl = document.getElementById("usuariosTable");
+  if (usersTableEl) {
+    var table = SIGENModList.initTable("#usuariosTable", {
+      order: [[0, "asc"]],
+      columnDefs: [{ orderable: false, targets: 4 }],
+      countSelector: "#users-count",
+    });
+    SIGENModList.initColumnFilters(table, { useDataSearch: true });
+    SIGENModList.initClearFilters();
+  }
+
+  SIGENModList.initDelete(function (id) {
+    return "/users/delete/" + id;
   });
-  SIGENModList.initColumnFilters(table, { useDataSearch: true });
-  SIGENModList.initClearFilters();
-  {% endif %}
 });
 </script>
 {% endblock %}

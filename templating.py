@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -32,6 +33,16 @@ def enum_value(val) -> str:
 
 def enum_label(val) -> str:
     return enum_value(val).replace("_", " ").capitalize()
+
+
+def format_cpf(value) -> str:
+    """Exibe CPF como 000.000.000-00 (aceita valor já mascarado ou só dígitos)."""
+    if value is None:
+        return ""
+    digits = re.sub(r"\D", "", str(value))[:11]
+    if len(digits) < 11:
+        return digits
+    return f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
 
 
 def tempo_recebido(dt):
@@ -160,3 +171,4 @@ templates.env.globals["get_meus_dados"] = get_meus_dados
 templates.env.filters["tempo_recebido"] = tempo_recebido
 templates.env.filters["enum_value"] = enum_value
 templates.env.filters["enum_label"] = enum_label
+templates.env.filters["format_cpf"] = format_cpf

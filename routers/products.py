@@ -1,7 +1,11 @@
-from fastapi import APIRouter, Request, Form, Depends
+from typing import Optional
+
+from fastapi import APIRouter, Request, Form, Depends, Query
 from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
 from starlette.status import HTTP_302_FOUND
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.exc import IntegrityError
 from database import get_db
 from dependencies import get_current_user, registrar_log
 from models import (
@@ -19,39 +23,89 @@ def _user_obj(db: Session, user: str):
         return None
     return db.query(User).filter(User.email == user).first()
 
+
+def _brand_valid_for_type(db: Session, brand_id: int, type_id: int) -> bool:
+    return (
+        db.query(Brand)
+        .filter(Brand.id == brand_id, Brand.equipment_types.any(EquipmentType.id == type_id))
+        .first()
+        is not None
+    )
+
+
+def _fmt_data(d) -> str:
+    if not d:
+        return "—"
+    return d.strftime("%d/%m/%Y")
+
+
+def _fmt_valor(val) -> str:
+    if val is None:
+        return "—"
+    txt = f"{val:,.2f}"
+    return "R$ " + txt.replace(",", "§").replace(".", ",").replace("§", ".")
+
+
+def _product_list_display(product: Product) -> dict:
+    """Dados agregados para exibição na grid (unidade/data/valor sem repetição)."""
+    unidade = "—"
+    data_aquisicao = "—"
+    valor = "—"
+    seen_units = set()
+
+    for item in product.items or []:
+        if item.unit and item.unit.name not in seen_units:
+            seen_units.add(item.unit.name)
+            if unidade == "—":
+                unidade = item.unit.name
+        if data_aquisicao == "—" and item.data_aquisicao:
+            data_aquisicao = _fmt_data(item.data_aquisicao)
+        if valor == "—" and item.valor_aquisicao is not None:
+            valor = _fmt_valor(item.valor_aquisicao)
+
+    return {
+        "categoria": product.category.nome if product.category else "—",
+        "unidade": unidade,
+        "data_aquisicao": data_aquisicao,
+        "valor": valor,
+    }
+
+
 # ----------------- LIST -----------------
 @router.get("/")
 def list_products(request: Request, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
     if not user:
         return RedirectResponse("/login")
-    
-    products = db.query(Product).all()
 
-    # FILTROS: coletamos valores únicos
+    products = (
+        db.query(Product)
+        .options(
+            joinedload(Product.category),
+            joinedload(Product.type),
+            joinedload(Product.brand),
+            joinedload(Product.items).joinedload(Item.unit),
+        )
+        .all()
+    )
+
     tipos = sorted({p.type.nome for p in products if p.type})
     marcas = sorted({p.brand.nome for p in products if p.brand})
+    categorias = sorted({p.category.nome for p in products if p.category})
 
-    estados_set = set()
-    status_set = set()
-    for p in products:
-        for item in getattr(p, "items", []):
-            if item.estado:
-                estados_set.add(item.estado.nome)
-            if item.status:
-                status_set.add(item.status)
-    estados = sorted(estados_set)
-    status_list = sorted(status_set)
+    products_view = [
+        {"product": p, **_product_list_display(p)}
+        for p in products
+    ]
 
     return templates.TemplateResponse(
         "products_list.html",
         {
             "request": request,
-            "products": products,
+            "products": products_view,
             "user": user,
             "tipos": tipos,
             "marcas": marcas,
-            "estados": estados,
-            "status_list": status_list,
+            "categorias": categorias,
             "hide_app_header": True,
         }
     )
@@ -104,7 +158,6 @@ def add_product_form(request: Request, db: Session = Depends(get_db), user: str 
 
     categorias = db.query(Category).order_by(Category.nome).all()
     tipos = db.query(EquipmentType).all()
-    marcas = db.query(Brand).all()
     estados = db.query(EquipmentState).all()  # estado físico do item (equipment_states)
 
     return templates.TemplateResponse(
@@ -114,7 +167,6 @@ def add_product_form(request: Request, db: Session = Depends(get_db), user: str 
             "action": "add",
             "categories": categorias,
             "tipos": tipos,
-            "marcas": marcas,
             "estados": estados,
             "units": units,
             "lotacao": lotacao,
@@ -126,6 +178,7 @@ def add_product_form(request: Request, db: Session = Depends(get_db), user: str 
             "stock": None,
             "product_items": [],
             "user": user,
+            "hide_app_header": True,
         }
     )
 
@@ -227,6 +280,11 @@ async def add_product(
 
     tipo = db.query(EquipmentType).filter(EquipmentType.id == type_id).first()
     marca = db.query(Brand).filter(Brand.id == brand_id).first()
+    if not marca or not _brand_valid_for_type(db, brand_id, type_id):
+        return HTMLResponse(
+            content="<script>alert('Marca inválida para o tipo selecionado.'); history.back();</script>",
+            status_code=400,
+        )
     nome_partes = [tipo.nome if tipo else "", marca.nome if marca else "", model or ""]
     name = " ".join(filter(None, nome_partes)) or "Produto sem nome"
 
@@ -241,6 +299,8 @@ async def add_product(
         model=model,
         description=description,
         controla_por_serie=controla_por_serie,
+        quantidade=0 if controla_por_serie else quantidade,
+        quantidade_minima=0 if controla_por_serie else quantidade_minima,
         municipio_id=municipio_id,
         orgao_id=orgao_id,
         created_by=user_obj.id,
@@ -320,14 +380,16 @@ async def add_product(
             unit_id=unidade.id,
             tombo=False,
             num_tombo_ou_serie=None,
-            estado_id=None,
-            status="Disponível",
+            estado_id=estado_id,
+            status=status,
             data_aquisicao=data_aq,
             valor_aquisicao=valor_aquisicao,
             garantia_ate=garantia_dt,
             observacao=observacao or f"Estoque inicial: {quantidade}",
         )
         db.add(item)
+        product.quantidade = quantidade
+        product.quantidade_minima = quantidade_minima
         db.commit()
         registrar_log(db, usuario=user, acao=f"Cadastrou produto: {product.name}", ip=request.client.host)
 
@@ -351,9 +413,14 @@ def edit_product_form(product_id: int, request: Request, db: Session = Depends(g
     ).filter(Product.id == product_id).first()
     if not product:
         return RedirectResponse("/products")
-    item = db.query(Item).filter(Item.product_id == product_id).first()
-    product_items = list(product.items) if product.items else []
-    stock = db.query(Stock).filter(Stock.product_id == product_id).first() if not product_items else None
+    if product.controla_por_serie:
+        product_items = list(product.items) if product.items else []
+        stock = None
+        item = product_items[0] if product_items else None
+    else:
+        product_items = []
+        stock = db.query(Stock).filter(Stock.product_id == product_id).first()
+        item = db.query(Item).filter(Item.product_id == product_id).first()
 
     is_master = getattr(user_obj, "perfil", None) == "master"
     lotacao = None
@@ -379,11 +446,13 @@ def edit_product_form(product_id: int, request: Request, db: Session = Depends(g
         .all()
     )
     estados_geograficos = db.query(Estado).order_by(Estado.nome).all() if is_master else []
-    default_unidade_id = (item.unit_id if item else None) or (stock.unit_id if stock else None)
+    if product.controla_por_serie and product_items:
+        default_unidade_id = product_items[0].unit_id
+    else:
+        default_unidade_id = (stock.unit_id if stock else None) or (item.unit_id if item else None)
 
     categorias = db.query(Category).order_by(Category.nome).all()
     tipos = db.query(EquipmentType).all()
-    marcas = db.query(Brand).all()
     estados = db.query(EquipmentState).all()
 
     return templates.TemplateResponse(
@@ -393,7 +462,6 @@ def edit_product_form(product_id: int, request: Request, db: Session = Depends(g
             "action": "edit",
             "categories": categorias,
             "tipos": tipos,
-            "marcas": marcas,
             "estados": estados,
             "units": units,
             "lotacao": lotacao,
@@ -405,6 +473,7 @@ def edit_product_form(product_id: int, request: Request, db: Session = Depends(g
             "product_items": product_items,
             "stock": stock,
             "user": user,
+            "hide_app_header": True,
         }
     )
 
@@ -451,6 +520,11 @@ async def edit_product(
     # Nome do produto
     tipo = db.query(EquipmentType).filter(EquipmentType.id == type_id).first()
     marca = db.query(Brand).filter(Brand.id == brand_id).first()
+    if not marca or not _brand_valid_for_type(db, brand_id, type_id):
+        return HTMLResponse(
+            content="<script>alert('Marca inválida para o tipo selecionado.'); history.back();</script>",
+            status_code=400,
+        )
     nome_partes = []
     if tipo:
         nome_partes.append(tipo.nome)
@@ -591,6 +665,30 @@ async def edit_product(
         item.garantia_ate = garantia_dt
         item.observacao = observacao or None
         db.add(item)
+
+        stock_row = db.query(Stock).filter(Stock.product_id == product.id).first()
+        if not stock_row:
+            if not unit_id_int:
+                return HTMLResponse(
+                    content="<script>alert('Selecione a Unidade antes de salvar o produto.'); history.back();</script>",
+                    status_code=400,
+                )
+            stock_row = Stock(
+                product_id=product.id,
+                municipio_id=product.municipio_id,
+                orgao_id=product.orgao_id,
+                unit_id=unit_id_int,
+                quantidade=quantidade,
+                quantidade_minima=quantidade_minima,
+            )
+            db.add(stock_row)
+        else:
+            if unit_id_int is not None:
+                stock_row.unit_id = unit_id_int
+            stock_row.quantidade = quantidade
+            stock_row.quantidade_minima = quantidade_minima
+            db.add(stock_row)
+
         db.commit()
 
     registrar_log(db, usuario=user, acao=f"Editou produto: {product.name}", ip=request.client.host)
@@ -605,14 +703,29 @@ def get_tipos_por_categoria(category_id: int, db: Session = Depends(get_db)):
         .order_by(EquipmentType.nome)
         .all()
     )
-    
-    return [
-        {
-            "id": t.id,
-            "nome": t.nome
-        }
-        for t in tipos
-    ]
+
+    return [{"id": t.id, "nome": t.nome} for t in tipos]
+
+
+@router.get("/marcas-por-tipo/{type_id}")
+def get_marcas_por_tipo(
+    type_id: int,
+    include_brand_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """Retorna marcas vinculadas ao tipo de equipamento."""
+    marcas = (
+        db.query(Brand)
+        .filter(Brand.equipment_types.any(EquipmentType.id == type_id))
+        .order_by(Brand.nome)
+        .all()
+    )
+    ids = {m.id for m in marcas}
+    if include_brand_id and include_brand_id not in ids:
+        extra = db.query(Brand).filter(Brand.id == include_brand_id).first()
+        if extra:
+            marcas = sorted(list(marcas) + [extra], key=lambda m: m.nome.lower())
+    return [{"id": m.id, "nome": m.nome} for m in marcas]
 
 
 # ----------------- DELETE -----------------
@@ -625,20 +738,56 @@ def delete_product(product_id: int, request: Request, db: Session = Depends(get_
     if not product:
         return JSONResponse({"success": False, "message": "Produto não encontrado."})
 
-    movimentacoes = db.query(Movement).filter(Movement.product_id == product.id).first()
-    if movimentacoes:
-        return JSONResponse({"success": False, "message": "Produto possui movimentações e não pode ser excluído."})
+    item_ids = [
+        row[0]
+        for row in db.query(Item.id).filter(Item.product_id == product.id).all()
+    ]
+    filtros_mov = [Movement.product_id == product.id]
+    if item_ids:
+        filtros_mov.append(Movement.item_id.in_(item_ids))
+    tem_movimentacao = db.query(Movement).filter(or_(*filtros_mov)).first()
+    if tem_movimentacao:
+        return JSONResponse({
+            "success": False,
+            "message": "Produto possui movimentações registradas e não pode ser excluído.",
+        })
 
-    estoque = db.query(Stock).filter(Stock.product_id == product.id).first()
-    if estoque:
-        return JSONResponse({"success": False, "message": "Produto possui estoque registrado e não pode ser excluído."})
+    estoque_qtd = (
+        db.query(Stock)
+        .filter(Stock.product_id == product.id, Stock.quantidade > 0)
+        .count()
+    )
+    if estoque_qtd > 0:
+        return JSONResponse({
+            "success": False,
+            "message": (
+                f"Produto possui estoque ativo ({estoque_qtd} registro(s) com quantidade maior que zero). "
+                "Zere ou transfira o estoque antes de excluir."
+            ),
+        })
 
-    item = db.query(Item).filter(Item.product_id == product.id).first()
-    if item:
-        db.delete(item)
+    nome_produto = product.name
 
-    db.delete(product)
-    db.commit()
+    try:
+        db.query(Stock).filter(Stock.product_id == product.id).delete(
+            synchronize_session=False
+        )
+        db.query(Item).filter(Item.product_id == product.id).delete(
+            synchronize_session=False
+        )
+        db.delete(product)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return JSONResponse({
+            "success": False,
+            "message": "Não foi possível excluir: o produto ainda possui vínculos no sistema.",
+        })
 
-    registrar_log(db, usuario=user, acao=f"Excluiu produto: {product.name}", ip=request.client.host)
-    return JSONResponse({"success": True})
+    registrar_log(
+        db,
+        usuario=user,
+        acao=f"Excluiu produto: {nome_produto}",
+        ip=request.client.host,
+    )
+    return JSONResponse({"success": True, "message": "Produto excluído com sucesso."})

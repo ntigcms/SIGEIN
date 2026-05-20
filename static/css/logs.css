@@ -1,0 +1,107 @@
+/* Auditoria /logs — alinhado ao padrão mod-list */
+.logs-page .mod-header__actions {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.logs-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.logs-kpi {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1rem 1.1rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.logs-kpi__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  color: #fff;
+}
+
+.logs-kpi--total .logs-kpi__icon { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+.logs-kpi--hoje .logs-kpi__icon { background: linear-gradient(135deg, #059669, #047857); }
+.logs-kpi--users .logs-kpi__icon { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
+.logs-kpi--acesso .logs-kpi__icon { background: linear-gradient(135deg, #d97706, #b45309); }
+
+.logs-kpi__value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.logs-kpi__label {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.logs-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.logs-badge--acesso {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.logs-badge--operacional {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.logs-badge--sistema {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+.logs-col-acao {
+  max-width: 420px;
+  word-break: break-word;
+}
+
+.logs-col-ip {
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.mod-btn--export-pdf {
+  background: #fff;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.mod-btn--export-pdf:hover {
+  background: #fef2f2;
+}
+
+.mod-btn--export-xlsx {
+  background: #fff;
+  color: #047857;
+  border: 1px solid #bbf7d0;
+}
+
+.mod-btn--export-xlsx:hover {
+  background: #f0fdf4;
+}

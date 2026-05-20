@@ -1,0 +1,86 @@
+{# prefix: ex. "" na pagina / "mov-" na modal do estoque #}
+<div class="mod-form-grid mod-movement-form">
+  <input type="hidden" name="product_id" id="{{ prefix }}product_id_hidden" value="">
+
+  <div class="mod-form-field">
+    <label for="{{ prefix }}category">Categoria</label>
+    <select id="{{ prefix }}category" required>
+      <option value="">— Selecione —</option>
+      {% for cat in movement_categories %}
+      <option value="{{ cat.id }}">{{ cat.nome }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mod-form-field">
+    <label for="{{ prefix }}product">Produto</label>
+    <select id="{{ prefix }}product" name="type_id" required disabled>
+      <option value="">— Selecione —</option>
+    </select>
+  </div>
+
+  <div class="mod-form-field mod-form-field--full" id="{{ prefix }}itens-fisicos-wrapper" style="display:none;">
+    <label for="{{ prefix }}item-filtro">Buscar (filtrar lista)</label>
+    <input type="text" id="{{ prefix }}item-filtro" placeholder="Filtrar tombos ou séries…" autocomplete="off">
+  </div>
+
+  <div class="mod-form-field mod-form-field--full" id="{{ prefix }}serie-container" style="display:none;">
+    <label for="{{ prefix }}serie-select">Número de série</label>
+    <select id="{{ prefix }}serie-select" size="6">
+      <option value="">— Selecione —</option>
+    </select>
+  </div>
+
+  <div class="mod-form-field mod-form-field--full" id="{{ prefix }}tombo-container" style="display:none;">
+    <label for="{{ prefix }}tombo-select">Número do tombo</label>
+    <select id="{{ prefix }}tombo-select" size="6">
+      <option value="">— Selecione —</option>
+    </select>
+  </div>
+
+  <div class="mod-form-field">
+    <label for="{{ prefix }}unit_origem">Unidade de origem</label>
+    <select id="{{ prefix }}unit_origem" name="unit_origem_id" required>
+      <option value="">— Selecione —</option>
+    </select>
+  </div>
+
+  <div class="mod-form-field">
+    <label for="{{ prefix }}unit_destino">Unidade de destino</label>
+    <select id="{{ prefix }}unit_destino" name="unit_destino_id" required>
+      <option value="">— Selecione —</option>
+      {% for u in movement_units %}
+      <option value="{{ u.id }}">{{ u.nome }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mod-form-field mod-form-field--full">
+    <label for="{{ prefix }}tipo">Tipo de movimentação</label>
+    <p class="mod-movement-help">
+      <strong>Entrada</strong> — adiciona na unidade de destino.
+      <strong>Saída</strong> — descarte, doação ou outros motivos.
+      <strong>Transferência</strong> — move entre unidades.
+      <strong>Ajuste</strong> — corrige diferenças de contagem.
+    </p>
+    <select id="{{ prefix }}tipo" name="tipo" required>
+      <option value="">— Selecione —</option>
+      <option value="ENTRADA">Entrada</option>
+      <option value="SAIDA">Saída</option>
+      <option value="TRANSFERENCIA">Transferência</option>
+      <option value="AJUSTE">Ajuste</option>
+    </select>
+  </div>
+
+  <div class="mod-form-field">
+    <label for="{{ prefix }}quantidade">Quantidade</label>
+    <input type="number" name="quantidade" id="{{ prefix }}quantidade" min="1" value="1" disabled>
+  </div>
+
+  <div class="mod-form-field mod-form-field--full">
+    <label for="{{ prefix }}observacao">Observação</label>
+    <textarea name="observacao" id="{{ prefix }}observacao" rows="2"></textarea>
+  </div>
+
+  <input type="hidden" name="item_id" id="{{ prefix }}item_id">
+</div>

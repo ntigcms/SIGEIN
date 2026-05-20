@@ -73,6 +73,7 @@ window.SIGENModList = (function () {
     if (opts.ajax) dtOpts.ajax = opts.ajax;
     if (opts.columns) dtOpts.columns = opts.columns;
     if (opts.processing !== undefined) dtOpts.processing = opts.processing;
+    if (opts.autoWidth === false) dtOpts.autoWidth = false;
     var table = $t.DataTable(dtOpts);
     if (opts.countSelector) {
       table.on("draw", function () {

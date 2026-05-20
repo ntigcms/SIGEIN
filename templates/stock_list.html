@@ -138,113 +138,179 @@
   </div>
 </div>
 
+<!-- Modal: nova movimentação -->
+<div id="modal-movement" class="mod-modal" aria-hidden="true">
+  <div class="mod-modal__backdrop" data-close="modal-movement"></div>
+  <div class="mod-modal__dialog mod-modal__dialog--lg" role="dialog" aria-labelledby="modal-movement-title">
+    <div class="mod-modal__header">
+      <h3 id="modal-movement-title">Movimentar estoque</h3>
+      <button type="button" class="mod-modal__close" data-close="modal-movement" aria-label="Fechar">&times;</button>
+    </div>
+    <div class="mod-modal__body">
+      <div id="mov-form-error" role="alert" style="display:none; margin-bottom: 1rem; padding: 10px 14px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #b91c1c;"></div>
+      <form id="mov-form" method="post" action="/movements">
+        {% set prefix = "mov-" %}
+        {% include "includes/movement_form_fields.html" %}
+      </form>
+    </div>
+    <div class="mod-modal__footer">
+      <button type="button" class="mod-btn mod-btn--ghost" data-close="modal-movement">Cancelar</button>
+      <button type="submit" form="mov-form" id="mov-submit-btn" class="mod-btn mod-btn--primary">
+        <i class="fas fa-check"></i> Salvar movimentação
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/movement-form.js"></script>
 <script>
 var currentProductId = null;
-var currentUnitName = null;
+var currentUnitId = null;
+var stockMovementFormApi = null;
+var savedScrollY = 0;
+var stockTableApi = null;
+
+var STOCK_MODAL_IDS = [
+  "modal-product-details",
+  "modal-product-view",
+  "modal-movement",
+];
+
+function isAnyStockModalOpen() {
+  return STOCK_MODAL_IDS.some(function (id) {
+    var m = document.getElementById(id);
+    return m && m.classList.contains("is-open");
+  });
+}
 
 function escHtml(text) {
-  return $("<div>").text(text == null ? "" : String(text)).html();
+  return $('<div>').text(text == null ? "" : String(text)).html();
+}
+
+function mountStockModalsOnBody() {
+  STOCK_MODAL_IDS.forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el && el.parentNode !== document.body) {
+      document.body.appendChild(el);
+    }
+  });
+}
+
+function lockPageScroll() {
+  savedScrollY = window.scrollY || window.pageYOffset || 0;
+  document.documentElement.classList.add("mod-modal-open");
+}
+
+function unlockPageScroll() {
+  document.documentElement.classList.remove("mod-modal-open");
+  requestAnimationFrame(function () {
+    window.scrollTo(0, savedScrollY);
+    if (stockTableApi && stockTableApi.columns) {
+      try {
+        stockTableApi.columns.adjust();
+      } catch (e) { /* ignore */ }
+    }
+  });
+}
+
+function keepPageScrollPinned() {
+  if (isAnyStockModalOpen() && window.scrollY !== savedScrollY) {
+    window.scrollTo(0, savedScrollY);
+  }
 }
 
 function openModal(modalId) {
   var el = document.getElementById(modalId);
-  if (el) {
-    el.classList.add("is-open");
-    el.setAttribute("aria-hidden", "false");
+  if (!el) return;
+  if (!isAnyStockModalOpen()) {
+    lockPageScroll();
   }
+  el.classList.add("is-open");
+  el.setAttribute("aria-hidden", "false");
 }
 
 function closeModal(modalId) {
   var el = document.getElementById(modalId);
-  if (el) {
-    el.classList.remove("is-open");
-    el.setAttribute("aria-hidden", "true");
+  if (!el) return;
+  el.classList.remove("is-open");
+  el.setAttribute("aria-hidden", "true");
+  if (!isAnyStockModalOpen()) {
+    unlockPageScroll();
   }
 }
 
-document.querySelectorAll("[data-close]").forEach(function (btn) {
+function switchModal(fromId, toId) {
+  var fromEl = document.getElementById(fromId);
+  var toEl = document.getElementById(toId);
+  if (fromEl) {
+    fromEl.classList.remove("is-open");
+    fromEl.setAttribute("aria-hidden", "true");
+  }
+  if (toEl) {
+    if (!isAnyStockModalOpen()) {
+      lockPageScroll();
+    }
+    toEl.classList.add("is-open");
+    toEl.setAttribute("aria-hidden", "false");
+  }
+}
+
+function closeTopStockModal() {
+  for (var i = STOCK_MODAL_IDS.length - 1; i >= 0; i--) {
+    var modal = document.getElementById(STOCK_MODAL_IDS[i]);
+    if (modal && modal.classList.contains("is-open")) {
+      closeModal(STOCK_MODAL_IDS[i]);
+      return true;
+    }
+  }
+  return false;
+}
+
+mountStockModalsOnBody();
+
+STOCK_MODAL_IDS.forEach(function (modalId) {
+  var modal = document.getElementById(modalId);
+  if (!modal) return;
+  modal.addEventListener(
+    "focusin",
+    function () {
+      requestAnimationFrame(keepPageScrollPinned);
+    },
+    true
+  );
+});
+
+document.querySelectorAll(".mod-modal [data-close]").forEach(function (btn) {
   btn.addEventListener("click", function () {
     closeModal(btn.getAttribute("data-close"));
   });
 });
 
-async function openStockDetails(productId, unitName) {
-  try {
-    var response = await fetch(
-      "/stock/items-by-type?product_id=" +
-        productId +
-        "&unit_name=" +
-        encodeURIComponent(unitName)
-    );
-    var data = await response.json();
-
-    if (data.controla_por_serie) {
-      openProductDetails(productId, unitName);
-      return;
-    }
-
-    var stockDaUnidade = data.stock.find(function (s) {
-      return s.unit === unitName;
-    });
-
-    if (!stockDaUnidade) {
-      alert("Estoque não encontrado para esta unidade");
-      return;
-    }
-
-    document.getElementById("view-tipo").value = data.product_type || "—";
-    document.getElementById("view-marca").value = data.product_brand || "—";
-    document.getElementById("view-modelo").value = data.product_model || "—";
-    document.getElementById("view-estado").value = "—";
-
-    var status =
-      stockDaUnidade.quantidade > (stockDaUnidade.minimo || 0) ? "OK" : "Crítico";
-    document.getElementById("view-status").value = status;
-    document.getElementById("view-unidade").value = stockDaUnidade.unit;
-    document.getElementById("view-quantidade").value =
-      stockDaUnidade.quantidade + " (mínimo: " + (stockDaUnidade.minimo || 0) + ")";
-    document.getElementById("numero-container").style.display = "none";
-    document.getElementById("view-observacao").value =
-      "Produto controlado por quantidade (sem tombo/série individual)";
-
-    currentProductId = null;
-    currentUnitName = null;
-    document.getElementById("btn-voltar-detalhes").style.display = "none";
-    openModal("modal-product-view");
-  } catch (error) {
-    console.error("Erro ao carregar estoque:", error);
-    alert("Erro ao carregar informações de estoque");
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape") {
+    closeTopStockModal();
   }
+});
+
+function stockItemsUrl(productId, unitId) {
+  return "/stock/items-by-type?product_id=" + productId + "&unit_id=" + unitId;
 }
 
-async function openProductDetails(productId, unitName) {
-  try {
-    currentProductId = productId;
-    currentUnitName = unitName;
+function renderProductDetailsModal(data, unitId) {
+  currentProductId = data.product_id || currentProductId;
+  currentUnitId = unitId;
+  var unitLabel = data.unit_name || "—";
 
-    var response = await fetch(
-      "/stock/items-by-type?product_id=" +
-        productId +
-        "&unit_name=" +
-        encodeURIComponent(unitName)
-    );
-    var data = await response.json();
+  var tombos = (data.items || []).filter(function (i) {
+    return i.tombo === true;
+  });
+  var series = (data.items || []).filter(function (i) {
+    return i.tombo === false;
+  });
 
-    if (!data.controla_por_serie) {
-      alert("Este tipo de produto não controla por tombo/série");
-      return;
-    }
-
-    var tombos = data.items.filter(function (i) {
-      return i.tombo === true;
-    });
-    var series = data.items.filter(function (i) {
-      return i.tombo === false;
-    });
-
-    document.getElementById("detail-tipo").textContent = data.product_type || "—";
-    document.getElementById("detail-unidade").textContent = unitName;
-    document.getElementById("detail-quantidade").textContent = data.items.length;
+  document.getElementById("detail-tipo").textContent = data.product_type || "—";
+  document.getElementById("detail-unidade").textContent = unitLabel;
+  document.getElementById("detail-quantidade").textContent = (data.items || []).length;
 
     var listaTombos = document.getElementById("lista-tombos");
     document.getElementById("count-tombo").textContent = tombos.length;
@@ -284,7 +350,75 @@ async function openProductDetails(productId, unitName) {
         '<p class="mod-scroll-list__empty">Nenhuma série cadastrada</p>';
     }
 
-    openModal("modal-product-details");
+  openModal("modal-product-details");
+}
+
+async function openStockDetails(productId, unitId) {
+  try {
+    var response = await fetch(stockItemsUrl(productId, unitId));
+    var data = await response.json();
+
+    if (data.error) {
+      alert(data.error);
+      return;
+    }
+
+    if (data.controla_por_serie) {
+      currentProductId = productId;
+      renderProductDetailsModal(data, unitId);
+      return;
+    }
+
+    var stockDaUnidade = data.stock && data.stock[0];
+    if (!stockDaUnidade) {
+      alert("Estoque não encontrado para esta unidade");
+      return;
+    }
+
+    document.getElementById("view-tipo").value = data.product_type || "—";
+    document.getElementById("view-marca").value = data.product_brand || "—";
+    document.getElementById("view-modelo").value = data.product_model || "—";
+    document.getElementById("view-estado").value = "—";
+
+    var status =
+      stockDaUnidade.quantidade > (stockDaUnidade.minimo || 0) ? "OK" : "Crítico";
+    document.getElementById("view-status").value = status;
+    document.getElementById("view-unidade").value = data.unit_name || stockDaUnidade.unit;
+    document.getElementById("view-quantidade").value =
+      stockDaUnidade.quantidade + " (mínimo: " + (stockDaUnidade.minimo || 0) + ")";
+    document.getElementById("numero-container").style.display = "none";
+    document.getElementById("view-observacao").value =
+      "Produto controlado por quantidade (sem tombo/série individual)";
+
+    currentProductId = null;
+    currentUnitId = null;
+    document.getElementById("btn-voltar-detalhes").style.display = "none";
+    openModal("modal-product-view");
+  } catch (error) {
+    console.error("Erro ao carregar estoque:", error);
+    alert("Erro ao carregar informações de estoque");
+  }
+}
+
+async function openProductDetails(productId, unitId) {
+  try {
+    currentProductId = productId;
+    currentUnitId = unitId;
+
+    var response = await fetch(stockItemsUrl(productId, unitId));
+    var data = await response.json();
+
+    if (data.error) {
+      alert(data.error);
+      return;
+    }
+
+    if (!data.controla_por_serie) {
+      alert("Este tipo de produto não controla por tombo/série");
+      return;
+    }
+
+    renderProductDetailsModal(data, unitId);
   } catch (error) {
     console.error("Erro ao carregar detalhes:", error);
     alert("Erro ao carregar informações do produto");
@@ -313,10 +447,9 @@ async function openItemView(itemId) {
     document.getElementById("view-observacao").value = data.observacao || "";
 
     document.getElementById("btn-voltar-detalhes").style.display =
-      currentProductId && currentUnitName ? "inline-flex" : "none";
+      currentProductId && currentUnitId ? "inline-flex" : "none";
 
-    closeModal("modal-product-details");
-    openModal("modal-product-view");
+    switchModal("modal-product-details", "modal-product-view");
   } catch (error) {
     console.error("Erro ao carregar item:", error);
     alert("Erro ao carregar informações do item");
@@ -324,10 +457,11 @@ async function openItemView(itemId) {
 }
 
 function voltarParaDetalhes() {
-  closeModal("modal-product-view");
-  if (currentProductId && currentUnitName) {
-    openProductDetails(currentProductId, currentUnitName);
+  if (currentProductId && currentUnitId) {
+    switchModal("modal-product-view", "modal-product-details");
+    return;
   }
+  closeModal("modal-product-view");
 }
 
 document.getElementById("btn-voltar-detalhes").addEventListener("click", voltarParaDetalhes);
@@ -348,8 +482,67 @@ function statusBadge(data, type) {
   return '<span class="' + cls + '">' + label + "</span>";
 }
 
+var movementProducts = {{ movement_products | tojson | safe }};
+
+function openMovementModal(typeId, productId, unitId) {
+  var prod = movementProducts.find(function (p) {
+    return p.id === productId;
+  });
+  var prefill = {
+    type_id: typeId,
+    product_id: productId,
+    unit_origem_id: unitId,
+    category_id: prod ? prod.category_id : null,
+    controla_por_serie: prod ? prod.controla_por_serie : false,
+  };
+  var errEl = document.getElementById("mov-form-error");
+  if (errEl) {
+    errEl.style.display = "none";
+    errEl.textContent = "";
+  }
+  var titleEl = document.getElementById("modal-movement-title");
+  if (titleEl) {
+    titleEl.textContent = prod
+      ? "Movimentar: " + (prod.name || prod.type_name || "Produto")
+      : "Movimentar estoque";
+  }
+  openModal("modal-movement");
+  requestAnimationFrame(function () {
+    if (stockMovementFormApi && stockMovementFormApi.reset) {
+      stockMovementFormApi.reset();
+    }
+    if (stockMovementFormApi && stockMovementFormApi.applyPrefill) {
+      stockMovementFormApi.applyPrefill(prefill);
+    }
+  });
+}
+
 $(function () {
-  var table = SIGENModList.initTable("#stockTable", {
+  stockMovementFormApi = SIGENMovementForm.init({
+    prefix: "mov-",
+    form: document.getElementById("mov-form"),
+    productsData: movementProducts,
+    prefill: {},
+    movimento: {},
+    ajax: true,
+    errorEl: document.getElementById("mov-form-error"),
+    submitBtn: document.getElementById("mov-submit-btn"),
+    onSuccess: function () {
+      closeModal("modal-movement");
+      var dt = $("#stockTable").DataTable();
+      if (dt) dt.ajax.reload(null, false);
+      if (typeof Swal !== "undefined") {
+        Swal.fire({
+          icon: "success",
+          title: "Movimentação registrada",
+          timer: 1800,
+          showConfirmButton: false,
+        });
+      }
+    },
+  });
+
+  stockTableApi = SIGENModList.initTable("#stockTable", {
     ajax: { url: "/stock/overview", dataSrc: "" },
     columns: [
       {
@@ -388,19 +581,21 @@ $(function () {
         data: null,
         orderable: false,
         render: function (row) {
-          var unitName = (row.unit_name || "").replace(/'/g, "\\'");
           var detailFn = row.controla_por_serie
-            ? "openProductDetails(" + row.product_id + ", '" + unitName + "')"
-            : "openStockDetails(" + row.product_id + ", '" + unitName + "')";
+            ? "openProductDetails(" + row.product_id + ", " + row.unit_id + ")"
+            : "openStockDetails(" + row.product_id + ", " + row.unit_id + ")";
           return (
             '<div class="mod-actions">' +
             '<button type="button" class="mod-action-btn mod-action-btn--view" title="Detalhar" onclick="' +
             detailFn +
             '; return false;"><i class="fas fa-eye"></i></button>' +
-            '<a href="/movements/nova?type=' +
+            '<button type="button" class="mod-action-btn mod-action-btn--edit" title="Movimentar" onclick="openMovementModal(' +
             row.type_id +
-            '" class="mod-action-btn mod-action-btn--edit" title="Movimentar">' +
-            '<i class="fas fa-arrows-turn-right"></i></a>' +
+            ", " +
+            row.product_id +
+            ", " +
+            row.unit_id +
+            "); return false;\"><i class=\"fas fa-arrows-turn-right\"></i></button>" +
             "</div>"
           );
         },

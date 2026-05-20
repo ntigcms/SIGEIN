@@ -33,7 +33,7 @@
             padding: 30px 40px;
             border-radius: 10px;
             box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-            max-width: 600px;
+            max-width: 1200px;
             margin: auto;
         }
 
@@ -256,77 +256,6 @@
         }
 
 
-        .meus-dados-modal-backdrop {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.4);
-            z-index: 9998;
-            align-items: center;
-            justify-content: center;
-        }
-        .meus-dados-modal-backdrop.show { display: flex; }
-        .meus-dados-modal {
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-            max-width: 420px;
-            width: 90%;
-            max-height: 90vh;
-            overflow: auto;
-        }
-        .meus-dados-modal-header {
-            padding: 20px 24px;
-            border-bottom: 1px solid #e9ecef;
-            font-size: 18px;
-            font-weight: 700;
-        }
-        .meus-dados-modal-body { padding: 24px; }
-        .meus-dados-field { margin-bottom: 16px; }
-        .meus-dados-section-title {
-            font-size: 13px;
-            font-weight: 700;
-            color: #495057;
-            margin: 20px 0 12px;
-            padding-bottom: 6px;
-            border-bottom: 1px solid #e9ecef;
-        }
-        .meus-dados-field label {
-            display: block;
-            font-size: 12px;
-            font-weight: 600;
-            color: #6c757d;
-            margin-bottom: 4px;
-        }
-        .meus-dados-field .value {
-            font-size: 14px;
-            padding: 10px 12px;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
-        .meus-dados-modal-footer {
-            padding: 16px 24px;
-            border-top: 1px solid #e9ecef;
-            display: flex;
-            gap: 12px;
-            justify-content: flex-end;
-        }
-        .meus-dados-modal-footer .btn-fechar {
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: 1px solid #dee2e6;
-            background: #fff;
-            cursor: pointer;
-            color: black;
-        }
-        .meus-dados-modal-footer .btn-editar {
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: none;
-            background: #0077cc;
-            color: #fff;
-            text-decoration: none;
-        }
         /* =========================
            CAMPOS DE FORMULÁRIO
         ========================== */
@@ -397,6 +326,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/static/css/forms.css">
     <link rel="stylesheet" href="{{ url_for('static', path='css/sidebar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/modules-list.css') }}">
 
 </head>
 
@@ -436,13 +366,13 @@
                     <i class="fas fa-building nav-icon"></i>
                     <span>Unidades</span>
                 </a>
-                <a href="/movements" class="sidebar-nav__link{% if path.startswith('/movements') %} is-active{% endif %}">
-                    <i class="fas fa-right-left nav-icon"></i>
-                    <span>Movimentações</span>
-                </a>
                 <a href="/products" class="sidebar-nav__link{% if path.startswith('/products') %} is-active{% endif %}">
                     <i class="fas fa-box nav-icon"></i>
                     <span>Produtos</span>
+                </a>
+                <a href="/movements" class="sidebar-nav__link{% if path.startswith('/movements') %} is-active{% endif %}">
+                    <i class="fas fa-right-left nav-icon"></i>
+                    <span>Movimentações</span>
                 </a>
                 <a href="/stock" class="sidebar-nav__link{% if path.startswith('/stock') %} is-active{% endif %}">
                     <i class="fas fa-warehouse nav-icon"></i>
@@ -467,6 +397,10 @@
                     </button>
                     <div class="sidebar-submenu__content">
                         <div class="sidebar-submenu__inner">
+                            <a href="/categories" class="sidebar-nav__link{% if path.startswith('/categories') %} is-active{% endif %}">
+                                <i class="fas fa-folder nav-icon"></i>
+                                <span>Categorias</span>
+                            </a>
                             <a href="/equipment-types" class="sidebar-nav__link{% if path.startswith('/equipment-types') %} is-active{% endif %}">
                                 <i class="fas fa-laptop nav-icon"></i>
                                 <span>Tipos de equipamento</span>
@@ -478,10 +412,6 @@
                             <a href="/states" class="sidebar-nav__link{% if path.startswith('/states') %} is-active{% endif %}">
                                 <i class="fas fa-circle-check nav-icon"></i>
                                 <span>Estados</span>
-                            </a>
-                            <a href="/categories" class="sidebar-nav__link{% if path.startswith('/categories') %} is-active{% endif %}">
-                                <i class="fas fa-folder nav-icon"></i>
-                                <span>Categorias</span>
                             </a>
                             <a href="/orgaos" class="sidebar-nav__link{% if path.startswith('/orgaos') %} is-active{% endif %}">
                                 <i class="fas fa-landmark nav-icon"></i>
@@ -578,24 +508,49 @@
 
 
         {% if meus_dados %}
-        <div class="meus-dados-modal-backdrop" id="meus-dados-modal" aria-hidden="true">
-            <div class="meus-dados-modal">
-                <div class="meus-dados-modal-header">Meus Dados</div>
-                <div class="meus-dados-modal-body">
-                    <div class="meus-dados-field"><label>Nome</label><div class="value">{{ meus_dados.nome }}</div></div>
-                    <div class="meus-dados-field"><label>E-mail</label><div class="value">{{ meus_dados.email }}</div></div>
-                    <div class="meus-dados-field"><label>Perfil</label><div class="value">{{ meus_dados.perfil }}</div></div>
-                    {% if meus_dados.status %}
-                    <div class="meus-dados-field"><label>Status</label><div class="value">{{ meus_dados.status }}</div></div>
-                    {% endif %}
-                    <div class="meus-dados-section-title">Lotação administrativa</div>
-                    <div class="meus-dados-field"><label>Município</label><div class="value">{{ meus_dados.municipio or '-' }}</div></div>
-                    <div class="meus-dados-field"><label>Órgão</label><div class="value">{{ meus_dados.orgao or '-' }}</div></div>
-                    <div class="meus-dados-field"><label>Unidade</label><div class="value">{{ meus_dados.unidade or '-' }}</div></div>
+        <div id="meus-dados-modal" class="mod-modal mod-modal--profile" aria-hidden="true">
+            <div class="mod-modal__backdrop" data-close="meus-dados-modal"></div>
+            <div class="mod-modal__dialog mod-modal__dialog--md" role="dialog" aria-labelledby="meus-dados-title">
+                <div class="mod-modal__header">
+                    <h3 id="meus-dados-title"><i class="fas fa-id-card" aria-hidden="true"></i> Meus dados</h3>
+                    <button type="button" class="mod-modal__close" data-close="meus-dados-modal" aria-label="Fechar">&times;</button>
                 </div>
-                <div class="meus-dados-modal-footer">
-                    <button type="button" class="btn-fechar" id="meus-dados-fechar">Fechar</button>
-                    <a href="/users/edit/{{ meus_dados.id }}" class="btn-editar">Editar</a>
+                <div class="mod-modal__body">
+                    <div class="meus-dados-hero">
+                        <span class="meus-dados-avatar" aria-hidden="true">{{ (meus_dados.nome or '?')[0] }}</span>
+                        <div class="meus-dados-hero__info">
+                            <strong>{{ meus_dados.nome }}</strong>
+                            <span>{{ meus_dados.email }}</span>
+                            <div class="meus-dados-badges">
+                                <span class="mod-badge mod-badge--{{ meus_dados.perfil }}">{{ current_user_perfil_label or meus_dados.perfil|enum_label }}</span>
+                                {% if meus_dados.status %}
+                                <span class="mod-badge mod-badge--{{ meus_dados.status }}">{{ meus_dados.status|enum_label }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 class="meus-dados-section">Lotação administrativa</h4>
+                    <div class="mod-form-grid">
+                        <div class="mod-form-field">
+                            <label>Município</label>
+                            <div class="mod-field-readonly">{{ meus_dados.municipio or '—' }}</div>
+                        </div>
+                        <div class="mod-form-field">
+                            <label>Órgão</label>
+                            <div class="mod-field-readonly">{{ meus_dados.orgao or '—' }}</div>
+                        </div>
+                        <div class="mod-form-field mod-form-field--full">
+                            <label>Unidade</label>
+                            <div class="mod-field-readonly">{{ meus_dados.unidade or '—' }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mod-modal__footer mod-modal__footer--bar">
+                    <button type="button" class="mod-btn mod-btn--ghost" data-close="meus-dados-modal">Fechar</button>
+                    <a href="/users/edit/{{ meus_dados.id }}" class="mod-btn mod-btn--primary">
+                        <i class="fas fa-pen" aria-hidden="true"></i> Editar perfil
+                    </a>
                 </div>
             </div>
         </div>
@@ -659,18 +614,36 @@
         (function () {
             var btnMeusDados = document.getElementById('btn-meus-dados');
             var modal = document.getElementById('meus-dados-modal');
-            var btnFechar = document.getElementById('meus-dados-fechar');
             var menu = document.getElementById('userMenu');
             function fechar() {
-                if (modal) { modal.classList.remove('show'); modal.setAttribute('aria-hidden', 'true'); }
+                if (modal) {
+                    modal.classList.remove('is-open');
+                    modal.setAttribute('aria-hidden', 'true');
+                }
             }
-            if (btnMeusDados) btnMeusDados.addEventListener('click', function (e) {
-                e.preventDefault();
-                if (menu) menu.classList.remove('open');
-                if (modal) { modal.classList.add('show'); modal.setAttribute('aria-hidden', 'false'); }
+            function abrir() {
+                if (modal) {
+                    modal.classList.add('is-open');
+                    modal.setAttribute('aria-hidden', 'false');
+                }
+            }
+            if (btnMeusDados) {
+                btnMeusDados.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    if (menu) menu.classList.remove('open');
+                    abrir();
+                });
+            }
+            if (modal) {
+                modal.querySelectorAll('[data-close="meus-dados-modal"]').forEach(function (el) {
+                    el.addEventListener('click', fechar);
+                });
+            }
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && modal && modal.classList.contains('is-open')) {
+                    fechar();
+                }
             });
-            if (btnFechar) btnFechar.addEventListener('click', fechar);
-            if (modal) modal.addEventListener('click', function (e) { if (e.target === modal) fechar(); });
         })();
     </script>
 

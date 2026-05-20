@@ -7,19 +7,19 @@
 {{ mod.assets() }}
 
 <div class="mod-page">
-  {{ mod.header("Estados de equipamento", "Situações e condições dos itens do inventário.", "/states/add", "Novo estado", "fa-circle-check") }}
+  {{ mod.header("Estado do equipamento", "Situações e condições dos itens do inventário.", "/states/add", "Novo estado", "fa-circle-check") }}
 
   {{ mod.filters_start() }}
-  {{ mod.filter_text("Nome", 1, "Filtrar por nome...", "filter-nome") }}
+  {{ mod.filter_text("Nome", 0, "Filtrar por nome...", "filter-nome") }}
   {{ mod.filters_end() }}
 
   {{ mod.panel_start("Lista de estados", "states-count") }}
   {% if states %}
-  <table id="statesTable" class="display" style="width:100%;">
+  <table id="statesTable" class="display mod-table--layout-cols" style="width:100%;">
     <thead>
       <tr>
-        <th>Estado</th>
-        <th data-orderable="false">Ações</th>
+        <th class="mod-col-main">Estado</th>
+        <th class="mod-col-actions" data-orderable="false">Ações</th>
       </tr>
     </thead>
     <tbody>
@@ -39,15 +39,20 @@
 
 <script>
 $(function () {
-  {% if states %}
-  var table = SIGENModList.initTable("#statesTable", {
-    order: [[0, "asc"]],
-    columnDefs: [{ orderable: false, targets: 1 }],
-    countSelector: "#states-count"
-  });
-  SIGENModList.initTextFilter(table, 0, "#filter-nome");
-  SIGENModList.initClearFilters();
-  {% endif %}
+  var statesTableEl = document.getElementById("statesTable");
+  if (statesTableEl) {
+    var table = SIGENModList.initTable("#statesTable", {
+      order: [[0, "asc"]],
+      autoWidth: false,
+      columnDefs: [
+        { targets: 0, className: "mod-col-main" },
+        { orderable: false, targets: 1, width: "5.75rem", className: "mod-col-actions" },
+      ],
+      countSelector: "#states-count"
+    });
+    SIGENModList.initTextFilter(table, 0, "#filter-nome");
+    SIGENModList.initClearFilters();
+  }
   SIGENModList.initDelete(function (id) { return "/states/delete/" + id; }, { method: "GET" });
 });
 </script>

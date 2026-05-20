@@ -57,7 +57,7 @@ def login_post(
     ).first()
 
     if not user or not _senha_confere(password, user.password):
-        registrar_log(db, usuario=login, acao="Tentativa de login falhou", ip=ip)
+        registrar_log(db, usuario=login, acao="Tentativa de login falhou", request=request)
         return templates.TemplateResponse(
             "login.html",
             {"request": request, "error": "Usuario ou senha invalidos"},
@@ -80,7 +80,7 @@ def login_post(
         status_str = str(status)
 
     if not is_ativo:
-        registrar_log(db, usuario=login, acao=f"Login negado - status: {status_str}", ip=ip)
+        registrar_log(db, usuario=login, acao=f"Login negado - status: {status_str}", request=request)
         return templates.TemplateResponse(
             "login.html",
             {
@@ -97,7 +97,7 @@ def login_post(
         user.perfil.value if hasattr(user.perfil, "value") else str(user.perfil)
     )
 
-    registrar_log(db, usuario=user.email, acao="Login bem-sucedido", ip=ip)
+    registrar_log(db, usuario=user.email, acao="Login bem-sucedido", request=request)
     return RedirectResponse(url="/dashboard", status_code=HTTP_302_FOUND)
 
 
@@ -106,6 +106,6 @@ def logout(request: Request, db: Session = Depends(get_db)):
     ip = request.client.host
     usuario = request.session.get("user")
     if usuario:
-        registrar_log(db, usuario=usuario, acao="Logout efetuado", ip=ip)
+        registrar_log(db, usuario=usuario, acao="Logout efetuado", request=request)
     request.session.clear()
     return RedirectResponse(url="/login", status_code=HTTP_302_FOUND)

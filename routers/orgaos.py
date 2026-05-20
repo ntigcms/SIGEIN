@@ -5,10 +5,14 @@ from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
 from dependencies import get_current_user, registrar_log
-from models import User, Orgao, Municipio, Estado
+from models import User, Orgao, Municipio, Estado, PerfilEnum
 from templating import templates
 
 router = APIRouter(prefix="/orgaos", tags=["Órgãos"])
+
+
+def _perfil_valor(user: User) -> str:
+    return user._perfil_valor()
 
 
 # LISTAR ÓRGÃOS
@@ -197,7 +201,8 @@ def delete_orgao(
     if not user_obj:
         return JSONResponse({"success": False, "message": "Não autenticado"})
 
-    if user_obj.perfil not in ["master", "admin_municipal"]:
+    perfil = _perfil_valor(user_obj)
+    if perfil not in (PerfilEnum.MASTER.value, PerfilEnum.ADMIN_MUNICIPAL.value):
         return JSONResponse({
             "success": False,
             "message": "Você não tem permissão para excluir órgãos",
@@ -210,7 +215,7 @@ def delete_orgao(
             "message": "Órgão não encontrado",
         })
 
-    if user_obj.perfil == "admin_municipal":
+    if perfil == PerfilEnum.ADMIN_MUNICIPAL.value:
         if orgao.municipio_id != user_obj.municipio_id:
             return JSONResponse({
                 "success": False,

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, Float, Date, ForeignKey, func, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, Float, Date, ForeignKey, func, Enum as SQLEnum, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 from database import Base
@@ -296,6 +296,12 @@ class Log(Base):
     acao = Column(String(255))
     ip = Column(String(50))
     data_hora = Column(DateTime(timezone=True), server_default=func.now())
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    municipio_id = Column(Integer, ForeignKey("municipios.id"), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+    tipo = Column(String(20), nullable=False, server_default="operacional", default="operacional")
+
+    user = relationship("User", foreign_keys=[user_id])
 
 
 # =====================================================
@@ -334,11 +340,25 @@ class Category(Base):
 # BRAND
 # =====================================================
 
+brand_equipment_types = Table(
+    "brand_equipment_types",
+    Base.metadata,
+    Column("brand_id", Integer, ForeignKey("brands.id", ondelete="CASCADE"), primary_key=True),
+    Column("type_id", Integer, ForeignKey("equipment_types.id", ondelete="CASCADE"), primary_key=True),
+)
+
+
 class Brand(Base):
     __tablename__ = "brands"
 
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, unique=True, nullable=False)
+
+    equipment_types = relationship(
+        "EquipmentType",
+        secondary=brand_equipment_types,
+        backref="brands",
+    )
 
 
 # =====================================================

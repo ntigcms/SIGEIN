@@ -1,10 +1,26 @@
 ﻿from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
+from sqlalchemy import text
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from starlette.status import HTTP_302_FOUND
 from database import get_db
 from dependencies import get_current_user, registrar_log
-from models import User, Municipio, Orgao, Unidade, PerfilEnum, StatusUsuarioEnum
+from models import (
+    User,
+    Municipio,
+    Orgao,
+    Unidade,
+    PerfilEnum,
+    StatusUsuarioEnum,
+    Log,
+    Movement,
+    Processo,
+    ProcessoAssinante,
+    Tramite,
+    Product,
+    SegemItem,
+)
 from templating import templates
 from typing import Optional
 import re
@@ -429,6 +445,49 @@ def edit_user(
 # EXCLUIR USUÁRIO
 # ========================================
 
+def _liberar_vinculos_usuario(db: Session, user_id: int) -> None:
+    """Remove ou desvincula registros que impedem a exclusão do usuário."""
+    db.query(Log).filter(Log.user_id == user_id).delete(synchronize_session=False)
+
+    db.query(Movement).filter(Movement.user_id == user_id).update(
+        {Movement.user_id: None}, synchronize_session=False
+    )
+
+    db.query(ProcessoAssinante).filter(ProcessoAssinante.user_id == user_id).delete(
+        synchronize_session=False
+    )
+
+    db.query(Processo).filter(Processo.atribuido_to_id == user_id).update(
+        {Processo.atribuido_to_id: None}, synchronize_session=False
+    )
+    db.query(Processo).filter(Processo.arquivado_por_id == user_id).update(
+        {Processo.arquivado_por_id: None}, synchronize_session=False
+    )
+    db.query(Processo).filter(Processo.created_by == user_id).update(
+        {Processo.created_by: None}, synchronize_session=False
+    )
+
+    db.query(Tramite).filter(Tramite.created_by == user_id).update(
+        {Tramite.created_by: None}, synchronize_session=False
+    )
+    db.query(Product).filter(Product.created_by == user_id).update(
+        {Product.created_by: None}, synchronize_session=False
+    )
+    db.query(SegemItem).filter(SegemItem.created_by == user_id).update(
+        {SegemItem.created_by: None}, synchronize_session=False
+    )
+    db.query(User).filter(User.created_by == user_id).update(
+        {User.created_by: None}, synchronize_session=False
+    )
+
+    db.execute(
+        text(
+            "UPDATE processo_movimentacoes SET created_by = NULL WHERE created_by = :uid"
+        ),
+        {"uid": user_id},
+    )
+
+
 @router.post("/delete/{user_id}")
 def delete_user(
     request: Request,
@@ -463,16 +522,32 @@ def delete_user(
     if _is_admin_municipal(user_obj):
         if user_to_delete.municipio_id != user_obj.municipio_id:
             return JSONResponse({"success": False, "message": "Você só pode excluir usuários do seu município"})
-    
-    # ✅ EXCLUI
-    db.delete(user_to_delete)
-    db.commit()
-    
+
+    nome_excluido = user_to_delete.nome
+
+    try:
+        _liberar_vinculos_usuario(db, user_id)
+        db.delete(user_to_delete)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return JSONResponse(
+            {
+                "success": False,
+                "message": (
+                    "Não foi possível excluir: o usuário ainda possui vínculos "
+                    "no sistema (movimentações, processos ou outros registros)."
+                ),
+            },
+        )
+
     registrar_log(
         db,
         usuario=current_user,
-        acao=f"Excluiu usuário {user_to_delete.nome} (ID: {user_id})",
-        ip=request.client.host
+        acao=f"Excluiu usuário {nome_excluido} (ID: {user_id})",
+        ip=request.client.host,
+        user_id=user_obj.id,
+        tipo="seguranca",
     )
-    
+
     return JSONResponse({"success": True, "message": "Usuário excluído com sucesso"})

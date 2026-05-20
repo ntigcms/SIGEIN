@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% set hide_app_header = True %}
 
 {% block title %}{{ 'Editar' if action == 'edit' else 'Cadastrar' }} Usuário - SIGEIN{% endblock %}
 
@@ -38,9 +39,11 @@
                 <div class="form-group">
                     <label for="cpf">CPF*</label>
                     <input type="text" name="cpf" id="cpf" required 
-                           value="{{ form_data.cpf if form_data else (user.cpf if user else '') }}"
+                           value="{{ (form_data.cpf if form_data else (user.cpf if user else '')) | format_cpf }}"
                            placeholder="000.000.000-00"
-                           maxlength="14">
+                           maxlength="14"
+                           inputmode="numeric"
+                           autocomplete="off">
                 </div>
             </div>
 
@@ -328,17 +331,25 @@ legend {
 // ========================================
 // MÁSCARA DE CPF
 // ========================================
-document.getElementById('cpf').addEventListener('input', function(e) {
-    let value = e.target.value.replace(/\D/g, ''); // Remove não-dígitos
-    
-    if (value.length <= 11) {
-        value = value.replace(/(\d{3})(\d)/, '$1.$2');
-        value = value.replace(/(\d{3})(\d)/, '$1.$2');
-        value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-    }
-    
-    e.target.value = value;
-});
+function formatarCpf(value) {
+    var digits = String(value || '').replace(/\D/g, '').slice(0, 11);
+    if (!digits.length) return '';
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return digits.replace(/(\d{3})(\d+)/, '$1.$2');
+    if (digits.length <= 9) return digits.replace(/(\d{3})(\d{3})(\d+)/, '$1.$2.$3');
+    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+}
+
+var cpfInput = document.getElementById('cpf');
+if (cpfInput) {
+    cpfInput.value = formatarCpf(cpfInput.value);
+    cpfInput.addEventListener('input', function (e) {
+        e.target.value = formatarCpf(e.target.value);
+    });
+    document.getElementById('user-form').addEventListener('submit', function () {
+        cpfInput.value = cpfInput.value.replace(/\D/g, '');
+    });
+}
 
 // Validação de senha no submit: erros são exibidos na própria página após o retorno do servidor.
 

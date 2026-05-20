@@ -1,6 +1,5 @@
-/* SIGEN — Listagens de módulos */
-.mod-page,
-.users-page {
+/* SIGEN — Design tokens (listagens, modais globais) */
+:root {
   --mod-bg: #f0f4fc;
   --mod-surface: #ffffff;
   --mod-border: rgba(15, 23, 42, 0.08);
@@ -14,6 +13,11 @@
   --mod-radius: 16px;
   --mod-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
   --mod-shadow-hover: 0 12px 40px rgba(15, 23, 42, 0.1);
+}
+
+/* SIGEN — Listagens de módulos */
+.mod-page,
+.users-page {
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   color: var(--mod-text);
   animation: modFadeIn 0.45s ease-out;
@@ -352,18 +356,25 @@
 .mod-page table.dataTable thead th {
   background: #f8fafc !important;
   color: var(--mod-muted) !important;
-  font-size: 0.7rem !important;
+  font-size: 0.68rem !important;
   font-weight: 700 !important;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   border-bottom: 1px solid var(--mod-border) !important;
-  padding: 0.85rem 1rem !important;
+  padding: 0.45rem 0.75rem !important;
+  line-height: 1.25;
 }
 
 .mod-page table.dataTable tbody td {
-  padding: 0.9rem 1rem !important;
+  padding: 0.4rem 0.75rem !important;
   border-bottom: 1px solid var(--mod-border) !important;
   vertical-align: middle !important;
+  font-size: 0.875rem;
+  line-height: 1.3;
+}
+
+.mod-page table.dataTable tbody td strong {
+  font-weight: 600;
 }
 
 .mod-page table.dataTable tbody tr:hover td {
@@ -495,6 +506,58 @@
   padding: 0;
 }
 
+/* Botões menores dentro das tabelas do painel (linhas mais baixas) */
+.mod-panel .mod-action-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+.mod-panel .mod-actions {
+  gap: 0.25rem;
+}
+
+/* Tabelas simples: coluna principal flexível + ações/status compactas */
+.mod-page table.dataTable.mod-table--layout-cols {
+  table-layout: fixed !important;
+  width: 100% !important;
+}
+
+.mod-page table.dataTable th.mod-col-main,
+.mod-page table.dataTable td.mod-col-main {
+  width: auto !important;
+}
+
+.mod-page table.dataTable th.mod-col-desc,
+.mod-page table.dataTable td.mod-col-desc {
+  width: 35% !important;
+}
+
+.mod-page table.dataTable th.mod-col-status,
+.mod-page table.dataTable td.mod-col-status {
+  width: 7.5rem !important;
+  min-width: 7.5rem !important;
+  max-width: 7.5rem !important;
+  text-align: center !important;
+  white-space: nowrap;
+}
+
+.mod-page table.dataTable th.mod-col-actions,
+.mod-page table.dataTable td.mod-col-actions {
+  width: 5.75rem !important;
+  min-width: 5.75rem !important;
+  max-width: 5.75rem !important;
+  text-align: center !important;
+  white-space: nowrap;
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+}
+
+.mod-page table.dataTable td.mod-col-actions .mod-actions {
+  justify-content: center;
+}
+
 .users-empty, .mod-empty {
   text-align: center;
   padding: 3rem 1.5rem;
@@ -521,7 +584,7 @@
   }
 }
 
-.mod-header__actions { margin-top: 0.25rem; }
+.mod-header__actions { margin-top: 2.25rem; }
 .mod-status--ok { background: #d1fae5; color: #047857; }
 .mod-status--crit { background: #ffedd5; color: #c2410c; }
 .mod-status--zero { background: #fee2e2; color: #b91c1c; }
@@ -734,6 +797,45 @@
   color: var(--mod-text);
 }
 
+.mod-movement-form select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+}
+
+.mod-movement-form select[size] {
+  display: block;
+  width: 100%;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.mod-movement-help {
+  font-size: 12px;
+  color: #64748b;
+  margin: 4px 0 8px;
+  line-height: 1.4;
+  DISPLAY: grid;
+}
+
+#modal-movement .mod-modal__body {
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Bloqueia scroll da página com modal aberta (classe em html — sem position:fixed no body) */
+html.mod-modal-open {
+  overflow: hidden;
+}
+
+html.mod-modal-open body {
+  overflow: hidden;
+}
+
 .mod-form-field input[readonly],
 .mod-form-field textarea[readonly] {
   cursor: not-allowed;
@@ -746,4 +848,94 @@
   .mod-form-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Modal — Meus dados (menu do usuário) */
+.mod-modal--profile .mod-modal__dialog--md {
+  max-width: 480px;
+}
+
+.meus-dados-hero {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.15rem;
+  margin-bottom: 1.25rem;
+  background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+  border: 1px solid var(--mod-border);
+  border-radius: 14px;
+}
+
+.meus-dados-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--mod-primary), #60a5fa);
+  color: #fff;
+  font-size: 1.35rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  box-shadow: 0 6px 16px rgba(13, 110, 253, 0.25);
+}
+
+.meus-dados-hero__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.meus-dados-hero__info strong {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--mod-text);
+  margin-bottom: 0.2rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meus-dados-hero__info span {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--mod-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meus-dados-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.meus-dados-section {
+  margin: 0 0 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mod-muted);
+}
+
+.mod-field-readonly {
+  padding: 0.65rem 0.85rem;
+  background: #f8fafc;
+  border: 1px solid var(--mod-border);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--mod-text);
+}
+
+.mod-modal__footer--bar {
+  padding: 1rem 1.35rem;
+  border-top: 1px solid var(--mod-border);
+  background: #f8fafc;
+  margin: 0;
 }

@@ -1,202 +1,358 @@
 {% extends "base.html" %}
+
+{% set hide_app_header = True %}
+
 {% import "macros/mod_list.html" as mod %}
+
+
 
 {% block title %}Produtos — SIGEIN{% endblock %}
 
+
+
 {% block content %}
+
 {{ mod.assets() }}
 
+
+
 <div class="mod-page">
+
   {{ mod.header("Produtos", "Equipamentos e materiais do inventário.", "/products/add", "Novo produto", "fa-box") }}
 
+
+
   {{ mod.filters_start() }}
+
   {{ mod.filter_checkbox_options("Tipo", 3, "tipo", tipos) }}
+
   {{ mod.filter_checkbox_options("Marca", 4, "marca", marcas) }}
-  {{ mod.filter_checkbox_options("Estado", 5, "estado", estados) }}
-  {{ mod.filter_checkbox_options("Status", 6, "status", status_list) }}
+
+  {{ mod.filter_checkbox_options("Categoria", 5, "categoria", categorias) }}
+
   {{ mod.filters_end() }}
 
+
+
   {{ mod.panel_start("Lista de produtos", "products-count") }}
+
   {% if products %}
+
   <table id="productsTable" class="display" style="width:100%;">
+
     <thead>
+
       <tr>
+
         <th><input type="checkbox" id="select-all" onclick="toggleAll(this)" aria-label="Selecionar todos"></th>
+
         <th>ID</th>
+
         <th>Nome</th>
+
         <th>Tipo</th>
+
         <th>Marca</th>
-        <th>Estado</th>
-        <th>Status</th>
+
+        <th>Categoria</th>
+
         <th>Unidade</th>
-        <th>Tombo/Série</th>
+
+        <th>Data de Aquisição</th>
+
+        <th>Valor</th>
+
         <th data-orderable="false">Ações</th>
+
       </tr>
+
     </thead>
+
     <tbody>
-      {% for p in products %}
+
+      {% for row in products %}
+
+      {% set p = row.product %}
+
       <tr>
+
         <td><input type="checkbox" class="select-item" aria-label="Selecionar"></td>
+
         <td>{{ p.id }}</td>
+
         <td><strong>{{ p.name }}</strong></td>
+
         <td>{{ p.type.nome if p.type else '—' }}</td>
+
         <td>{{ p.brand.nome if p.brand else '—' }}</td>
-        <td>
-          {% if p.items %}
-          {{ p.items | map(attribute='estado.nome') | select | join(', ') }}
-          {% else %}—{% endif %}
-        </td>
-        <td>
-          {% if p.items %}
-          {{ p.items | map(attribute='status') | select | join(', ') }}
-          {% else %}—{% endif %}
-        </td>
-        <td>
-          {% if p.items %}
-          {{ p.items | map(attribute='unit.name') | select | join(', ') }}
-          {% else %}—{% endif %}
-        </td>
-        <td>
-          {% if p.items %}
-            {% set numeros = p.items | map(attribute='num_tombo_ou_serie') | select | list %}
-            {% if numeros %}{{ numeros | join(', ') }}
-            {% else %}<span class="mod-badge mod-status--info">Não</span>{% endif %}
-          {% else %}
-          <span class="mod-badge mod-status--info">Não</span>
-          {% endif %}
-        </td>
+
+        <td>{{ row.categoria }}</td>
+
+        <td>{{ row.unidade }}</td>
+
+        <td>{{ row.data_aquisicao }}</td>
+
+        <td>{{ row.valor }}</td>
+
         <td>{{ mod.actions("/products/edit/" ~ p.id, p.id) }}</td>
+
       </tr>
+
       {% endfor %}
+
     </tbody>
+
   </table>
+
   {% else %}
+
   {{ mod.empty_state("Nenhum produto cadastrado.", "/products/add", "Cadastrar produto") }}
+
   {% endif %}
+
   {{ mod.panel_end() }}
+
 </div>
 
+
+
 <script>
+
 function toggleAll(source) {
+
   document.querySelectorAll(".select-item").forEach(function (cb) {
+
     cb.checked = source.checked;
+
   });
+
 }
 
+
+
 $(function () {
-  {% if products %}
+  var productsTableEl = document.getElementById("productsTable");
+  if (!productsTableEl) {
+    SIGENModList.initDelete(function (id) {
+      return "/products/delete/" + id;
+    });
+    return;
+  }
+
   var table = SIGENModList.initTable("#productsTable", {
+
     order: [[2, "asc"]],
+
     columnDefs: [
+
       { orderable: false, targets: [0, 9] },
+
       { visible: false, targets: [0, 1] },
+
     ],
+
     countSelector: "#products-count",
+
   });
+
+
 
   $(".mod-page .search-container[data-filter]").each(function () {
+
     var container = $(this);
+
     var input = container.find(".filter-search");
+
     var optionsDiv = container.find(".options");
+
     var arrow = container.find(".arrow");
+
     var filterType = container.data("filter");
+
     var selecionados = [];
 
+
+
     function renderOptions(query) {
+
       optionsDiv.find(".option").each(function () {
+
         var val = $(this).find("input").val().toLowerCase();
+
         $(this).toggle(!query || val.indexOf(query) !== -1);
+
       });
+
       optionsDiv.show();
+
       arrow.addClass("open");
+
     }
 
+
+
     input.on("click", function (e) {
+
       e.stopPropagation();
+
       $(".mod-page .search-container")
+
         .not(container)
+
         .find(".options")
+
         .hide()
+
         .end()
+
         .find(".arrow")
+
         .removeClass("open");
+
       if (optionsDiv.is(":visible")) {
+
         optionsDiv.hide();
+
         arrow.removeClass("open");
+
       } else {
+
         renderOptions("");
+
       }
+
     });
+
+
 
     input.on("input", function () {
+
       renderOptions(input.val().toLowerCase());
+
     });
+
+
 
     optionsDiv.on("change", 'input[type="checkbox"]', function () {
+
       var val = $(this).val();
+
       if (this.checked) {
+
         if (selecionados.indexOf(val) === -1) selecionados.push(val);
+
       } else {
+
         selecionados = selecionados.filter(function (v) {
+
           return v !== val;
+
         });
+
       }
+
       input.val(selecionados.join(", "));
 
+
+
       var colIndex;
+
       switch (filterType) {
+
         case "tipo":
+
           colIndex = 3;
+
           break;
+
         case "marca":
+
           colIndex = 4;
+
           break;
-        case "estado":
+
+        case "categoria":
+
           colIndex = 5;
+
           break;
-        case "status":
-          colIndex = 6;
-          break;
+
         default:
+
           return;
+
       }
+
+
 
       var searchValue = selecionados
+
         .map(function (v) {
+
           return v.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+
         })
+
         .join("|");
 
+
+
       table
+
         .column(colIndex)
+
         .search(selecionados.length ? searchValue : "", true, false)
+
         .draw();
+
     });
+
+
 
     $(document).on("click.productsFilter", function (e) {
+
       if (!$(e.target).closest(container).length) {
+
         optionsDiv.hide();
+
         arrow.removeClass("open");
+
       }
+
     });
+
+
 
     container.data("reset", function () {
+
       selecionados = [];
+
       input.val("");
+
       optionsDiv.find('input[type="checkbox"]').prop("checked", false);
+
       var colIdx = container.data("col");
+
       if (colIdx !== undefined) table.column(colIdx).search("").draw();
+
       optionsDiv.hide();
+
       arrow.removeClass("open");
+
     });
+
   });
 
+
+
   SIGENModList.initClearFilters();
-  {% endif %}
 
   SIGENModList.initDelete(function (id) {
     return "/products/delete/" + id;
   });
 });
+
 </script>
+
 {% endblock %}
+
