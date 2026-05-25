@@ -94,7 +94,7 @@
 
         <td>{{ row.valor }}</td>
 
-        <td>{{ mod.actions("/products/edit/" ~ p.id, p.id) }}</td>
+        <td>{{ mod.actions("/products/edit/" ~ p.id, p.id, "openProductView(" ~ p.id ~ ")") }}</td>
 
       </tr>
 
@@ -111,24 +111,190 @@
   {% endif %}
 
   {{ mod.panel_end() }}
-
 </div>
 
-
+<!-- Modal: visualizar produto -->
+<div id="modal-product-view" class="mod-modal" aria-hidden="true">
+  <div class="mod-modal__backdrop" data-close="modal-product-view"></div>
+  <div class="mod-modal__dialog mod-modal__dialog--lg" role="dialog" aria-labelledby="product-view-title">
+    <div class="mod-modal__header">
+      <h3 id="product-view-title">Visualizar produto</h3>
+      <button type="button" class="mod-modal__close" data-close="modal-product-view" aria-label="Fechar">&times;</button>
+    </div>
+    <div class="mod-modal__body" id="product-view-body">
+      <p class="mod-muted" style="margin:0;">Carregando...</p>
+    </div>
+    <div class="mod-modal__footer">
+      <a href="#" id="product-view-edit" class="mod-btn mod-btn--primary" style="display:none;">
+        <i class="fas fa-pen"></i> Editar
+      </a>
+      <button type="button" class="mod-btn mod-btn--ghost" data-close="modal-product-view">Fechar</button>
+    </div>
+  </div>
+</div>
 
 <script>
 
 function toggleAll(source) {
-
   document.querySelectorAll(".select-item").forEach(function (cb) {
-
     cb.checked = source.checked;
-
   });
-
 }
 
+var productViewScrollY = 0;
 
+function escHtml(text) {
+  return $("<div>").text(text == null ? "" : String(text)).html();
+}
+
+function openProductViewModal() {
+  var el = document.getElementById("modal-product-view");
+  if (!el) return;
+  productViewScrollY = window.scrollY || 0;
+  document.documentElement.classList.add("mod-modal-open");
+  el.classList.add("is-open");
+  el.setAttribute("aria-hidden", "false");
+}
+
+function closeProductViewModal() {
+  var el = document.getElementById("modal-product-view");
+  if (!el) return;
+  el.classList.remove("is-open");
+  el.setAttribute("aria-hidden", "true");
+  document.documentElement.classList.remove("mod-modal-open");
+  window.scrollTo(0, productViewScrollY);
+}
+
+function bindProductViewModal() {
+  var modal = document.getElementById("modal-product-view");
+  if (!modal || modal.parentNode !== document.body) {
+    if (modal) document.body.appendChild(modal);
+  }
+  modal.querySelectorAll("[data-close='modal-product-view']").forEach(function (el) {
+    el.addEventListener("click", closeProductViewModal);
+  });
+}
+
+function productViewTableBox(title, headers, cells, scrollable) {
+  var head = headers.map(function (h) { return "<th>" + h + "</th>"; }).join("");
+  var row = cells.map(function (c) { return "<td>" + escHtml(c) + "</td>"; }).join("");
+  return (
+    '<div class="mod-list-box" style="margin-top:1rem;">' +
+    "<h4>" + escHtml(title) + "</h4>" +
+    '<div class="' + (scrollable ? "mod-scroll-list" : "product-view-table-wrap") + '"' +
+    (scrollable ? ' style="max-height:240px;"' : "") + ">" +
+    '<table class="product-view-items-table"><thead><tr>' + head +
+    "</tr></thead><tbody><tr>" + row + "</tr></tbody></table></div></div>"
+  );
+}
+
+function productViewTableMulti(title, headers, rowsHtml, scrollable) {
+  var head = headers.map(function (h) { return "<th>" + h + "</th>"; }).join("");
+  return (
+    '<div class="mod-list-box" style="margin-top:1rem;">' +
+    "<h4>" + escHtml(title) + "</h4>" +
+    '<div class="' + (scrollable ? "mod-scroll-list" : "product-view-table-wrap") + '"' +
+    (scrollable ? ' style="max-height:240px;"' : "") + ">" +
+    '<table class="product-view-items-table"><thead><tr>' + head +
+    "</tr></thead><tbody>" + rowsHtml + "</tbody></table></div></div>"
+  );
+}
+
+function renderProductView(data) {
+  document.getElementById("product-view-title").textContent = data.nome || "Visualizar produto";
+
+  var dadosHtml = productViewTableBox(
+    "Dados do produto",
+    ["ID", "Categoria", "Tipo", "Marca", "Modelo", "Controle", "Unidade", "Data aquisição", "Valor"],
+    [
+      data.id,
+      data.categoria,
+      data.tipo,
+      data.marca,
+      data.modelo,
+      data.controla_por_serie_label,
+      data.unidade,
+      data.data_aquisicao,
+      data.valor,
+    ],
+    false
+  );
+
+  var descricaoHtml = productViewTableBox(
+    "Descrição",
+    ["Descrição"],
+    [data.descricao],
+    false
+  );
+
+  var lot = data.lotacao || {};
+  var lotacaoHtml = "";
+  if (lot.estado) {
+    lotacaoHtml = productViewTableBox(
+      "Lotação",
+      ["Estado", "Município", "Órgão", "Unidade"],
+      [lot.estado, lot.municipio, lot.orgao, lot.unidade],
+      false
+    );
+  }
+
+  var itemsHtml = "";
+  if (data.controla_por_serie && data.items && data.items.length) {
+    var rows = data.items
+      .map(function (it) {
+        return (
+          "<tr><td>" + escHtml(it.tipo_numero) + "</td><td>" + escHtml(it.numero) + "</td>" +
+          "<td>" + escHtml(it.estado) + "</td><td>" + escHtml(it.status) + "</td>" +
+          "<td>" + escHtml(it.unidade) + "</td><td>" + escHtml(it.data_aquisicao) + "</td><td>" + escHtml(it.valor) + "</td></tr>"
+        );
+      })
+      .join("");
+    itemsHtml = productViewTableMulti(
+      "Itens cadastrados (" + data.total_itens + ")",
+      ["Tipo", "Número", "Estado", "Status", "Unidade", "Aquisição", "Valor"],
+      rows,
+      true
+    );
+  } else if (!data.controla_por_serie) {
+    itemsHtml = productViewTableBox(
+      "Estoque",
+      ["Quantidade", "Qtd. mínima"],
+      [data.quantidade, data.quantidade_minima],
+      false
+    );
+  }
+
+  document.getElementById("product-view-body").innerHTML =
+    dadosHtml + descricaoHtml + lotacaoHtml + itemsHtml;
+
+  var editBtn = document.getElementById("product-view-edit");
+  if (data.edit_url) {
+    editBtn.href = data.edit_url;
+    editBtn.style.display = "inline-flex";
+  } else {
+    editBtn.style.display = "none";
+  }
+}
+
+async function openProductView(productId) {
+  bindProductViewModal();
+  document.getElementById("product-view-body").innerHTML = '<p class="mod-muted" style="margin:0;">Carregando...</p>';
+  openProductViewModal();
+  try {
+    var response = await fetch("/products/view/" + productId);
+    var data = await response.json();
+    if (!response.ok || data.error) {
+      document.getElementById("product-view-body").innerHTML =
+        '<p style="color:#b91c1c;">' + escHtml(data.error || "Erro ao carregar produto") + "</p>";
+      return;
+    }
+    renderProductView(data);
+  } catch (e) {
+    console.error(e);
+    document.getElementById("product-view-body").innerHTML =
+      '<p style="color:#b91c1c;">Erro ao carregar informações do produto.</p>';
+  }
+}
 
 $(function () {
   var productsTableEl = document.getElementById("productsTable");
@@ -145,7 +311,8 @@ $(function () {
 
     columnDefs: [
 
-      { orderable: false, targets: [0, 9] },
+      { orderable: false, targets: 9, width: "7.5rem", className: "mod-col-actions" },
+      { orderable: false, targets: [0] },
 
       { visible: false, targets: [0, 1] },
 

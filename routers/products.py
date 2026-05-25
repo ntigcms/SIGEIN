@@ -111,6 +111,96 @@ def list_products(request: Request, db: Session = Depends(get_db), user: str = D
     )
 
 
+@router.get("/view/{product_id}")
+def view_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    """Detalhes do produto para visualização (modal na listagem)."""
+    if not user:
+        return JSONResponse({"error": "Não autenticado"}, status_code=401)
+
+    product = (
+        db.query(Product)
+        .options(
+            joinedload(Product.category),
+            joinedload(Product.type),
+            joinedload(Product.brand),
+            joinedload(Product.orgao).joinedload(Orgao.municipio).joinedload(Municipio.estado),
+            joinedload(Product.items).joinedload(Item.unit),
+            joinedload(Product.items).joinedload(Item.estado),
+            joinedload(Product.stocks).joinedload(Stock.unit),
+        )
+        .filter(Product.id == product_id)
+        .first()
+    )
+    if not product:
+        return JSONResponse({"error": "Produto não encontrado"}, status_code=404)
+
+    lotacao = {}
+    if product.orgao and product.orgao.municipio and product.orgao.municipio.estado:
+        lotacao = {
+            "estado": product.orgao.municipio.estado.nome,
+            "municipio": product.orgao.municipio.nome,
+            "orgao": product.orgao.nome,
+            "unidade": "—",
+        }
+
+    unidades = []
+    items_payload = []
+    for item in product.items or []:
+        if item.unit:
+            uname = item.unit.name
+            if uname not in unidades:
+                unidades.append(uname)
+            if lotacao.get("unidade") == "—":
+                lotacao["unidade"] = uname
+        items_payload.append({
+            "id": item.id,
+            "numero": item.num_tombo_ou_serie or "—",
+            "tipo_numero": "Tombo" if item.tombo else "Série",
+            "estado": item.estado.nome if item.estado else "—",
+            "status": item.status or "—",
+            "unidade": item.unit.name if item.unit else "—",
+            "data_aquisicao": _fmt_data(item.data_aquisicao),
+            "valor": _fmt_valor(item.valor_aquisicao),
+        })
+
+    stock_payload = []
+    for s in product.stocks or []:
+        stock_payload.append({
+            "unidade": s.unit.name if s.unit else "—",
+            "quantidade": s.quantidade,
+            "quantidade_minima": s.quantidade_minima,
+        })
+
+    display = _product_list_display(product)
+
+    return JSONResponse({
+        "id": product.id,
+        "nome": product.name,
+        "descricao": product.description or "—",
+        "categoria": display["categoria"],
+        "tipo": product.type.nome if product.type else "—",
+        "marca": product.brand.nome if product.brand else "—",
+        "modelo": product.model or "—",
+        "controla_por_serie": bool(product.controla_por_serie),
+        "controla_por_serie_label": "Sim" if product.controla_por_serie else "Não (quantidade)",
+        "quantidade": product.quantidade,
+        "quantidade_minima": product.quantidade_minima,
+        "unidade": display["unidade"],
+        "unidades": unidades,
+        "data_aquisicao": display["data_aquisicao"],
+        "valor": display["valor"],
+        "lotacao": lotacao,
+        "items": items_payload,
+        "stocks": stock_payload,
+        "edit_url": f"/products/edit/{product.id}",
+        "total_itens": len(items_payload),
+    })
+
+
 # ----------------- ADD FORM -----------------
 @router.get("/add")
 def add_product_form(request: Request, db: Session = Depends(get_db), user: str = Depends(get_current_user)):

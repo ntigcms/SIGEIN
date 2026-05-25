@@ -86,8 +86,13 @@
 </section>
 {% endmacro %}
 
-{% macro actions(edit_url, delete_id=none) %}
+{% macro actions(edit_url, delete_id=none, view_onclick=none) %}
 <div class="mod-actions">
+  {% if view_onclick %}
+  <button type="button" class="mod-action-btn mod-action-btn--view" title="Visualizar" onclick="{{ view_onclick }}">
+    <i class="fas fa-eye"></i>
+  </button>
+  {% endif %}
   <a href="{{ edit_url }}" class="mod-action-btn mod-action-btn--edit" title="Editar">
     <i class="fas fa-pen"></i>
   </a>

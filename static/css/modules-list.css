@@ -762,6 +762,51 @@
   margin: 0;
 }
 
+/* Tabela de itens no modal Visualizar produto */
+.product-view-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  background: #fff;
+}
+
+.product-view-items-table th,
+.product-view-items-table td {
+  text-align: center;
+  vertical-align: middle;
+  padding: 0.6rem 0.45rem;
+  border: 1px solid var(--mod-border);
+}
+
+.product-view-items-table thead th {
+  background: #f1f5f9;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--mod-text);
+}
+
+.product-view-items-table tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.product-view-items-table tbody tr:hover {
+  background: #eff6ff;
+}
+
+.mod-scroll-list .product-view-items-table,
+.product-view-table-wrap .product-view-items-table {
+  border: 1px solid var(--mod-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.product-view-table-wrap {
+  background: #fff;
+  border-radius: 8px;
+}
+
 .mod-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
