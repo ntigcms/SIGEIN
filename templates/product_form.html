@@ -98,7 +98,7 @@
             </div>
             {% else %}
             {% if lotacao %}
-            <div class="form-row lotacao-readonly">
+            <div class="mod-list-box-prod">
                 <div class="form-group"><label>Estado</label><span>{{ lotacao.estado }}</span></div>
                 <div class="form-group"><label>Município</label><span>{{ lotacao.municipio }}</span></div>
                 <div class="form-group"><label>Órgão</label><span>{{ lotacao.orgao }}</span></div>
@@ -251,7 +251,7 @@
                         </div>
                         <div class="form-group" style="flex: 1; min-width: 140px;">
                             <label class="label-numero">{{ 'Número do Tombo*' if it.tombo else 'Número de Série*' }}</label>
-                            <input type="text" name="numero[]" class="input-numero" required placeholder="{{ 'Digite o número do tombo' if it.tombo else 'Digite o número de série' }}" value="{{ it.num_tombo_ou_serie or '' }}">
+                            <input type="text" name="numero[]" class="input-numero" required placeholder="{{ '000.000' if it.tombo else 'Digite o número de série' }}" value="{{ it.num_tombo_ou_serie or '' }}"{% if it.tombo %} maxlength="7" inputmode="numeric"{% endif %}>
                         </div>
                         <div class="form-group" style="flex: 0 0 130px;">
                             <label>Estado (físico)</label>
@@ -292,7 +292,7 @@
                         </div>
                         <div class="form-group" style="flex: 1; min-width: 140px;">
                             <label class="label-numero">Número do Tombo*</label>
-                            <input type="text" name="numero[]" class="input-numero" required placeholder="Digite o número">
+                            <input type="text" name="numero[]" class="input-numero" required placeholder="000.000" maxlength="7" inputmode="numeric" autocomplete="off">
                         </div>
                         <div class="form-group" style="flex: 0 0 130px;">
                             <label>Estado (físico)</label>
@@ -411,8 +411,10 @@ legend {
     margin-bottom: 5px;
 }
 
-.lotacao-readonly { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; }
-.lotacao-readonly .form-group span { font-weight: 500; color: #0d6efd; margin-left: 4px; }
+/* Lotação somente leitura — estilos principais em modules-list.css (.mod-list-box-prod) */
+.mod-list-box-prod .form-group span {
+  color: #0d6efd;
+}
 
 .form-group input,
 .form-group select,
@@ -530,18 +532,91 @@ function toggleControles() {
     });
 }
 
+function formatTomboDisplay(val) {
+    const d = String(val || '').replace(/\D/g, '');
+    if (d.length === 6) return d.slice(0, 3) + '.' + d.slice(3);
+    return val;
+}
+
+function onTomboMaskInput(e) {
+    const input = e.target;
+    const d = input.value.replace(/\D/g, '').slice(0, 6);
+    input.value = d.length > 3 ? d.slice(0, 3) + '.' + d.slice(3) : d;
+}
+
+function bindTomboMaskInput(input) {
+    if (!input || input.dataset.tomboMaskBound) return;
+    input.dataset.tomboMaskBound = '1';
+    input.addEventListener('input', onTomboMaskInput);
+}
+
+function unbindTomboMaskInput(input) {
+    if (!input || !input.dataset.tomboMaskBound) return;
+    input.removeEventListener('input', onTomboMaskInput);
+    delete input.dataset.tomboMaskBound;
+}
+
 function toggleCampoNumero(select) {
     const item = select.closest('.numero-item');
     const label = item.querySelector('.label-numero');
     const input = item.querySelector('.input-numero');
-    
+
     if (select.value === 'tombo') {
         label.textContent = 'Número do Tombo*';
-        input.placeholder = 'Digite o número do tombo';
+        input.placeholder = '000.000';
+        input.setAttribute('maxlength', '7');
+        input.setAttribute('inputmode', 'numeric');
+        input.setAttribute('autocomplete', 'off');
+        if (input.value) input.value = formatTomboDisplay(input.value);
+        bindTomboMaskInput(input);
     } else {
         label.textContent = 'Número de Série*';
         input.placeholder = 'Digite o número de série';
+        input.removeAttribute('maxlength');
+        input.removeAttribute('inputmode');
+        unbindTomboMaskInput(input);
     }
+}
+
+function initNumeroItem(item) {
+    const select = item.querySelector('.tipo-numero');
+    if (select) toggleCampoNumero(select);
+}
+
+function validarNumerosFormulario() {
+    const secao = document.getElementById('secao-com-serie');
+    if (!secao || secao.style.display === 'none') return true;
+
+    const vistos = new Set();
+    const linhas = document.querySelectorAll('#lista-numeros .numero-item');
+
+    for (const item of linhas) {
+        const select = item.querySelector('.tipo-numero');
+        const input = item.querySelector('.input-numero');
+        if (!input || input.disabled) continue;
+
+        let val = input.value.trim();
+        if (!val) continue;
+
+        if (select && select.value === 'tombo') {
+            const d = val.replace(/\D/g, '');
+            if (d.length !== 6) {
+                alert('Número do tombo inválido. Use o formato 000.000 (6 dígitos).');
+                input.focus();
+                return false;
+            }
+            val = d.slice(0, 3) + '.' + d.slice(3);
+            input.value = val;
+        }
+
+        if (vistos.has(val)) {
+            alert('O número "' + val + '" está repetido neste cadastro.');
+            input.focus();
+            return false;
+        }
+        vistos.add(val);
+    }
+    return true;
 }
 
 function adicionarNumero() {
@@ -563,7 +638,7 @@ function adicionarNumero() {
             </div>
             <div class="form-group" style="flex: 1; min-width: 140px;">
                 <label class="label-numero">Número do Tombo*</label>
-                <input type="text" name="numero[]" class="input-numero" required placeholder="Digite o número">
+                <input type="text" name="numero[]" class="input-numero" required placeholder="000.000" maxlength="7" inputmode="numeric" autocomplete="off">
             </div>
             <div class="form-group" style="flex: 0 0 130px;">
                 <label>Estado (físico)</label>
@@ -587,8 +662,9 @@ function adicionarNumero() {
     `;
     
     container.appendChild(novoItem);
+    initNumeroItem(novoItem);
     numeroIndex++;
-    
+
     // Mostra botão de remover no primeiro item se tiver mais de 1
     if (container.children.length > 1) {
         container.querySelector('.btn-remove').style.display = 'inline-block';
@@ -804,6 +880,14 @@ function removerNumero(btn) {
 // Inicializa ao carregar
 document.addEventListener('DOMContentLoaded', function() {
     toggleControles();
+    document.querySelectorAll('#lista-numeros .numero-item').forEach(initNumeroItem);
+
+    const productForm = document.getElementById('product-form');
+    if (productForm) {
+        productForm.addEventListener('submit', function (e) {
+            if (!validarNumerosFormulario()) e.preventDefault();
+        });
+    }
 });
 </script>
 

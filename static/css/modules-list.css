@@ -264,17 +264,32 @@
   margin-top: -24px;
 }
 
-.mod-page .search-container .option {
+.mod-page .search-container .option,
+.mod-page .search-container label.option {
   padding: 0.5rem 0.75rem;
   font-size: 0.85rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
+  margin: 0;
+  font-weight: 500;
+  color: var(--mod-text);
 }
 
-.mod-page .search-container .option:hover {
+.mod-page .search-container .option:hover,
+.mod-page .search-container label.option:hover {
   background: #f1f5f9;
+}
+
+.mod-page .search-container label.option span {
+  flex: 1;
+  line-height: 1.35;
+}
+
+.mod-page .search-container .option.option--empty {
+  cursor: default;
+  display: block;
 }
 
 .mod-clear-btn {
@@ -718,6 +733,37 @@
   background: #f8fafc;
 }
 
+.mod-list-box-prod {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid var(--mod-border);
+}
+
+.mod-list-box-prod .form-group {
+  margin: 0;
+}
+
+.mod-list-box-prod .form-group label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--mod-muted);
+  margin-bottom: 0.25rem;
+}
+
+.mod-list-box-prod .form-group span {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--mod-text);
+}
+
 .mod-list-box h4 {
   margin: 0 0 0.75rem;
   font-size: 0.9rem;
@@ -879,6 +925,14 @@ html.mod-modal-open {
 
 html.mod-modal-open body {
   overflow: hidden;
+}
+
+/* Evita que animação de entrada deixe o fundo invisível com modal aberta (/users, etc.) */
+html.mod-modal-open .mod-page,
+html.mod-modal-open .users-page {
+  opacity: 1;
+  transform: none;
+  animation: none;
 }
 
 .mod-form-field input[readonly],

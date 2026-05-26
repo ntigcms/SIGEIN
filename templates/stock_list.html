@@ -12,7 +12,6 @@
   {{ mod.filters_start() }}
   {{ mod.filter_col("Tipo", 0) }}
   {{ mod.filter_col("Unidade", 1) }}
-  {{ mod.filter_col("Quantidade", 2) }}
   {{ mod.filter_col("Mínimo", 3) }}
   {{ mod.filter_col("Tombo/Série", 4) }}
   {{ mod.filter_col("Status", 5) }}
@@ -606,11 +605,19 @@ $(function () {
     countSelector: "#stock-count",
   });
 
-  table.one("xhr.dt", function () {
-    SIGENModList.initColumnFilters(table);
-  });
+  var stockFiltersReady = false;
+  function setupStockFilters() {
+    if (stockFiltersReady) return;
+    stockFiltersReady = true;
+    SIGENModList.initColumnFilters(stockTableApi);
+  }
 
-  SIGENModList.initClearFilters();
+  stockTableApi.one("xhr.dt", setupStockFilters);
+  if (stockTableApi.data().length > 0) {
+    setupStockFilters();
+  }
+
+  SIGENModList.initClearFilters({ table: stockTableApi });
 });
 </script>
 {% endblock %}

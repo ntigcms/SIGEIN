@@ -1,3 +1,4 @@
+import re
 from typing import Optional
 
 from fastapi import APIRouter, Request, Form, Depends, Query
@@ -46,22 +47,81 @@ def _fmt_valor(val) -> str:
     return "R$ " + txt.replace(",", "§").replace(".", ",").replace("§", ".")
 
 
-def _product_list_display(product: Product) -> dict:
+def _get_product_stocks(db: Session, product_id: int):
+    """Todos os registros de estoque do produto (com unidade), maior quantidade primeiro."""
+    return (
+        db.query(Stock)
+        .options(joinedload(Stock.unit))
+        .filter(Stock.product_id == product_id)
+        .order_by(Stock.quantidade.desc(), Stock.id.asc())
+        .all()
+    )
+
+
+def _primary_item(db: Session, product_id: int):
+    return db.query(Item).filter(Item.product_id == product_id).first()
+
+
+def _primary_stock_row(stocks, item=None):
+    """
+    Estoque de referência para edição/exibição:
+    prioriza unidade com quantidade > 0; senão unidade do item cadastrado.
+    """
+    if not stocks:
+        return None
+    with_qty = [s for s in stocks if (s.quantidade or 0) > 0]
+    if with_qty:
+        return max(with_qty, key=lambda s: ((s.quantidade or 0), -(s.id or 0)))
+    if item and item.unit_id:
+        for s in stocks:
+            if s.unit_id == item.unit_id:
+                return s
+    return stocks[0]
+
+
+def _unit_names_for_display(product: Product, stocks, item=None) -> str:
+    """Nomes de unidades com estoque (para filtro e coluna da listagem)."""
+    names = []
+    for s in stocks or []:
+        if s.unit and (s.quantidade or 0) > 0 and s.unit.name not in names:
+            names.append(s.unit.name)
+    if names:
+        return names[0] if len(names) == 1 else ", ".join(sorted(names))
+    if item and item.unit:
+        return item.unit.name
+    for s in stocks or []:
+        if s.unit and s.unit.name not in names:
+            names.append(s.unit.name)
+    if names:
+        return names[0]
+    return "—"
+
+
+def _lotacao_from_unit(lotacao_base: dict, unit) -> dict:
+    if lotacao_base and unit:
+        lotacao_base = dict(lotacao_base)
+        lotacao_base["unidade"] = unit.name if hasattr(unit, "name") else str(unit)
+    return lotacao_base
+
+
+def _product_list_display(product: Product, db: Session = None) -> dict:
     """Dados agregados para exibição na grid (unidade/data/valor sem repetição)."""
-    unidade = "—"
     data_aquisicao = "—"
     valor = "—"
-    seen_units = set()
+    stocks = list(product.stocks or [])
+    if db is not None and not stocks:
+        stocks = _get_product_stocks(db, product.id)
+    item = (product.items or [None])[0] if product.items else None
+    if db is not None and not item and not product.controla_por_serie:
+        item = _primary_item(db, product.id)
 
-    for item in product.items or []:
-        if item.unit and item.unit.name not in seen_units:
-            seen_units.add(item.unit.name)
-            if unidade == "—":
-                unidade = item.unit.name
-        if data_aquisicao == "—" and item.data_aquisicao:
-            data_aquisicao = _fmt_data(item.data_aquisicao)
-        if valor == "—" and item.valor_aquisicao is not None:
-            valor = _fmt_valor(item.valor_aquisicao)
+    unidade = _unit_names_for_display(product, stocks, item)
+
+    for it in product.items or []:
+        if data_aquisicao == "—" and it.data_aquisicao:
+            data_aquisicao = _fmt_data(it.data_aquisicao)
+        if valor == "—" and it.valor_aquisicao is not None:
+            valor = _fmt_valor(it.valor_aquisicao)
 
     return {
         "categoria": product.category.nome if product.category else "—",
@@ -84,16 +144,20 @@ def list_products(request: Request, db: Session = Depends(get_db), user: str = D
             joinedload(Product.type),
             joinedload(Product.brand),
             joinedload(Product.items).joinedload(Item.unit),
+            joinedload(Product.stocks).joinedload(Stock.unit),
         )
         .all()
     )
 
-    tipos = sorted({p.type.nome for p in products if p.type})
-    marcas = sorted({p.brand.nome for p in products if p.brand})
-    categorias = sorted({p.category.nome for p in products if p.category})
+    def _filtro_label(valor: str | None) -> str:
+        return (valor or "").strip()
+
+    tipos = sorted({_filtro_label(p.type.nome) for p in products if p.type})
+    marcas = sorted({_filtro_label(p.brand.nome) for p in products if p.brand})
+    categorias = sorted({_filtro_label(p.category.nome) for p in products if p.category})
 
     products_view = [
-        {"product": p, **_product_list_display(p)}
+        {"product": p, **_product_list_display(p, db)}
         for p in products
     ]
 
@@ -138,6 +202,10 @@ def view_product(
     if not product:
         return JSONResponse({"error": "Produto não encontrado"}, status_code=404)
 
+    stocks_all = list(product.stocks or [])
+    item_ref = (product.items or [None])[0] if product.items else _primary_item(db, product.id)
+    stock_ref = _primary_stock_row(stocks_all, item_ref) if not product.controla_por_serie else None
+
     lotacao = {}
     if product.orgao and product.orgao.municipio and product.orgao.municipio.estado:
         lotacao = {
@@ -146,16 +214,20 @@ def view_product(
             "orgao": product.orgao.nome,
             "unidade": "—",
         }
+    ref_unit = (stock_ref.unit if stock_ref and stock_ref.unit else None) or (
+        item_ref.unit if item_ref and item_ref.unit else None
+    )
+    if ref_unit:
+        lotacao = _lotacao_from_unit(lotacao, ref_unit)
 
     unidades = []
+    for s in stocks_all:
+        if s.unit and s.unit.name not in unidades:
+            unidades.append(s.unit.name)
     items_payload = []
     for item in product.items or []:
-        if item.unit:
-            uname = item.unit.name
-            if uname not in unidades:
-                unidades.append(uname)
-            if lotacao.get("unidade") == "—":
-                lotacao["unidade"] = uname
+        if item.unit and item.unit.name not in unidades:
+            unidades.append(item.unit.name)
         items_payload.append({
             "id": item.id,
             "numero": item.num_tombo_ou_serie or "—",
@@ -175,7 +247,7 @@ def view_product(
             "quantidade_minima": s.quantidade_minima,
         })
 
-    display = _product_list_display(product)
+    display = _product_list_display(product, db)
 
     return JSONResponse({
         "id": product.id,
@@ -300,6 +372,78 @@ def _parse_float(val, default=None):
         return default
 
 
+_TOMBO_RE = re.compile(r"^\d{3}\.\d{3}$")
+
+
+def _alert_back(message: str, status_code: int = 400) -> HTMLResponse:
+    safe = (
+        message.replace("\\", "\\\\")
+        .replace("'", "\\'")
+        .replace('"', '\\"')
+        .replace("\r", " ")
+        .replace("\n", " ")
+    )
+    return HTMLResponse(
+        content=f'<script>alert("{safe}"); history.back();</script>',
+        status_code=status_code,
+    )
+
+
+def _coletar_pares_numero(numeros: list, tipo_numeros: list) -> list[tuple[bool, str]]:
+    pares: list[tuple[bool, str]] = []
+    for i, num in enumerate(numeros):
+        num_str = (num if isinstance(num, str) else str(num or "")).strip()
+        if not num_str:
+            continue
+        tipo_val = tipo_numeros[i] if i < len(tipo_numeros) else "tombo"
+        is_tombo = str(tipo_val).lower() == "tombo"
+        pares.append((is_tombo, num_str))
+    return pares
+
+
+def _normalize_numero_item(is_tombo: bool, raw: str) -> str | None:
+    s = (raw or "").strip()
+    if not s:
+        return None
+    if is_tombo:
+        if _TOMBO_RE.match(s):
+            return s
+        digits = re.sub(r"\D", "", s)
+        if len(digits) == 6:
+            return f"{digits[:3]}.{digits[3:]}"
+        return None
+    return s
+
+
+def _validar_numeros_itens(
+    db: Session,
+    pares: list[tuple[bool, str]],
+    product_id: int | None = None,
+    existing_items: list | None = None,
+) -> str | None:
+    """Valida formato (tombo) e unicidade global de tombo/série."""
+    existing_items = existing_items or []
+    vistos: set[str] = set()
+
+    for idx, (is_tombo, raw) in enumerate(pares):
+        num = _normalize_numero_item(is_tombo, raw)
+        if num is None:
+            return "Número do tombo inválido. Use o formato 000.000 (6 dígitos)."
+        if num in vistos:
+            return f'O número "{num}" está repetido neste cadastro.'
+        vistos.add(num)
+
+        conflitos = db.query(Item).filter(Item.num_tombo_ou_serie == num).all()
+        for outro in conflitos:
+            if product_id is None or outro.product_id != product_id:
+                return f'O número "{num}" já está cadastrado em outro produto.'
+            if idx < len(existing_items) and outro.id == existing_items[idx].id:
+                continue
+            return f'O número "{num}" já está cadastrado neste produto.'
+
+    return None
+
+
 # ----------------- ADD PRODUCT -----------------
 @router.post("/add")
 async def add_product(
@@ -381,6 +525,14 @@ async def add_product(
     municipio_id = unidade.orgao.municipio_id
     orgao_id = unidade.orgao_id
 
+    if controla_por_serie:
+        pares_numero = _coletar_pares_numero(numero, tipo_numero)
+        if not pares_numero:
+            return _alert_back("Informe ao menos um número de tombo ou de série.")
+        err_num = _validar_numeros_itens(db, pares_numero)
+        if err_num:
+            return _alert_back(err_num)
+
     product = Product(
         name=name,
         category_id=category_id,
@@ -419,6 +571,11 @@ async def add_product(
                 continue
             tipo_val = (tipo_numero[i] if i < len(tipo_numero) else "tombo")
             is_tombo = (str(tipo_val).lower() == "tombo")
+            num_norm = _normalize_numero_item(is_tombo, num_str)
+            if not num_norm:
+                return _alert_back(
+                    "Número do tombo inválido. Use o formato 000.000 (6 dígitos)."
+                )
             estado_i = _parse_int(estado_id_list[i]) if i < len(estado_id_list) else estado_id
             status_i = (status_list[i] or "Disponível") if i < len(status_list) else status
             item = Item(
@@ -427,7 +584,7 @@ async def add_product(
                 orgao_id=orgao_id,
                 unit_id=unidade.id,
                 tombo=is_tombo,
-                num_tombo_ou_serie=num_str,
+                num_tombo_ou_serie=num_norm,
                 estado_id=estado_i,
                 status=status_i,
                 data_aquisicao=data_aq,
@@ -509,8 +666,9 @@ def edit_product_form(product_id: int, request: Request, db: Session = Depends(g
         item = product_items[0] if product_items else None
     else:
         product_items = []
-        stock = db.query(Stock).filter(Stock.product_id == product_id).first()
-        item = db.query(Item).filter(Item.product_id == product_id).first()
+        stocks = _get_product_stocks(db, product_id)
+        item = _primary_item(db, product_id)
+        stock = _primary_stock_row(stocks, item)
 
     is_master = getattr(user_obj, "perfil", None) == "master"
     lotacao = None
@@ -519,14 +677,15 @@ def edit_product_form(product_id: int, request: Request, db: Session = Depends(g
             "estado": product.orgao.municipio.estado.nome,
             "municipio": product.orgao.municipio.nome,
             "orgao": product.orgao.nome,
-            "unidade": "-",
+            "unidade": "—",
         }
-    if item and item.unit:
-        lotacao["unidade"] = item.unit.nome if lotacao else "-"
-    elif stock and stock.unit_id and lotacao:
-        un = db.query(Unidade).filter(Unidade.id == stock.unit_id).first()
-        if un:
-            lotacao["unidade"] = un.nome
+    ref_unit = None
+    if not product.controla_por_serie and stock and stock.unit:
+        ref_unit = stock.unit
+    elif item and item.unit:
+        ref_unit = item.unit
+    if ref_unit:
+        lotacao = _lotacao_from_unit(lotacao, ref_unit)
 
     # Unidades do órgão do produto (sempre do órgão ao qual o produto pertence)
     units = (
@@ -666,14 +825,14 @@ async def edit_product(
             )
 
         existing_items = db.query(Item).filter(Item.product_id == product.id).order_by(Item.id).all()
-        pares = []
-        for i, num in enumerate(numeros):
-            num_str = (num if isinstance(num, str) else str(num or "")).strip()
-            if not num_str:
-                continue
-            tipo_val = tipo_numeros[i] if i < len(tipo_numeros) else "tombo"
-            is_tombo = str(tipo_val).lower() == "tombo"
-            pares.append((is_tombo, num_str))
+        pares = _coletar_pares_numero(numeros, tipo_numeros)
+        if not pares:
+            return _alert_back("Informe ao menos um número de tombo ou de série.")
+        err_num = _validar_numeros_itens(
+            db, pares, product_id=product.id, existing_items=existing_items
+        )
+        if err_num:
+            return _alert_back(err_num)
 
         # Primeiro libera num_tombo_ou_serie nos itens existentes (evita UniqueViolation ao trocar ordem)
         for idx in range(min(len(pares), len(existing_items))):
@@ -681,12 +840,17 @@ async def edit_product(
         db.flush()
 
         for idx, (is_tombo, num_str) in enumerate(pares):
+            num_norm = _normalize_numero_item(is_tombo, num_str)
+            if not num_norm:
+                return _alert_back(
+                    "Número do tombo inválido. Use o formato 000.000 (6 dígitos)."
+                )
             estado_idx = _parse_int(estado_id_list[idx]) if idx < len(estado_id_list) else estado_int
             status_idx = (status_list[idx] or "Disponível") if idx < len(status_list) else status_val
             if idx < len(existing_items):
                 it = existing_items[idx]
                 it.tombo = is_tombo
-                it.num_tombo_ou_serie = num_str
+                it.num_tombo_ou_serie = num_norm
                 it.unit_id = unit_id_int
                 it.municipio_id = product.municipio_id
                 it.orgao_id = product.orgao_id
@@ -704,7 +868,7 @@ async def edit_product(
                     orgao_id=product.orgao_id,
                     unit_id=unit_id_int,
                     tombo=is_tombo,
-                    num_tombo_ou_serie=num_str,
+                    num_tombo_ou_serie=num_norm,
                     estado_id=estado_idx,
                     status=status_idx,
                     data_aquisicao=data_aq,
@@ -756,13 +920,18 @@ async def edit_product(
         item.observacao = observacao or None
         db.add(item)
 
-        stock_row = db.query(Stock).filter(Stock.product_id == product.id).first()
+        if not unit_id_int:
+            return HTMLResponse(
+                content="<script>alert('Selecione a Unidade antes de salvar o produto.'); history.back();</script>",
+                status_code=400,
+            )
+
+        stock_row = (
+            db.query(Stock)
+            .filter(Stock.product_id == product.id, Stock.unit_id == unit_id_int)
+            .first()
+        )
         if not stock_row:
-            if not unit_id_int:
-                return HTMLResponse(
-                    content="<script>alert('Selecione a Unidade antes de salvar o produto.'); history.back();</script>",
-                    status_code=400,
-                )
             stock_row = Stock(
                 product_id=product.id,
                 municipio_id=product.municipio_id,
@@ -773,11 +942,17 @@ async def edit_product(
             )
             db.add(stock_row)
         else:
-            if unit_id_int is not None:
-                stock_row.unit_id = unit_id_int
             stock_row.quantidade = quantidade
             stock_row.quantidade_minima = quantidade_minima
             db.add(stock_row)
+
+        item.unit_id = unit_id_int
+        product.quantidade = sum(
+            (s.quantidade or 0)
+            for s in db.query(Stock).filter(Stock.product_id == product.id).all()
+        )
+        product.quantidade_minima = quantidade_minima
+        db.add(item)
 
         db.commit()
 

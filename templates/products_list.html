@@ -73,6 +73,9 @@
       {% for row in products %}
 
       {% set p = row.product %}
+      {% set tipo_nome = (p.type.nome or '').strip() if p.type else '' %}
+      {% set modelo = (p.model or '').strip() %}
+      {% set nome_grid = (tipo_nome ~ ' ' ~ modelo).strip() %}
 
       <tr>
 
@@ -80,15 +83,15 @@
 
         <td>{{ p.id }}</td>
 
-        <td><strong>{{ p.name }}</strong></td>
+        <td><strong>{{ nome_grid if nome_grid else '—' }}</strong></td>
 
-        <td>{{ p.type.nome if p.type else '—' }}</td>
+        <td data-search="{{ (p.type.nome or '').strip() if p.type else '' }}">{{ (p.type.nome or '').strip() if p.type else '—' }}</td>
 
-        <td>{{ p.brand.nome if p.brand else '—' }}</td>
+        <td data-search="{{ (p.brand.nome or '').strip() if p.brand else '' }}">{{ (p.brand.nome or '').strip() if p.brand else '—' }}</td>
 
-        <td>{{ row.categoria }}</td>
+        <td data-search="{{ row.categoria.strip() if row.categoria != '—' else '' }}">{{ row.categoria }}</td>
 
-        <td>{{ row.unidade }}</td>
+        <td data-search="{{ row.unidade.strip() if row.unidade != '—' else '' }}">{{ row.unidade }}</td>
 
         <td>{{ row.data_aquisicao }}</td>
 
@@ -305,6 +308,8 @@ $(function () {
     return;
   }
 
+  SIGENModList.registerDataSearchFilter();
+
   var table = SIGENModList.initTable("#productsTable", {
 
     order: [[2, "asc"]],
@@ -321,6 +326,9 @@ $(function () {
     countSelector: "#products-count",
 
   });
+
+  var tableSettings = table.settings()[0];
+  tableSettings._sigenColFilters = tableSettings._sigenColFilters || {};
 
 
 
@@ -400,6 +408,8 @@ $(function () {
 
 
 
+    SIGENModList.bindFilterOptionClick(optionsDiv);
+
     optionsDiv.on("change", 'input[type="checkbox"]', function () {
 
       var val = $(this).val();
@@ -420,58 +430,11 @@ $(function () {
 
       input.val(selecionados.join(", "));
 
+      var colIndex = filterColIndex();
+      if (colIndex === undefined) return;
 
-
-      var colIndex;
-
-      switch (filterType) {
-
-        case "tipo":
-
-          colIndex = 3;
-
-          break;
-
-        case "marca":
-
-          colIndex = 4;
-
-          break;
-
-        case "categoria":
-
-          colIndex = 5;
-
-          break;
-
-        default:
-
-          return;
-
-      }
-
-
-
-      var searchValue = selecionados
-
-        .map(function (v) {
-
-          return v.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
-
-        })
-
-        .join("|");
-
-
-
-      table
-
-        .column(colIndex)
-
-        .search(selecionados.length ? searchValue : "", true, false)
-
-        .draw();
-
+      tableSettings._sigenColFilters[String(colIndex)] = selecionados.slice();
+      table.draw();
     });
 
 
@@ -490,29 +453,52 @@ $(function () {
 
 
 
-    container.data("reset", function () {
+    function filterColIndex() {
+      switch (filterType) {
+        case "tipo":
+          return 3;
+        case "marca":
+          return 4;
+        case "categoria":
+          return 5;
+        default:
+          return container.data("col");
+      }
+    }
 
+    container.data("reset", function (skipDraw) {
       selecionados = [];
-
       input.val("");
-
       optionsDiv.find('input[type="checkbox"]').prop("checked", false);
 
-      var colIdx = container.data("col");
-
-      if (colIdx !== undefined) table.column(colIdx).search("").draw();
+      var colIndex = filterColIndex();
+      if (colIndex !== undefined) {
+        tableSettings._sigenColFilters[String(colIndex)] = [];
+      }
 
       optionsDiv.hide();
-
       arrow.removeClass("open");
 
+      if (!skipDraw) {
+        table.draw();
+      }
     });
-
   });
 
+  function clearProductsFilters() {
+    $(".mod-page .search-container[data-filter]").each(function () {
+      var resetFn = $(this).data("reset");
+      if (typeof resetFn === "function") {
+        resetFn(true);
+      }
+    });
+    tableSettings._sigenColFilters = {};
+    table.draw();
+  }
 
-
-  SIGENModList.initClearFilters();
+  $("#clear-filters")
+    .off("click.sigenClear click.productsClear")
+    .on("click.productsClear", clearProductsFilters);
 
   SIGENModList.initDelete(function (id) {
     return "/products/delete/" + id;

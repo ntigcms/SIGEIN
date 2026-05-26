@@ -62,10 +62,10 @@
     <span class="arrow">▼</span>
     <div class="options" style="display:none;">
       {% for opt in options %}
-      <div class="option">
-        <input type="checkbox" value="{{ opt }}">
-        <label>{{ opt }}</label>
-      </div>
+      <label class="option">
+        <input type="checkbox" value="{{ opt|e }}">
+        <span>{{ opt }}</span>
+      </label>
       {% endfor %}
     </div>
   </div>

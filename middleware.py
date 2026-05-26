@@ -92,11 +92,8 @@ class MultiTenantMiddleware(BaseHTTPMiddleware):
             request.state.perfil = user.perfil
             request.state.db = db
             
-            # Atualiza último acesso
-            from datetime import datetime
-            user.ultimo_acesso = datetime.utcnow()
-            db.commit()
-            
+            # ultimo_acesso é atualizado no login (routers/auth.py), não a cada requisição
+
             # Processa requisição
             response = await call_next(request)
             

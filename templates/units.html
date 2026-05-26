@@ -97,13 +97,13 @@ $(function () {
       lista.forEach(function (v) {
         var checked = selecionados.indexOf(v) !== -1 ? "checked" : "";
         optionsDiv.append(
-          '<div class="option"><input type="checkbox" value="' +
+          '<label class="option"><input type="checkbox" value="' +
             $("<div>").text(v).html() +
             '" ' +
             checked +
-            "><label>" +
+            "><span>" +
             v +
-            "</label></div>"
+            "</span></label>"
         );
       });
       optionsDiv.css("display", "block");
@@ -134,6 +134,8 @@ $(function () {
       });
       renderOptions(filtradas);
     });
+
+    SIGENModList.bindFilterOptionClick(optionsDiv);
 
     optionsDiv.on("change", 'input[type="checkbox"]', function () {
       var val = $(this).val();

@@ -1,184 +1,186 @@
-{% extends "base.html" %}
-{% set hide_app_header = True %}
-{% import "macros/mod_list.html" as mod %}
-
-{% block title %}Auditoria — SIGEIN{% endblock %}
-
-{% block content %}
-<link rel="stylesheet" href="/static/css/logs.css">
-{{ mod.assets() }}
-
-<div class="mod-page logs-page">
-  <header class="mod-header">
-    <div class="mod-header__title">
-      <h1>Auditoria do sistema</h1>
-      <p>Histórico de acessos e operações realizadas no SIGEIN.</p>
-    </div>
-    <div class="mod-header__actions">
-      <button type="button" id="clear-filters" class="mod-btn mod-btn--ghost">
-        <i class="fas fa-filter-circle-xmark"></i> Limpar filtros
-      </button>
-      <a href="/logs/export/pdf" class="mod-btn mod-btn--export-pdf" title="Exportar PDF">
-        <i class="fas fa-file-pdf"></i> PDF
-      </a>
-      <a href="/logs/export/xlsx" class="mod-btn mod-btn--export-xlsx" title="Exportar Excel">
-        <i class="fas fa-file-excel"></i> Excel
-      </a>
-    </div>
-  </header>
-
-  <section class="logs-kpi-grid" aria-label="Resumo da auditoria">
-    <article class="logs-kpi logs-kpi--total">
-      <div class="logs-kpi__icon"><i class="fas fa-list-check"></i></div>
-      <div>
-        <div class="logs-kpi__value">{{ stats.total }}</div>
-        <div class="logs-kpi__label">Total de registros</div>
-      </div>
-    </article>
-    <article class="logs-kpi logs-kpi--hoje">
-      <div class="logs-kpi__icon"><i class="fas fa-calendar-day"></i></div>
-      <div>
-        <div class="logs-kpi__value">{{ stats.hoje }}</div>
-        <div class="logs-kpi__label">Registros hoje</div>
-      </div>
-    </article>
-    <article class="logs-kpi logs-kpi--users">
-      <div class="logs-kpi__icon"><i class="fas fa-users"></i></div>
-      <div>
-        <div class="logs-kpi__value">{{ stats.usuarios_ativos }}</div>
-        <div class="logs-kpi__label">Usuários distintos</div>
-      </div>
-    </article>
-    <article class="logs-kpi logs-kpi--acesso">
-      <div class="logs-kpi__icon"><i class="fas fa-right-to-bracket"></i></div>
-      <div>
-        <div class="logs-kpi__value">{{ stats.acesso }}</div>
-        <div class="logs-kpi__label">Eventos de acesso</div>
-      </div>
-    </article>
-  </section>
-
-  {{ mod.filters_start() }}
-  {{ mod.filter_text("Usuário", 1, "Filtrar por usuário...", "filter-usuario") }}
-  {{ mod.filter_checkbox_options("Tipo", 2, "tipo", tipos) }}
-  {{ mod.filter_text("Ação", 4, "Filtrar por ação...", "filter-acao") }}
-  {{ mod.filters_end() }}
-
-  {{ mod.panel_start("Registros de auditoria", "logs-count") }}
-  {% if logs %}
-  <table id="logsTable" class="display mod-table--layout-cols" style="width:100%;">
-    <thead>
-      <tr>
-        <th>Data/Hora</th>
-        <th>Usuário</th>
-        <th>Tipo</th>
-        <th>IP</th>
-        <th class="mod-col-main">Ação</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in logs %}
-      <tr>
-        <td data-order="{{ row.data_sort }}">{{ row.data_hora }}</td>
-        <td>{{ row.usuario }}</td>
-        <td data-search="{{ row.tipo_label }}">
-          <span class="logs-badge {{ row.tipo_class }}">{{ row.tipo_label }}</span>
-        </td>
-        <td class="logs-col-ip">{{ row.ip }}</td>
-        <td class="logs-col-acao mod-col-main">{{ row.acao }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  {{ mod.empty_state("Nenhum registro de auditoria ainda.", none, "") }}
-  {% endif %}
-  {{ mod.panel_end() }}
-</div>
-
-<script>
-$(function () {
-  var logsTableEl = document.getElementById("logsTable");
-  if (!logsTableEl) return;
-
-  var table = SIGENModList.initTable("#logsTable", {
-    order: [[0, "desc"]],
-    autoWidth: false,
-    pageLength: 25,
-    columnDefs: [
-      { targets: 4, className: "mod-col-main logs-col-acao" },
-    ],
-    countSelector: "#logs-count",
-  });
-
-  SIGENModList.initTextFilter(table, 1, "#filter-usuario");
-  SIGENModList.initTextFilter(table, 4, "#filter-acao");
-
-  $(".logs-page .search-container[data-filter]").each(function () {
-    var container = $(this);
-    var input = container.find(".filter-search");
-    var optionsDiv = container.find(".options");
-    var arrow = container.find(".arrow");
-    var filterType = container.data("filter");
-    var selecionados = [];
-
-    function renderOptions(query) {
-      optionsDiv.find(".option").each(function () {
-        var val = $(this).find("input").val().toLowerCase();
-        $(this).toggle(!query || val.indexOf(query) !== -1);
-      });
-      optionsDiv.show();
-      arrow.addClass("open");
-    }
-
-    input.on("click", function (e) {
-      e.stopPropagation();
-      $(".logs-page .search-container").not(container).find(".options").hide().end().find(".arrow").removeClass("open");
-      if (optionsDiv.is(":visible")) {
-        optionsDiv.hide();
-        arrow.removeClass("open");
-      } else {
-        renderOptions("");
-      }
-    });
-
-    input.on("input", function () {
-      renderOptions(input.val().toLowerCase());
-    });
-
-    optionsDiv.on("change", 'input[type="checkbox"]', function () {
-      var val = $(this).val();
-      if (this.checked) {
-        if (selecionados.indexOf(val) === -1) selecionados.push(val);
-      } else {
-        selecionados = selecionados.filter(function (v) { return v !== val; });
-      }
-      input.val(selecionados.join(", "));
-      if (filterType !== "tipo") return;
-      var searchValue = selecionados
-        .map(function (v) { return v.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"); })
-        .join("|");
-      table.column(2).search(selecionados.length ? searchValue : "", true, false).draw();
-    });
-
-    $(document).on("click.logsFilter", function (e) {
-      if (!$(e.target).closest(container).length) {
-        optionsDiv.hide();
-        arrow.removeClass("open");
-      }
-    });
-
-    container.data("reset", function () {
-      selecionados = [];
-      input.val("");
-      optionsDiv.find('input[type="checkbox"]').prop("checked", false);
-      table.column(2).search("").draw();
-      optionsDiv.hide();
-      arrow.removeClass("open");
-    });
-  });
-
-  SIGENModList.initClearFilters();
-});
-</script>
-{% endblock %}
+{% extends "base.html" %}
+{% set hide_app_header = True %}
+{% import "macros/mod_list.html" as mod %}
+
+{% block title %}Auditoria — SIGEIN{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="/static/css/logs.css">
+{{ mod.assets() }}
+
+<div class="mod-page logs-page">
+  <header class="mod-header">
+    <div class="mod-header__title">
+      <h1>Auditoria do sistema</h1>
+      <p>Histórico de acessos e operações realizadas no SIGEIN.</p>
+    </div>
+    <div class="mod-header__actions">
+      <button type="button" id="clear-filters" class="mod-btn mod-btn--ghost">
+        <i class="fas fa-filter-circle-xmark"></i> Limpar filtros
+      </button>
+      <a href="/logs/export/pdf" class="mod-btn mod-btn--export-pdf" title="Exportar PDF">
+        <i class="fas fa-file-pdf"></i> PDF
+      </a>
+      <a href="/logs/export/xlsx" class="mod-btn mod-btn--export-xlsx" title="Exportar Excel">
+        <i class="fas fa-file-excel"></i> Excel
+      </a>
+    </div>
+  </header>
+
+  <section class="logs-kpi-grid" aria-label="Resumo da auditoria">
+    <article class="logs-kpi logs-kpi--total">
+      <div class="logs-kpi__icon"><i class="fas fa-list-check"></i></div>
+      <div>
+        <div class="logs-kpi__value">{{ stats.total }}</div>
+        <div class="logs-kpi__label">Total de registros</div>
+      </div>
+    </article>
+    <article class="logs-kpi logs-kpi--hoje">
+      <div class="logs-kpi__icon"><i class="fas fa-calendar-day"></i></div>
+      <div>
+        <div class="logs-kpi__value">{{ stats.hoje }}</div>
+        <div class="logs-kpi__label">Registros hoje</div>
+      </div>
+    </article>
+    <article class="logs-kpi logs-kpi--users">
+      <div class="logs-kpi__icon"><i class="fas fa-users"></i></div>
+      <div>
+        <div class="logs-kpi__value">{{ stats.usuarios_ativos }}</div>
+        <div class="logs-kpi__label">Usuários distintos</div>
+      </div>
+    </article>
+    <article class="logs-kpi logs-kpi--acesso">
+      <div class="logs-kpi__icon"><i class="fas fa-right-to-bracket"></i></div>
+      <div>
+        <div class="logs-kpi__value">{{ stats.acesso }}</div>
+        <div class="logs-kpi__label">Eventos de acesso</div>
+      </div>
+    </article>
+  </section>
+
+  {{ mod.filters_start() }}
+  {{ mod.filter_text("Usuário", 1, "Filtrar por usuário...", "filter-usuario") }}
+  {{ mod.filter_checkbox_options("Tipo", 2, "tipo", tipos) }}
+  {{ mod.filter_text("Ação", 4, "Filtrar por ação...", "filter-acao") }}
+  {{ mod.filters_end() }}
+
+  {{ mod.panel_start("Registros de auditoria", "logs-count") }}
+  {% if logs %}
+  <table id="logsTable" class="display mod-table--layout-cols" style="width:100%;">
+    <thead>
+      <tr>
+        <th>Data/Hora</th>
+        <th>Usuário</th>
+        <th>Tipo</th>
+        <th>IP</th>
+        <th class="mod-col-main">Ação</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in logs %}
+      <tr>
+        <td data-order="{{ row.data_sort }}">{{ row.data_hora }}</td>
+        <td>{{ row.usuario }}</td>
+        <td data-search="{{ row.tipo_label }}">
+          <span class="logs-badge {{ row.tipo_class }}">{{ row.tipo_label }}</span>
+        </td>
+        <td class="logs-col-ip">{{ row.ip }}</td>
+        <td class="logs-col-acao mod-col-main">{{ row.acao }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  {{ mod.empty_state("Nenhum registro de auditoria ainda.", none, "") }}
+  {% endif %}
+  {{ mod.panel_end() }}
+</div>
+
+<script>
+$(function () {
+  var logsTableEl = document.getElementById("logsTable");
+  if (!logsTableEl) return;
+
+  var table = SIGENModList.initTable("#logsTable", {
+    order: [[0, "desc"]],
+    autoWidth: false,
+    pageLength: 25,
+    columnDefs: [
+      { targets: 4, className: "mod-col-main logs-col-acao" },
+    ],
+    countSelector: "#logs-count",
+  });
+
+  SIGENModList.initTextFilter(table, 1, "#filter-usuario");
+  SIGENModList.initTextFilter(table, 4, "#filter-acao");
+
+  $(".logs-page .search-container[data-filter]").each(function () {
+    var container = $(this);
+    var input = container.find(".filter-search");
+    var optionsDiv = container.find(".options");
+    var arrow = container.find(".arrow");
+    var filterType = container.data("filter");
+    var selecionados = [];
+
+    function renderOptions(query) {
+      optionsDiv.find(".option").each(function () {
+        var val = $(this).find("input").val().toLowerCase();
+        $(this).toggle(!query || val.indexOf(query) !== -1);
+      });
+      optionsDiv.show();
+      arrow.addClass("open");
+    }
+
+    input.on("click", function (e) {
+      e.stopPropagation();
+      $(".logs-page .search-container").not(container).find(".options").hide().end().find(".arrow").removeClass("open");
+      if (optionsDiv.is(":visible")) {
+        optionsDiv.hide();
+        arrow.removeClass("open");
+      } else {
+        renderOptions("");
+      }
+    });
+
+    input.on("input", function () {
+      renderOptions(input.val().toLowerCase());
+    });
+
+    SIGENModList.bindFilterOptionClick(optionsDiv);
+
+    optionsDiv.on("change", 'input[type="checkbox"]', function () {
+      var val = $(this).val();
+      if (this.checked) {
+        if (selecionados.indexOf(val) === -1) selecionados.push(val);
+      } else {
+        selecionados = selecionados.filter(function (v) { return v !== val; });
+      }
+      input.val(selecionados.join(", "));
+      if (filterType !== "tipo") return;
+      var searchValue = selecionados
+        .map(function (v) { return v.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"); })
+        .join("|");
+      table.column(2).search(selecionados.length ? searchValue : "", true, false).draw();
+    });
+
+    $(document).on("click.logsFilter", function (e) {
+      if (!$(e.target).closest(container).length) {
+        optionsDiv.hide();
+        arrow.removeClass("open");
+      }
+    });
+
+    container.data("reset", function () {
+      selecionados = [];
+      input.val("");
+      optionsDiv.find('input[type="checkbox"]').prop("checked", false);
+      table.column(2).search("").draw();
+      optionsDiv.hide();
+      arrow.removeClass("open");
+    });
+  });
+
+  SIGENModList.initClearFilters();
+});
+</script>
+{% endblock %}

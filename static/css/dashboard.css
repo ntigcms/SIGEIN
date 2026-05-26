@@ -82,6 +82,11 @@
   animation: dashPulse 2s ease-in-out infinite;
 }
 
+.dash-pill--muted {
+  color: var(--dash-muted, #64748b);
+  font-weight: 500;
+}
+
 @keyframes dashPulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.5; transform: scale(0.85); }

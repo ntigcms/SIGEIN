@@ -40,9 +40,50 @@ def listar_movimentacoes(
         .all()
     )
 
+    def _filtro_label(valor: str | None) -> str:
+        return (valor or "").strip()
+
+    tipos = sorted(
+        {
+            _filtro_label(m.product.type.nome)
+            for m in movements
+            if m.product and m.product.type
+        }
+    )
+    origens = sorted(
+        {_filtro_label(m.unit_origem.nome) for m in movements if m.unit_origem}
+    )
+    destinos = sorted(
+        {_filtro_label(m.unit_destino.nome) for m in movements if m.unit_destino}
+    )
+    tombos = sorted(
+        {
+            _filtro_label(m.item.num_tombo_ou_serie)
+            for m in movements
+            if m.item and m.item.num_tombo_ou_serie
+        }
+    )
+    tipos_mov = sorted({_filtro_label(m.tipo) for m in movements if m.tipo})
+    usuarios = sorted({_filtro_label(m.user.nome) for m in movements if m.user})
+    datas = sorted(
+        {m.data.strftime("%d/%m/%Y %H:%M") for m in movements if m.data}
+    )
+
     return templates.TemplateResponse(
         "movements_list.html",
-        {"request": request, "movements": movements, "user": user, "hide_app_header": True}
+        {
+            "request": request,
+            "movements": movements,
+            "user": user,
+            "hide_app_header": True,
+            "tipos": tipos,
+            "origens": origens,
+            "destinos": destinos,
+            "tombos": tombos,
+            "tipos_mov": tipos_mov,
+            "usuarios": usuarios,
+            "datas": datas,
+        },
     )
 
 

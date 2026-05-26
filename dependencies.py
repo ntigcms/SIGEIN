@@ -4,10 +4,24 @@ from fastapi import Request, Depends
 from templating import templates
 from database import get_db
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
+import pytz
+
 import models
+
+_TZ_BR = pytz.timezone("America/Sao_Paulo")
+
+
+def agora_brasilia() -> datetime:
+    """
+    Horário de Brasília para colunas DateTime sem timezone no banco.
+    Converte UTC → America/Sao_Paulo (evita gravar 3h à frente).
+    Usa pytz (Windows não exige pacote tzdata do zoneinfo).
+    """
+    utc = datetime.now(timezone.utc)
+    return utc.astimezone(_TZ_BR).replace(tzinfo=None)
 
 audit_was_logged: contextvars.ContextVar[bool] = contextvars.ContextVar(
     "audit_was_logged", default=False
@@ -67,7 +81,7 @@ def registrar_log(
     novo_log = models.Log(
         usuario=usuario or "—",
         acao=(acao or "")[:255],
-        data_hora=datetime.utcnow(),
+        data_hora=agora_brasilia(),
         ip=(ip or "")[:50] if ip else None,
         user_id=user_id,
         municipio_id=municipio_id,

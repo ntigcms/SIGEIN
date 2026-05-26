@@ -615,18 +615,53 @@
             var btnMeusDados = document.getElementById('btn-meus-dados');
             var modal = document.getElementById('meus-dados-modal');
             var menu = document.getElementById('userMenu');
+            var savedScrollY = 0;
+
+            function mountMeusDadosModal() {
+                if (modal && modal.parentNode !== document.body) {
+                    document.body.appendChild(modal);
+                }
+            }
+
+            function reflowDataTables() {
+                if (typeof jQuery === 'undefined' || !jQuery.fn.dataTable) return;
+                try {
+                    jQuery.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
+                } catch (err) { /* ignore */ }
+            }
+
+            function pinPageScroll() {
+                window.scrollTo(0, savedScrollY);
+                requestAnimationFrame(function () {
+                    window.scrollTo(0, savedScrollY);
+                    reflowDataTables();
+                });
+            }
+
             function fechar() {
-                if (modal) {
-                    modal.classList.remove('is-open');
-                    modal.setAttribute('aria-hidden', 'true');
-                }
+                if (!modal) return;
+                modal.classList.remove('is-open');
+                modal.setAttribute('aria-hidden', 'true');
+                document.documentElement.classList.remove('mod-modal-open');
+                requestAnimationFrame(function () {
+                    window.scrollTo(0, savedScrollY);
+                    reflowDataTables();
+                });
             }
+
             function abrir() {
-                if (modal) {
-                    modal.classList.add('is-open');
-                    modal.setAttribute('aria-hidden', 'false');
-                }
+                if (!modal) return;
+                mountMeusDadosModal();
+                savedScrollY = window.scrollY || window.pageYOffset || 0;
+                document.documentElement.classList.add('mod-modal-open');
+                pinPageScroll();
+                modal.classList.add('is-open');
+                modal.setAttribute('aria-hidden', 'false');
+                pinPageScroll();
             }
+
+            mountMeusDadosModal();
+
             if (btnMeusDados) {
                 btnMeusDados.addEventListener('click', function (e) {
                     e.preventDefault();
@@ -644,6 +679,11 @@
                     fechar();
                 }
             });
+            window.addEventListener('scroll', function () {
+                if (modal && modal.classList.contains('is-open') && window.scrollY !== savedScrollY) {
+                    window.scrollTo(0, savedScrollY);
+                }
+            }, { passive: true });
         })();
     </script>
 

@@ -2,7 +2,8 @@
  * SIGEN — DataTables, filtros por coluna e exclusão (listagens).
  */
 window.SIGENModList = (function () {
-  var PAGE = ".mod-page, .users-page";
+  var FILTER_CONTAINERS =
+    ".mod-page .search-container, .users-page .search-container";
 
   var dtLang = {
     emptyTable: "Nenhum registro encontrado",
@@ -22,13 +23,52 @@ window.SIGENModList = (function () {
   function cellValue(node) {
     var $c = $(node);
     var v = $c.attr("data-search");
-    return (v !== undefined && v !== "" ? String(v) : $c.text()).trim();
+    if (v !== undefined && v !== null && String(v).trim() !== "") {
+      return String(v).trim();
+    }
+    return $c.text().trim();
+  }
+
+  /** Comparação de filtro: ignora maiúsculas/minúsculas e acentos. */
+  function normalizeFilterText(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .toLowerCase()
+      .trim();
+  }
+
+  function cellMatchesFilter(cell, selectedValues) {
+    var cellKey = normalizeFilterText(cellValue(cell));
+    if (!cellKey || cellKey === "—" || cellKey === "-") {
+      return false;
+    }
+    for (var i = 0; i < selectedValues.length; i++) {
+      if (normalizeFilterText(selectedValues[i]) === cellKey) {
+        return true;
+      }
+    }
+    return false;
   }
 
   function cellLabel(node) {
     var $c = $(node);
     var l = $c.attr("data-filter-label");
     return l !== undefined && l !== "" ? String(l) : cellValue(node);
+  }
+
+  function isEmptyFilterValue(value) {
+    var v = String(value || "").trim();
+    return !v || v === "—" || v === "-";
+  }
+
+  function getCellNode(api, dataIndex, colIdx) {
+    var cell = api.cell({ row: dataIndex, column: colIdx }).node();
+    if (cell) return cell;
+    var row = api.row(dataIndex).node();
+    if (row) return $(row).find("td").eq(colIdx)[0] || null;
+    return null;
   }
 
   function registerDataSearchFilter() {
@@ -49,12 +89,42 @@ window.SIGENModList = (function () {
       if (!row) return true;
 
       for (var i = 0; i < active.length; i++) {
-        var colIdx = parseInt(active[i], 10);
-        var sel = filters[active[i]];
-        var cell = $(row).find("td").eq(colIdx)[0];
-        if (!cell || sel.indexOf(cellValue(cell)) === -1) return false;
+        var key = active[i];
+        var sel = filters[key];
+        var colIndexes = String(key).split("|").map(function (c) {
+          return parseInt(c.trim(), 10);
+        });
+        if (!colIndexes.length || isNaN(colIndexes[0])) continue;
+
+        if (colIndexes.length > 1) {
+          var matched = false;
+          for (var j = 0; j < colIndexes.length; j++) {
+            var orCell = getCellNode(api, dataIndex, colIndexes[j]);
+            if (orCell && cellMatchesFilter(orCell, sel)) {
+              matched = true;
+              break;
+            }
+          }
+          if (!matched) return false;
+        } else {
+          var cell = getCellNode(api, dataIndex, colIndexes[0]);
+          if (!cell || !cellMatchesFilter(cell, sel)) return false;
+        }
       }
       return true;
+    });
+  }
+
+  function bindFilterOptionClick(optionsDiv) {
+    optionsDiv.on("click.sigenOption", ".option", function (e) {
+      var $row = $(this);
+      if ($row.hasClass("option--empty")) return;
+      var cb = $row.find('input[type="checkbox"]').first();
+      if (!cb.length) return;
+      if ($(e.target).is('input[type="checkbox"]')) return;
+      if ($row.is("label")) return;
+      e.preventDefault();
+      cb.prop("checked", !cb.prop("checked")).trigger("change");
     });
   }
 
@@ -98,16 +168,27 @@ window.SIGENModList = (function () {
     var map = {};
 
     if (useDataSearch) {
-      table.rows().every(function () {
-        var row = this.node();
-        colIndexes.forEach(function (colIdx) {
-          var cell = $(row).find("td").eq(colIdx)[0];
-          if (!cell) return;
-          var key = cellValue(cell);
-          if (!key) return;
-          if (!map[key]) map[key] = cellLabel(cell);
+      $(table.table().body())
+        .find("tr")
+        .each(function () {
+          var $row = $(this);
+          colIndexes.forEach(function (colIdx) {
+            var cell = $row.children("td").eq(colIdx)[0];
+            if (!cell) return;
+            var key = cellValue(cell);
+            if (isEmptyFilterValue(key)) return;
+            if (!map[key]) map[key] = cellLabel(cell);
+          });
         });
-      });
+      if (!Object.keys(map).length) {
+        colIndexes.forEach(function (colIdx) {
+          table.column(colIdx).data().each(function (val) {
+            var v = $("<div>").html(String(val)).text().trim();
+            if (isEmptyFilterValue(v)) return;
+            if (!map[v]) map[v] = v;
+          });
+        });
+      }
       return keysToItems(map);
     }
 
@@ -137,13 +218,13 @@ window.SIGENModList = (function () {
       registerDataSearchFilter();
     }
 
-    $(PAGE + " .search-container").each(function () {
+    $(FILTER_CONTAINERS).each(function () {
       var container = $(this);
       var input = container.find(".filter-search");
       var optionsDiv = container.find(".options");
       var arrow = container.find(".arrow");
-      var colAttr = container.data("col");
-      if (colAttr === undefined) return;
+      var colAttr = container.attr("data-col");
+      if (colAttr === undefined || colAttr === "") return;
 
       var colIndexes = String(colAttr)
         .split(",")
@@ -153,11 +234,28 @@ window.SIGENModList = (function () {
 
       var selecionados = [];
 
+      function filterStorageKey() {
+        return colIndexes.length > 1
+          ? colIndexes.join("|")
+          : String(colIndexes[0]);
+      }
+
+      function clearFilterStorage(settings) {
+        if (!settings || !settings._sigenColFilters) return;
+        delete settings._sigenColFilters[filterStorageKey()];
+        colIndexes.forEach(function (idx) {
+          delete settings._sigenColFilters[String(idx)];
+        });
+      }
+
       function columns() {
         return colIndexes.map(function (i) {
           return table.column(i);
         });
       }
+
+      var hasStaticOptions =
+        optionsDiv.find('input[type="checkbox"]').length > 0;
 
       function getValores() {
         return collectColumnValues(table, colIndexes, useDataSearch);
@@ -173,13 +271,13 @@ window.SIGENModList = (function () {
           lista.forEach(function (item) {
             var checked = selecionados.indexOf(item.key) !== -1 ? "checked" : "";
             optionsDiv.append(
-              '<div class="option"><input type="checkbox" value="' +
+              '<label class="option"><input type="checkbox" value="' +
                 $('<div>').text(item.key).html() +
                 '" ' +
                 checked +
-                '><label>' +
+                '><span>' +
                 item.label +
-                "</label></div>"
+                "</span></label>"
             );
           });
         }
@@ -187,9 +285,25 @@ window.SIGENModList = (function () {
         arrow.addClass("open");
       }
 
+      function showStaticOptions(query) {
+        var q = (query || "").toLowerCase();
+        optionsDiv.find(".option").each(function () {
+          var $opt = $(this);
+          if ($opt.hasClass("option--empty")) {
+            $opt.hide();
+            return;
+          }
+          var val = ($opt.find("input").val() || "").toLowerCase();
+          var label = ($opt.find("span").text() || "").toLowerCase();
+          $opt.toggle(!q || val.indexOf(q) !== -1 || label.indexOf(q) !== -1);
+        });
+        optionsDiv.css("display", "block");
+        arrow.addClass("open");
+      }
+
       input.on("click", function (e) {
         e.stopPropagation();
-        $(PAGE + " .search-container")
+        $(FILTER_CONTAINERS)
           .not(container)
           .find(".options")
           .hide()
@@ -199,6 +313,8 @@ window.SIGENModList = (function () {
         if (optionsDiv.is(":visible")) {
           optionsDiv.hide();
           arrow.removeClass("open");
+        } else if (hasStaticOptions) {
+          showStaticOptions("");
         } else {
           renderOptions(getValores());
         }
@@ -206,12 +322,18 @@ window.SIGENModList = (function () {
 
       input.on("input", function () {
         var q = input.val().toLowerCase();
-        renderOptions(
-          getValores().filter(function (item) {
-            return item.label.toLowerCase().indexOf(q) !== -1;
-          })
-        );
+        if (hasStaticOptions) {
+          showStaticOptions(q);
+        } else {
+          renderOptions(
+            getValores().filter(function (item) {
+              return item.label.toLowerCase().indexOf(q) !== -1;
+            })
+          );
+        }
       });
+
+      bindFilterOptionClick(optionsDiv);
 
       optionsDiv.on("change", 'input[type="checkbox"]', function () {
         var val = $(this).val();
@@ -236,9 +358,8 @@ window.SIGENModList = (function () {
         if (useDataSearch) {
           var settings = table.settings()[0];
           settings._sigenColFilters = settings._sigenColFilters || {};
-          colIndexes.forEach(function (idx) {
-            settings._sigenColFilters[String(idx)] = selecionados.slice();
-          });
+          clearFilterStorage(settings);
+          settings._sigenColFilters[filterStorageKey()] = selecionados.slice();
         } else {
           columns().forEach(function (col) {
             col.search("");
@@ -259,44 +380,47 @@ window.SIGENModList = (function () {
         table.draw();
       }
 
-      container.data("reset", function () {
+      container.data("reset", function (skipDraw) {
         selecionados = [];
         if (useDataSearch) {
-          var settings = table.settings()[0];
-          colIndexes.forEach(function (idx) {
-            if (settings._sigenColFilters) {
-              settings._sigenColFilters[String(idx)] = [];
-            }
-          });
+          clearFilterStorage(table.settings()[0]);
         } else {
           columns().forEach(function (col) {
-            col.search("");
+            col.search("", false, false);
           });
         }
         input.val("");
-        table.draw();
+        optionsDiv.find('input[type="checkbox"]').prop("checked", false);
         optionsDiv.hide();
         arrow.removeClass("open");
+        if (!skipDraw) {
+          table.draw();
+        }
       });
     });
 
     $(document)
       .off("click.sigenModFilter")
       .on("click.sigenModFilter", function (e) {
-        if (!$(e.target).closest(PAGE + " .search-container").length) {
-          $(PAGE + " .search-container .options").hide();
-          $(PAGE + " .search-container .arrow").removeClass("open");
+        if (!$(e.target).closest(".search-container").length) {
+          $(FILTER_CONTAINERS).find(".options").hide();
+          $(FILTER_CONTAINERS).find(".arrow").removeClass("open");
         }
       });
   }
 
-  function initClearFilters() {
+  function initClearFilters(options) {
+    var opts = options || {};
+    var deferDraw = !!(opts.table && opts.columnIndexes && opts.columnIndexes.length);
     $("#clear-filters").off("click.sigenClear").on("click.sigenClear", function () {
-      $(PAGE + " .search-container").each(function () {
+      $(FILTER_CONTAINERS).each(function () {
         var resetFn = $(this).data("reset");
-        if (typeof resetFn === "function") resetFn();
+        if (typeof resetFn === "function") {
+          resetFn(deferDraw ? true : undefined);
+        }
       });
-      $(PAGE + " .filter-search[data-dt-col]").each(function () {
+      $(".mod-page .filter-search[data-dt-col], .users-page .filter-search[data-dt-col]").each(
+        function () {
         var $i = $(this);
         var col = $i.data("dtCol");
         if (col !== undefined) {
@@ -304,6 +428,18 @@ window.SIGENModList = (function () {
           $i.trigger("keyup");
         }
       });
+      if (opts.table) {
+        var settings = opts.table.settings()[0];
+        if (settings._sigenColFilters) {
+          settings._sigenColFilters = {};
+        }
+        opts.table.draw();
+      } else if (deferDraw) {
+        opts.columnIndexes.forEach(function (idx) {
+          opts.table.column(idx).search("", false, false);
+        });
+        opts.table.draw();
+      }
     });
   }
 
@@ -313,9 +449,12 @@ window.SIGENModList = (function () {
     });
     var container = $(inputSelector).closest(".search-container");
     if (container.length) {
-      container.data("reset", function () {
+      container.data("reset", function (skipDraw) {
         $(inputSelector).val("");
-        table.column(colIndex).search("").draw();
+        table.column(colIndex).search("", false, false);
+        if (!skipDraw) {
+          table.draw();
+        }
       });
     }
   }
@@ -379,7 +518,9 @@ window.SIGENModList = (function () {
     initTable: initTable,
     initColumnFilters: initColumnFilters,
     initClearFilters: initClearFilters,
+    bindFilterOptionClick: bindFilterOptionClick,
     initTextFilter: initTextFilter,
     initDelete: initDelete,
+    registerDataSearchFilter: registerDataSearchFilter,
   };
 })();

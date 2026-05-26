@@ -10,13 +10,13 @@
   {{ mod.header("Movimentações", "Histórico de transferências e alterações de itens.", "/movements/nova", "Nova movimentação", "fa-arrows-turn-right") }}
 
   {{ mod.filters_start() }}
-  {{ mod.filter_col("Tipo", 1) }}
-  {{ mod.filter_col("Origem", 2) }}
-  {{ mod.filter_col("Destino", 3) }}
-  {{ mod.filter_col("Tombo / série", "4,5") }}
-  {{ mod.filter_col("Tipo de movimentação", 6) }}
-  {{ mod.filter_col("Usuário", 7) }}
-  {{ mod.filter_col("Data", 8) }}
+  {{ mod.filter_checkbox_options("Tipo", 1, "tipo", tipos) }}
+  {{ mod.filter_checkbox_options("Origem", 2, "origem", origens) }}
+  {{ mod.filter_checkbox_options("Destino", 3, "destino", destinos) }}
+  {{ mod.filter_checkbox_options("Tombo / série", "4,5", "tombo", tombos) }}
+  {{ mod.filter_checkbox_options("Tipo de movimentação", 6, "movimentacao", tipos_mov) }}
+  {{ mod.filter_checkbox_options("Usuário", 7, "usuario", usuarios) }}
+  {{ mod.filter_checkbox_options("Data", 8, "data", datas) }}
   {{ mod.filters_end() }}
 
   {{ mod.panel_start("Lista de movimentações", "movements-count") }}
@@ -38,16 +38,23 @@
     </thead>
     <tbody>
       {% for m in movements %}
+      {% set tipo_prod = (m.product.type.nome or '').strip() if m.product and m.product.type else '' %}
+      {% set origem = (m.unit_origem.nome or '').strip() if m.unit_origem else '' %}
+      {% set destino = (m.unit_destino.nome or '').strip() if m.unit_destino else '' %}
+      {% set serie = (m.item.num_tombo_ou_serie or '').strip() if m.item and not m.item.tombo and m.item.num_tombo_ou_serie else '' %}
+      {% set tombo = (m.item.num_tombo_ou_serie or '').strip() if m.item and m.item.tombo and m.item.num_tombo_ou_serie else '' %}
+      {% set usuario = (m.user.nome or '').strip() if m.user else '' %}
+      {% set data_txt = m.data.strftime('%d/%m/%Y %H:%M') %}
       <tr>
         <td>{{ m.id }}</td>
-        <td>{{ m.product.type.nome if m.product and m.product.type else '—' }}</td>
-        <td>{{ m.unit_origem.nome if m.unit_origem else '—' }}</td>
-        <td>{{ m.unit_destino.nome if m.unit_destino else '—' }}</td>
-        <td>{{ m.item.num_tombo_ou_serie if m.item and not m.item.tombo else '—' }}</td>
-        <td>{{ m.item.num_tombo_ou_serie if m.item and m.item.tombo else '—' }}</td>
-        <td>{{ m.tipo }}</td>
-        <td>{{ m.user.nome if m.user else '—' }}</td>
-        <td class="data-utc" data-utc="{{ m.data.isoformat() }}">{{ m.data.strftime('%d/%m/%Y %H:%M') }}</td>
+        <td data-search="{{ tipo_prod }}">{{ tipo_prod if tipo_prod else '—' }}</td>
+        <td data-search="{{ origem }}">{{ origem if origem else '—' }}</td>
+        <td data-search="{{ destino }}">{{ destino if destino else '—' }}</td>
+        <td data-search="{{ serie }}">{{ serie if serie else '—' }}</td>
+        <td data-search="{{ tombo }}">{{ tombo if tombo else '—' }}</td>
+        <td data-search="{{ m.tipo }}">{{ m.tipo }}</td>
+        <td data-search="{{ usuario }}">{{ usuario if usuario else '—' }}</td>
+        <td class="data-utc" data-utc="{{ m.data.isoformat() }}" data-search="{{ data_txt }}">{{ data_txt }}</td>
         <td>{{ mod.actions("/movements/edit/" ~ m.id, m.id) }}</td>
       </tr>
       {% endfor %}
@@ -75,23 +82,24 @@ function formatToGMT3(utcString) {
 }
 
 $(function () {
-  {% if movements %}
-  var table = SIGENModList.initTable("#movementsTable", {
-    order: [[8, "desc"]],
-    columnDefs: [
-      { orderable: false, targets: 9 },
-      { visible: false, targets: 0 },
-    ],
-    countSelector: "#movements-count",
-  });
-  SIGENModList.initColumnFilters(table);
-  SIGENModList.initClearFilters();
+  var movementsTableEl = document.getElementById("movementsTable");
+  if (movementsTableEl) {
+    var table = SIGENModList.initTable("#movementsTable", {
+      order: [[8, "desc"]],
+      columnDefs: [
+        { orderable: false, targets: 9 },
+        { visible: false, targets: 0 },
+      ],
+      countSelector: "#movements-count",
+    });
+    SIGENModList.initColumnFilters(table, { useDataSearch: true });
+    SIGENModList.initClearFilters({ table: table });
 
-  $(".data-utc").each(function () {
-    var utc = $(this).data("utc");
-    if (utc) $(this).text(formatToGMT3(utc));
-  });
-  {% endif %}
+    $(".data-utc").each(function () {
+      var utc = $(this).data("utc");
+      if (utc) $(this).text(formatToGMT3(utc));
+    });
+  }
 
   SIGENModList.initDelete(function (id) { return "/movements/delete/" + id; });
 });

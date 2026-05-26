@@ -14,7 +14,8 @@
     </div>
     <div class="dash-header__meta">
       <span class="dash-pill dash-pill--live">Sistema online</span>
-      <span class="dash-pill">Atualizado agora</span>
+      <span class="dash-pill" id="dash-updated-at">Atualizado agora</span>
+      <span class="dash-pill dash-pill--muted" id="dash-refresh-hint" title="Atualização automática a cada 20 segundos">↻ 20s</span>
     </div>
   </header>
 
@@ -24,7 +25,7 @@
         <span class="dash-kpi__icon" aria-hidden="true">📦</span>
         <span class="dash-kpi__trend dash-kpi__trend--neutral">catálogo</span>
       </div>
-      <div class="dash-kpi__value" data-count="{{ total_products }}">{{ total_products }}</div>
+      <div class="dash-kpi__value" data-kpi="total_products" data-count="{{ total_products }}">{{ total_products }}</div>
       <div class="dash-kpi__label">Total de produtos</div>
     </article>
 
@@ -33,7 +34,7 @@
         <span class="dash-kpi__icon" aria-hidden="true">⚠️</span>
         <span class="dash-kpi__trend dash-kpi__trend--neutral">atenção</span>
       </div>
-      <div class="dash-kpi__value" data-count="{{ critical_products }}">{{ critical_products }}</div>
+      <div class="dash-kpi__value" data-kpi="critical_products" data-count="{{ critical_products }}">{{ critical_products }}</div>
       <div class="dash-kpi__label">Estoque crítico</div>
     </article>
 
@@ -42,7 +43,7 @@
         <span class="dash-kpi__icon" aria-hidden="true">🚫</span>
         <span class="dash-kpi__trend dash-kpi__trend--neutral">urgente</span>
       </div>
-      <div class="dash-kpi__value" data-count="{{ zero_stock_products }}">{{ zero_stock_products }}</div>
+      <div class="dash-kpi__value" data-kpi="zero_stock_products" data-count="{{ zero_stock_products }}">{{ zero_stock_products }}</div>
       <div class="dash-kpi__label">Produtos zerados</div>
     </article>
 
@@ -51,29 +52,27 @@
         <span class="dash-kpi__icon" aria-hidden="true">🔄</span>
         <span class="dash-kpi__trend dash-kpi__trend--neutral">7 dias</span>
       </div>
-      <div class="dash-kpi__value" data-count="{{ recent_movements_count }}">{{ recent_movements_count }}</div>
+      <div class="dash-kpi__value" data-kpi="recent_movements_count" data-count="{{ recent_movements_count }}">{{ recent_movements_count }}</div>
       <div class="dash-kpi__label">Movimentações recentes</div>
     </article>
   </section>
 
-  {% if total_products > 0 %}
-  <section class="dash-health" aria-label="Saúde do estoque">
+  <section class="dash-health" id="dash-health" aria-label="Saúde do estoque"{% if total_products <= 0 %} hidden{% endif %}>
     <div class="dash-health__head">
       <h2>Saúde do estoque</h2>
-      <span class="dash-health__pct">{{ health_percent }}%</span>
+      <span class="dash-health__pct" id="dash-health-pct">{{ health_percent }}%</span>
     </div>
     <div class="dash-health__bar" role="img" aria-label="Distribuição do estoque">
-      <div class="dash-health__seg dash-health__seg--ok" style="width: {{ pct_ok }}%"></div>
-      <div class="dash-health__seg dash-health__seg--crit" style="width: {{ pct_critical }}%"></div>
-      <div class="dash-health__seg dash-health__seg--zero" style="width: {{ pct_zero }}%"></div>
+      <div class="dash-health__seg dash-health__seg--ok" id="dash-health-ok" style="width: {{ pct_ok }}%"></div>
+      <div class="dash-health__seg dash-health__seg--crit" id="dash-health-crit" style="width: {{ pct_critical }}%"></div>
+      <div class="dash-health__seg dash-health__seg--zero" id="dash-health-zero" style="width: {{ pct_zero }}%"></div>
     </div>
-    <div class="dash-health__legend">
-      <span><i style="background:#10b981"></i> Normal ({{ stock_ok }})</span>
-      <span><i style="background:#f59e0b"></i> Crítico ({{ critical_products }})</span>
-      <span><i style="background:#ef4444"></i> Zerado ({{ zero_stock_products }})</span>
+    <div class="dash-health__legend" id="dash-health-legend">
+      <span><i style="background:#10b981"></i> Normal (<span data-health="stock_ok">{{ stock_ok }}</span>)</span>
+      <span><i style="background:#f59e0b"></i> Crítico (<span data-health="critical_products">{{ critical_products }}</span>)</span>
+      <span><i style="background:#ef4444"></i> Zerado (<span data-health="zero_stock_products">{{ zero_stock_products }}</span>)</span>
     </div>
   </section>
-  {% endif %}
 
   <div class="dash-grid-2">
     <section class="dash-panel">
@@ -81,8 +80,7 @@
         <h2>Produtos com estoque crítico</h2>
         <a href="/stock">Ver estoque completo →</a>
       </div>
-      {% if critical_stock %}
-      <div class="dash-table-wrap">
+      <div class="dash-table-wrap" id="dash-critical-table"{% if not critical_stock %} hidden{% endif %}>
         <table class="dash-table">
           <thead>
             <tr>
@@ -93,7 +91,7 @@
               <th>Status</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="dash-critical-tbody">
             {% for s in critical_stock %}
             <tr>
               <td><strong>{{ s.product_name }}</strong></td>
@@ -114,13 +112,11 @@
           </tbody>
         </table>
       </div>
-      {% else %}
-      <div class="dash-empty">
+      <div class="dash-empty" id="dash-critical-empty"{% if critical_stock %} hidden{% endif %}>
         <div class="dash-empty__icon">✅</div>
         <p><strong>Nenhum alerta no momento</strong></p>
         <p>Todos os itens monitorados estão dentro do nível mínimo.</p>
       </div>
-      {% endif %}
     </section>
 
     <aside class="dash-panel">
@@ -164,19 +160,158 @@
 
 <script>
 (function () {
-  document.querySelectorAll(".dash-kpi__value[data-count]").forEach(function (el) {
-    var target = parseInt(el.getAttribute("data-count"), 10) || 0;
-    if (target === 0) return;
-    var duration = 600;
+  var REFRESH_MS = 20000;
+  var refreshTimer = null;
+  var countdownTimer = null;
+  var secondsLeft = 20;
+
+  function escHtml(text) {
+    var d = document.createElement("div");
+    d.textContent = text == null ? "" : String(text);
+    return d.innerHTML;
+  }
+
+  function animateKpi(el, target) {
+    target = parseInt(target, 10) || 0;
+    el.setAttribute("data-count", String(target));
+    if (target === 0) {
+      el.textContent = "0";
+      return;
+    }
+    var duration = 400;
     var start = performance.now();
+    var from = parseInt(el.textContent, 10) || 0;
     function tick(now) {
       var p = Math.min((now - start) / duration, 1);
       var eased = 1 - Math.pow(1 - p, 3);
-      el.textContent = Math.round(target * eased);
+      el.textContent = String(Math.round(from + (target - from) * eased));
       if (p < 1) requestAnimationFrame(tick);
     }
-    el.textContent = "0";
     requestAnimationFrame(tick);
+  }
+
+  function statusBadge(status) {
+    if (status === "ZERADO") {
+      return '<span class="dash-badge dash-badge--zerado">Zerado</span>';
+    }
+    if (status === "CRITICO") {
+      return '<span class="dash-badge dash-badge--critico">Crítico</span>';
+    }
+    return '<span class="dash-badge dash-badge--ok">OK</span>';
+  }
+
+  function renderCriticalTable(rows) {
+    var tableWrap = document.getElementById("dash-critical-table");
+    var empty = document.getElementById("dash-critical-empty");
+    var tbody = document.getElementById("dash-critical-tbody");
+    if (!tbody) return;
+
+    if (!rows || !rows.length) {
+      tbody.innerHTML = "";
+      if (tableWrap) tableWrap.hidden = true;
+      if (empty) empty.hidden = false;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(function (s) {
+      return (
+        "<tr>" +
+        "<td><strong>" + escHtml(s.product_name) + "</strong></td>" +
+        "<td>" + escHtml(s.unit_name) + "</td>" +
+        "<td>" + escHtml(s.quantidade) + "</td>" +
+        "<td>" + escHtml(s.quantidade_minima) + "</td>" +
+        "<td>" + statusBadge(s.status) + "</td>" +
+        "</tr>"
+      );
+    }).join("");
+
+    if (tableWrap) tableWrap.hidden = false;
+    if (empty) empty.hidden = true;
+  }
+
+  function applyDashboardData(data) {
+    document.querySelectorAll(".dash-kpi__value[data-kpi]").forEach(function (el) {
+      var key = el.getAttribute("data-kpi");
+      if (data[key] !== undefined) animateKpi(el, data[key]);
+    });
+
+    var health = document.getElementById("dash-health");
+    if (health) {
+      if (data.total_products > 0) {
+        health.hidden = false;
+        var pctEl = document.getElementById("dash-health-pct");
+        if (pctEl) pctEl.textContent = data.health_percent + "%";
+        var ok = document.getElementById("dash-health-ok");
+        var crit = document.getElementById("dash-health-crit");
+        var zero = document.getElementById("dash-health-zero");
+        if (ok) ok.style.width = data.pct_ok + "%";
+        if (crit) crit.style.width = data.pct_critical + "%";
+        if (zero) zero.style.width = data.pct_zero + "%";
+        health.querySelectorAll("[data-health]").forEach(function (span) {
+          var k = span.getAttribute("data-health");
+          if (data[k] !== undefined) span.textContent = data[k];
+        });
+      } else {
+        health.hidden = true;
+      }
+    }
+
+    renderCriticalTable(data.critical_stock);
+
+    var updated = document.getElementById("dash-updated-at");
+    if (updated && data.updated_at) {
+      updated.textContent = "Atualizado às " + data.updated_at;
+    }
+  }
+
+  function updateCountdownLabel() {
+    var hint = document.getElementById("dash-refresh-hint");
+    if (hint) hint.textContent = "↻ " + secondsLeft + "s";
+  }
+
+  function resetCountdown() {
+    secondsLeft = REFRESH_MS / 1000;
+    updateCountdownLabel();
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = setInterval(function () {
+      if (document.hidden) return;
+      secondsLeft = Math.max(0, secondsLeft - 1);
+      updateCountdownLabel();
+    }, 1000);
+  }
+
+  function refreshDashboard() {
+    fetch("/dashboard/api/data", { credentials: "same-origin", headers: { Accept: "application/json" } })
+      .then(function (r) {
+        if (!r.ok) throw new Error("refresh failed");
+        return r.json();
+      })
+      .then(function (data) {
+        applyDashboardData(data);
+        resetCountdown();
+      })
+      .catch(function () { /* mantém dados atuais em caso de falha */ });
+  }
+
+  function scheduleRefresh() {
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = setInterval(function () {
+      if (!document.hidden) refreshDashboard();
+    }, REFRESH_MS);
+  }
+
+  document.querySelectorAll(".dash-kpi__value[data-count]").forEach(function (el) {
+    animateKpi(el, el.getAttribute("data-count"));
+  });
+
+  resetCountdown();
+  scheduleRefresh();
+
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) {
+      refreshDashboard();
+      scheduleRefresh();
+    }
   });
 })();
 </script>

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from starlette.status import HTTP_302_FOUND
 from database import get_db
 import models
-from dependencies import registrar_log
+from dependencies import agora_brasilia, registrar_log
 from security import verify_password
 from models import StatusUsuarioEnum
 from templating import templates
@@ -96,6 +96,9 @@ def login_post(
     request.session["perfil"] = (
         user.perfil.value if hasattr(user.perfil, "value") else str(user.perfil)
     )
+
+    user.ultimo_acesso = agora_brasilia()
+    db.add(user)
 
     registrar_log(db, usuario=user.email, acao="Login bem-sucedido", request=request)
     return RedirectResponse(url="/dashboard", status_code=HTTP_302_FOUND)
