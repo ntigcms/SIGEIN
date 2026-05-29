@@ -1,0 +1,101 @@
+/* SIGEIN — tema padrão SweetAlert2 */
+
+.sigen-alert-back-page {
+  margin: 0;
+  background: #e8eef8;
+}
+
+.swal2-popup.sigen-swal {
+  padding: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  max-width: 26rem;
+}
+
+.sigen-swal .swal2-icon {
+  margin: 1.5rem auto 0.25rem;
+  border-width: 3px;
+}
+
+.sigen-swal .swal2-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #0f172a;
+  padding: 0 1.25rem;
+  margin-top: 0.25rem;
+}
+
+.sigen-swal .swal2-html-container {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #475569;
+  padding: 0 1.35rem 0.25rem;
+  margin: 0.35rem 0 0;
+}
+
+.sigen-swal .swal2-actions {
+  width: 100%;
+  padding: 1rem 1.25rem 1.25rem;
+  margin: 0;
+  gap: 0.65rem;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border-top: 1px solid #e2e8f0;
+}
+
+.sigen-swal .swal2-styled.swal2-confirm,
+.sigen-swal .swal2-styled.swal2-cancel {
+  margin: 0;
+  padding: 0.6rem 1.35rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: none;
+  min-width: 6.5rem;
+}
+
+.sigen-swal .swal2-styled.swal2-confirm {
+  background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+  color: #fff;
+}
+
+.sigen-swal .swal2-styled.swal2-confirm:hover {
+  background: linear-gradient(135deg, #0b5ed7 0%, #084298 100%);
+}
+
+.sigen-swal .swal2-styled.swal2-confirm:focus {
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.35);
+}
+
+.sigen-swal .swal2-styled.swal2-cancel {
+  background: #fff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.sigen-swal .swal2-styled.swal2-cancel:hover {
+  background: #f8fafc;
+  color: #334155;
+}
+
+.sigen-swal.sigen-swal--danger .swal2-styled.swal2-confirm {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.sigen-swal.sigen-swal--danger .swal2-styled.swal2-confirm:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+}
+
+.sigen-swal.sigen-swal--success .swal2-styled.swal2-confirm {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+}
+
+.sigen-swal.sigen-swal--success .swal2-styled.swal2-confirm:hover {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+}
+
+.sigen-swal .swal2-timer-progress-bar {
+  background: rgba(13, 110, 253, 0.45);
+}

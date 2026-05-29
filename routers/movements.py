@@ -17,6 +17,73 @@ from routers import products
 
 router = APIRouter(prefix="/movements", tags=["Movimentações"])
 
+_TIPO_MOV_LABEL = {
+    "ENTRADA": "Entrada",
+    "SAIDA": "Saída",
+    "TRANSFERENCIA": "Transferência",
+    "AJUSTE": "Ajuste",
+}
+
+
+def _movement_tipo_label(tipo: str | None) -> str:
+    if not tipo:
+        return "—"
+    return _TIPO_MOV_LABEL.get(tipo.upper(), tipo)
+
+
+def _movement_to_view(m: Movement) -> dict:
+    prod = m.product
+    item = m.item
+    numero_item = ""
+    item_tipo = ""
+    if item and item.num_tombo_ou_serie:
+        numero_item = item.num_tombo_ou_serie
+        item_tipo = "Tombo" if item.tombo else "Série"
+
+    data_iso = m.data.isoformat() if m.data else None
+    data_txt = m.data.strftime("%d/%m/%Y %H:%M") if m.data else "—"
+
+    return {
+        "id": m.id,
+        "tipo": m.tipo,
+        "tipo_label": _movement_tipo_label(m.tipo),
+        "quantidade": m.quantidade,
+        "data": data_txt,
+        "data_iso": data_iso,
+        "observacao": (m.observacao or "").strip() or "—",
+        "product_id": prod.id if prod else None,
+        "product_name": prod.name if prod else "—",
+        "product_type": prod.type.nome if prod and prod.type else "—",
+        "product_brand": prod.brand.nome if prod and prod.brand else "—",
+        "product_category": prod.category.nome if prod and prod.category else "—",
+        "controla_por_serie": bool(prod.controla_por_serie) if prod else False,
+        "unit_origem": m.unit_origem.nome if m.unit_origem else "—",
+        "unit_destino": m.unit_destino.nome if m.unit_destino else "—",
+        "item_id": item.id if item else None,
+        "item_numero": numero_item or "—",
+        "item_tipo": item_tipo or "—",
+        "usuario": m.user.nome if m.user else "—",
+        "usuario_email": m.user.email if m.user else "—",
+        "edit_url": f"/movements/edit/{m.id}",
+    }
+
+
+def _movement_detail_query(db: Session, movement_id: int):
+    return (
+        db.query(Movement)
+        .options(
+            joinedload(Movement.user),
+            joinedload(Movement.product).joinedload(Product.type),
+            joinedload(Movement.product).joinedload(Product.brand),
+            joinedload(Movement.product).joinedload(Product.category),
+            joinedload(Movement.item),
+            joinedload(Movement.unit_origem),
+            joinedload(Movement.unit_destino),
+        )
+        .filter(Movement.id == movement_id)
+        .first()
+    )
+
 
 # -------------------------------
 # LISTAR MOVIMENTAÇÕES
@@ -85,6 +152,22 @@ def listar_movimentacoes(
             "datas": datas,
         },
     )
+
+
+@router.get("/view/{movement_id}")
+def visualizar_movimentacao(
+    movement_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if not user:
+        return JSONResponse({"error": "Não autenticado"}, status_code=401)
+
+    movimento = _movement_detail_query(db, movement_id)
+    if not movimento:
+        return JSONResponse({"error": "Movimentação não encontrada"}, status_code=404)
+
+    return JSONResponse(_movement_to_view(movimento))
 
 
 # -------------------------------
@@ -156,6 +239,26 @@ def _movement_wants_json(request: Request, ajax: Optional[str]) -> bool:
     return "application/json" in (request.headers.get("accept") or "")
 
 
+def _validar_unidades_movimentacao(
+    unit_origem_id: int | None,
+    unit_destino_id: int | None,
+) -> str | None:
+    if (
+        unit_origem_id is not None
+        and unit_destino_id is not None
+        and unit_origem_id == unit_destino_id
+    ):
+        return "Unidade de origem e destino devem ser diferentes."
+    return None
+
+
+def _movement_error_response(request: Request, ajax: Optional[str], err: str):
+    if _movement_wants_json(request, ajax):
+        return JSONResponse({"success": False, "message": err}, status_code=400)
+    return RedirectResponse(
+        url=f"/movements/nova?error={quote(err)}",
+        status_code=HTTP_302_FOUND,
+    )
 @router.post("/")
 def movimentacoes_submit(
     request: Request,
@@ -177,6 +280,10 @@ def movimentacoes_submit(
     user = db.query(User).filter(User.email == username).first()
     if not user:
         return {"error": "Usuário não encontrado"}
+
+    err_unidades = _validar_unidades_movimentacao(unit_origem_id, unit_destino_id)
+    if err_unidades:
+        return _movement_error_response(request, ajax, err_unidades)
 
     # Converte item_id vazio para None
     if not item_id or item_id == "":
@@ -380,6 +487,10 @@ def movimentacoes_update(
         if not unit_origem_id:
             return {"error": "Unidade de origem obrigatória"}
 
+    err_unidades = _validar_unidades_movimentacao(unit_origem_id, unit_destino_id)
+    if err_unidades:
+        return {"error": err_unidades}
+
     # Atualiza o movimento
     movimento.product_id = product.id
     movimento.item_id = item.id if item else None
@@ -501,15 +612,17 @@ def get_product_items(
     items = q.all()
 
     for i in items:
+        label = i.num_tombo_ou_serie if i.num_tombo_ou_serie else f"Produto sem série - {i.product.name}"
         items_result.append({
             "id": i.id,
+            "product_id": i.product_id,
             "tombo": i.tombo,
-            "num": i.num_tombo_ou_serie if i.num_tombo_ou_serie else f"Produto sem série - {i.product.name}",
+            "num": label,
             "unit_id": i.unit_id,
-            "unit_name": i.unit.nome
+            "unit_name": i.unit.nome if i.unit else None,
         })
 
-    # 2️⃣ Produtos sem série que ainda não têm Item cadastrado
+    # 2️⃣ Produtos sem série com estoque na unidade e sem Item cadastrado
     products_sem_serie = (
         db.query(Product)
         .filter(Product.type_id == type_id, Product.controla_por_serie == False)
@@ -517,16 +630,23 @@ def get_product_items(
     )
 
     for p in products_sem_serie:
-        # Verifica se já existe um Item para este produto
         item_exists = db.query(Item).filter(Item.product_id == p.id).first()
-        if not item_exists:
-            # Cria um registro “virtual” para mostrar no select
+        if item_exists:
+            continue
+        stocks_q = db.query(Stock).filter(
+            Stock.product_id == p.id,
+            Stock.quantidade > 0,
+        )
+        if unit_id:
+            stocks_q = stocks_q.filter(Stock.unit_id == unit_id)
+        for s in stocks_q.all():
             items_result.append({
-                "id": None,  # sem ID porque não existe Item
+                "id": None,
+                "product_id": p.id,
                 "tombo": False,
-                "num": f"Produto sem série - {p.name}",
-                "unit_id": 11,  # unidade GCM
-                "unit_name": "GCM"
+                "num": f"{p.name} (estoque: {s.quantidade})",
+                "unit_id": s.unit_id,
+                "unit_name": s.unit.nome if s.unit else None,
             })
 
     return items_result

@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% import "macros/mod_list.html" as mod %}
+
+{% block title %}Auditoria de estoque — SIGEIN{% endblock %}
+
+{% block content %}
+{{ mod.assets() }}
+<link rel="stylesheet" href="{{ url_for('static', path='css/dashboard.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/stock-alerts.css') }}">
+
+<div class="mod-page stock-audit-page">
+  <header class="mod-header">
+    <div class="mod-header__title">
+      <h1><i class="fas fa-magnifying-glass-chart" style="color: var(--mod-primary); margin-right: 0.35rem;"></i> Auditoria de estoque</h1>
+      <p>Conferência entre saldo registrado, movimentações e itens físicos — identifique divergências.</p>
+    </div>
+    <div class="mod-header__actions">
+      <button type="button" id="clear-filters" class="mod-btn mod-btn--ghost">
+        <i class="fas fa-filter-circle-xmark"></i> Limpar filtros
+      </button>
+      <button type="button" id="btn-refresh" class="mod-btn mod-btn--ghost" title="Recarregar conferência">
+        <i class="fas fa-rotate"></i> Atualizar
+      </button>
+      <a href="/stock/audit/export.csv" class="mod-btn mod-btn--ghost">
+        <i class="fas fa-file-csv"></i> Exportar CSV
+      </a>
+      <a href="/stock/alerts" class="mod-btn mod-btn--ghost">
+        <i class="fas fa-bell"></i> Alertas
+      </a>
+      <a href="/logs" class="mod-btn mod-btn--ghost" title="Trilha de ações dos usuários">
+        <i class="fas fa-list-check"></i> Logs do sistema
+      </a>
+      <a href="/stock/" class="mod-btn mod-btn--primary">
+        <i class="fas fa-warehouse"></i> Ver estoque
+      </a>
+    </div>
+  </header>
+
+  <section class="stock-audit-help" aria-label="Como interpretar">
+    <div class="stock-audit-help__item">
+      <i class="fas fa-calculator"></i>
+      <div>
+        <strong>Produtos por quantidade (sem série)</strong>
+        <p>Saldo esperado = <strong>Entrada</strong> + transferências recebidas − transferências enviadas − <strong>Saída</strong> (descarte/doação). Transferência só move entre unidades; saída não é transferência.</p>
+      </div>
+    </div>
+    <div class="stock-audit-help__item">
+      <i class="fas fa-barcode"></i>
+      <div>
+        <strong>Produtos por tombo/série</strong>
+        <p>Contagem de itens ativos na unidade; divergência só quando existe registro de estoque com quantidade diferente.</p>
+      </div>
+    </div>
+    <div class="stock-audit-help__item">
+      <i class="fas fa-scroll"></i>
+      <div>
+        <strong>Diferente de /logs</strong>
+        <p><a href="/logs">Logs</a> registram ações dos usuários; esta tela valida consistência dos números de estoque.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="dash-kpi-grid stock-alerts-kpi" aria-label="Resumo da auditoria">
+    <article class="dash-kpi dash-kpi--critical">
+      <div class="dash-kpi__top">
+        <span class="dash-kpi__icon" aria-hidden="true"><i class="fas fa-scale-unbalanced"></i></span>
+        <span class="dash-kpi__trend dash-kpi__trend--neutral">atenção</span>
+      </div>
+      <div class="dash-kpi__value" id="kpi-divergentes">{{ summary.divergentes }}</div>
+      <div class="dash-kpi__label">Divergências</div>
+    </article>
+    <article class="dash-kpi dash-kpi--products">
+      <div class="dash-kpi__top">
+        <span class="dash-kpi__icon" aria-hidden="true"><i class="fas fa-circle-check"></i></span>
+        <span class="dash-kpi__trend dash-kpi__trend--neutral">ok</span>
+      </div>
+      <div class="dash-kpi__value" id="kpi-ok">{{ summary.ok }}</div>
+      <div class="dash-kpi__label">Conferidos</div>
+    </article>
+    <article class="dash-kpi dash-kpi--movements">
+      <div class="dash-kpi__top">
+        <span class="dash-kpi__icon" aria-hidden="true"><i class="fas fa-boxes-stacked"></i></span>
+        <span class="dash-kpi__trend dash-kpi__trend--neutral">checagens</span>
+      </div>
+      <div class="dash-kpi__value" id="kpi-total">{{ summary.total }}</div>
+      <div class="dash-kpi__label">Linhas analisadas</div>
+    </article>
+    <article class="dash-kpi dash-kpi--zero">
+      <div class="dash-kpi__top">
+        <span class="dash-kpi__icon" aria-hidden="true"><i class="fas fa-building"></i></span>
+        <span class="dash-kpi__trend dash-kpi__trend--neutral">escopo</span>
+      </div>
+      <div class="dash-kpi__value" id="kpi-produtos">{{ summary.produtos }}</div>
+      <div class="dash-kpi__label">Produtos · {{ summary.unidades }} unid.</div>
+    </article>
+  </section>
+
+  <p class="stock-alerts-updated">
+    <i class="fas fa-clock"></i>
+    Última conferência: <strong id="audit-updated-at">{{ summary.updated_at }}</strong>
+  </p>
+
+  {% if rows %}
+  {{ mod.filters_start() }}
+  {{ mod.filter_checkbox_options("Resultado", 8, "resultado", filter_options.statuses) }}
+  {{ mod.filter_checkbox_options("Tipo", 1, "tipo", filter_options.tipos) }}
+  {{ mod.filter_checkbox_options("Unidade", 3, "unidade", filter_options.unidades) }}
+  {{ mod.filter_checkbox_options("Categoria", 0, "categoria", filter_options.categorias) }}
+  {{ mod.filter_col("Produto", 2) }}
+  {{ mod.filters_end() }}
+
+  <div class="stock-audit-quick">
+    <button type="button" class="mod-btn mod-btn--ghost mod-btn--sm" id="btn-only-divergent">
+      <i class="fas fa-filter"></i> Só divergências
+    </button>
+    <button type="button" class="mod-btn mod-btn--ghost mod-btn--sm" id="btn-show-all">
+      <i class="fas fa-list"></i> Mostrar tudo
+    </button>
+  </div>
+
+  {{ mod.panel_start("Resultado da conferência", "audit-count") }}
+  <table id="auditTable" class="display" style="width:100%;">
+    <thead>
+      <tr>
+        <th>Categoria</th>
+        <th>Tipo</th>
+        <th>Produto</th>
+        <th>Unidade</th>
+        <th>Saldo esperado</th>
+        <th>Saldo registrado</th>
+        <th>Diferença</th>
+        <th>Controle</th>
+        <th>Resultado</th>
+        <th>Método</th>
+        <th data-orderable="false">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr class="{% if r.status == 'DIVERGENTE' %}stock-audit-row--div{% endif %}">
+        <td data-search="{{ r.category_name }}">{{ r.category_name }}</td>
+        <td data-search="{{ r.type_name }}">{{ r.type_name }}</td>
+        <td data-search="{{ r.product_name }}">
+          <strong>{{ r.product_name }}</strong>
+          {% if r.brand_name and r.brand_name != '—' %}
+          <br><small class="stock-alerts-meta">{{ r.brand_name }}</small>
+          {% endif %}
+        </td>
+        <td data-search="{{ r.unit_name }}">{{ r.unit_name }}</td>
+        <td data-order="{{ r.saldo_calculado_num }}">{{ r.saldo_calculado }}</td>
+        <td data-order="{{ r.saldo_registrado_num }}">{{ r.saldo_registrado }}</td>
+        <td data-order="{{ r.divergencia_num }}">
+          {% if r.divergencia_num != 0 %}
+          <span class="stock-alerts-deficit">{{ r.divergencia }}</span>
+          {% else %}
+          <span class="stock-audit-ok">0</span>
+          {% endif %}
+        </td>
+        <td data-search="{{ r.controle_label }}">
+          <span class="mod-badge mod-status--info">{{ r.controle_label }}</span>
+        </td>
+        <td class="mod-col-status" data-search="{{ r.status_label }}">
+          {% if r.status == 'DIVERGENTE' %}
+          <span class="mod-badge mod-status--zero">Divergente</span>
+          {% else %}
+          <span class="mod-badge mod-status--ok">Conferido</span>
+          {% endif %}
+        </td>
+        <td data-search="{{ r.metodo }}"><small class="stock-audit-metodo">{{ r.metodo }}</small></td>
+        <td>
+          <div class="mod-actions stock-alerts-actions">
+            <a href="{{ r.edit_url }}" class="mod-action-btn mod-action-btn--edit" title="Editar produto">
+              <i class="fas fa-pen"></i>
+            </a>
+            <a href="/movements/nova?product_id={{ r.product_id }}&unit_id={{ r.unit_id }}" class="mod-action-btn mod-action-btn--view" title="Nova movimentação">
+              <i class="fas fa-arrows-turn-right"></i>
+            </a>
+            <a href="/stock/" class="mod-action-btn mod-action-btn--view" title="Ver estoque">
+              <i class="fas fa-warehouse"></i>
+            </a>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {{ mod.panel_end() }}
+
+  {% else %}
+  <section class="stock-alerts-empty">
+    <div class="stock-alerts-empty__icon"><i class="fas fa-clipboard-check"></i></div>
+    <h2>Nenhum registro para conferir</h2>
+    <p>Cadastre produtos com estoque ou itens físicos para executar a auditoria.</p>
+    <div class="stock-alerts-empty__actions">
+      <a href="/products/add" class="mod-btn mod-btn--primary"><i class="fas fa-plus"></i> Novo produto</a>
+      <a href="/stock/" class="mod-btn mod-btn--ghost"><i class="fas fa-warehouse"></i> Estoque</a>
+    </div>
+  </section>
+  {% endif %}
+</div>
+
+<script>
+(function () {
+  var table = null;
+
+  function updateKpis(summary) {
+    if (!summary) return;
+    var map = {
+      "kpi-divergentes": summary.divergentes,
+      "kpi-ok": summary.ok,
+      "kpi-total": summary.total,
+      "kpi-produtos": summary.produtos,
+    };
+    Object.keys(map).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el && map[id] != null) el.textContent = map[id];
+    });
+    var at = document.getElementById("audit-updated-at");
+    if (at && summary.updated_at) at.textContent = summary.updated_at;
+  }
+
+  document.getElementById("btn-refresh")?.addEventListener("click", function () {
+    window.location.reload();
+  });
+
+  var tableEl = document.getElementById("auditTable");
+  if (tableEl && window.SIGENModList) {
+    table = SIGENModList.initTable("#auditTable", {
+      order: [[6, "asc"], [8, "asc"]],
+      columnDefs: [{ orderable: false, targets: 10 }],
+      countSelector: "#audit-count",
+      pageLength: 25,
+    });
+    SIGENModList.initColumnFilters(table, { useDataSearch: true });
+    SIGENModList.initClearFilters({ table: table });
+
+    document.getElementById("btn-only-divergent")?.addEventListener("click", function () {
+      table.column(8).search("Divergente").draw();
+    });
+    document.getElementById("btn-show-all")?.addEventListener("click", function () {
+      table.column(8).search("").draw();
+    });
+
+    {% if summary.divergentes > 0 %}
+    table.column(8).search("Divergente").draw();
+    {% endif %}
+  }
+})();
+</script>
+{% endblock %}

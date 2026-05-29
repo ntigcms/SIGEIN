@@ -472,15 +472,21 @@ window.SIGENModList = (function () {
           ? deleteUrlBuilder(id)
           : deleteUrlBuilder.replace("{id}", id);
 
-      Swal.fire({
+      var confirmFn =
+        window.SIGENAlert && window.SIGENAlert.confirmDanger
+          ? window.SIGENAlert.confirmDanger.bind(window.SIGENAlert)
+          : function () {
+              return Swal.fire({
+                title: opts.title || "Excluir registro?",
+                text: opts.text || "Esta ação não pode ser desfeita.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Sim, excluir",
+                cancelButtonText: "Cancelar",
+              });
+            };
+      confirmFn(opts.text || "Esta ação não pode ser desfeita.", {
         title: opts.title || "Excluir registro?",
-        text: opts.text || "Esta ação não pode ser desfeita.",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#ef4444",
-        cancelButtonColor: "#64748b",
-        confirmButtonText: "Sim, excluir",
-        cancelButtonText: "Cancelar",
       }).then(function (result) {
         if (!result.isConfirmed) return;
         if (method === "GET") {
@@ -493,20 +499,35 @@ window.SIGENModList = (function () {
           })
           .then(function (data) {
             if (data.success) {
-              Swal.fire({
-                icon: "success",
-                title: "Excluído",
+              var okFn =
+                window.SIGENAlert && window.SIGENAlert.success
+                  ? window.SIGENAlert.success.bind(window.SIGENAlert)
+                  : function (m, o) {
+                      return Swal.fire(
+                        Object.assign(
+                          { icon: "success", title: "Excluído", timer: 1500, showConfirmButton: false },
+                          o || {}
+                        )
+                      );
+                    };
+              okFn("Registro excluído com sucesso.", {
                 timer: 1500,
                 showConfirmButton: false,
               }).then(function () {
                 location.reload();
               });
             } else {
-              Swal.fire({
-                icon: "error",
-                title: "Não permitido",
-                text: data.message || "Operação não permitida.",
-              });
+              var errFn =
+                window.SIGENAlert && window.SIGENAlert.error
+                  ? window.SIGENAlert.error.bind(window.SIGENAlert)
+                  : function (m) {
+                      return Swal.fire({
+                        icon: "error",
+                        title: "Não permitido",
+                        text: m,
+                      });
+                    };
+              errFn(data.message || "Operação não permitida.");
             }
           });
       });

@@ -1,0 +1,166 @@
+/* Alertas de estoque — complemento ao design system mod/dashboard */
+.stock-alerts-page .dash-kpi-grid {
+  margin-bottom: 1rem;
+}
+
+.stock-alerts-page .dash-kpi__icon i {
+  font-size: 1.35rem;
+  opacity: 0.9;
+}
+
+.stock-alerts-updated {
+  margin: 0 0 1.25rem;
+  font-size: 0.88rem;
+  color: var(--mod-muted);
+}
+
+.stock-alerts-updated i {
+  margin-right: 0.35rem;
+  color: var(--mod-primary);
+}
+
+.stock-alerts-updated__hint {
+  color: var(--mod-muted);
+  font-weight: 400;
+}
+
+.stock-alerts-meta {
+  color: var(--mod-muted);
+  font-size: 0.82rem;
+}
+
+.stock-alerts-deficit {
+  font-weight: 700;
+  color: var(--mod-danger);
+}
+
+.mod-level-bar {
+  height: 8px;
+  min-width: 72px;
+  max-width: 120px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.mod-level-bar__fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.mod-level-bar__fill--zero {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+.mod-level-bar__fill--crit {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.stock-alerts-actions {
+  flex-wrap: nowrap;
+}
+
+.stock-alerts-empty {
+  text-align: center;
+  padding: 3.5rem 1.5rem;
+  background: var(--mod-surface);
+  border: 1px solid var(--mod-border);
+  border-radius: var(--mod-radius);
+  box-shadow: var(--mod-shadow);
+}
+
+.stock-alerts-empty__icon {
+  font-size: 3rem;
+  color: var(--mod-success);
+  margin-bottom: 1rem;
+}
+
+.stock-alerts-empty h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.35rem;
+}
+
+.stock-alerts-empty p {
+  margin: 0 0 1.5rem;
+  color: var(--mod-muted);
+}
+
+.stock-alerts-empty__actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Auditoria de estoque */
+.stock-audit-help {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.stock-audit-help__item {
+  display: flex;
+  gap: 0.85rem;
+  padding: 1rem 1.1rem;
+  background: var(--mod-surface);
+  border: 1px solid var(--mod-border);
+  border-radius: 12px;
+  box-shadow: var(--mod-shadow);
+  font-size: 0.88rem;
+}
+
+.stock-audit-help__item > i {
+  font-size: 1.25rem;
+  color: var(--mod-primary);
+  margin-top: 0.15rem;
+}
+
+.stock-audit-help__item strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.92rem;
+}
+
+.stock-audit-help__item p {
+  margin: 0;
+  color: var(--mod-muted);
+  line-height: 1.45;
+}
+
+.stock-audit-help__item a {
+  color: var(--mod-primary);
+  font-weight: 600;
+}
+
+.stock-audit-quick {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.mod-btn--sm {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.82rem;
+}
+
+.stock-audit-metodo {
+  color: var(--mod-muted);
+  line-height: 1.35;
+}
+
+.stock-audit-ok {
+  color: var(--mod-success);
+  font-weight: 600;
+}
+
+.stock-audit-row--div {
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.stock-audit-page table.dataTable tbody tr.stock-audit-row--div:hover {
+  background: rgba(239, 68, 68, 0.08) !important;
+}

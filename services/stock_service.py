@@ -36,6 +36,13 @@ class StockService:
         if not product:
             raise Exception("Produto não encontrado")
 
+        if (
+            unit_origem_id is not None
+            and unit_destino_id is not None
+            and unit_origem_id == unit_destino_id
+        ):
+            raise Exception("Unidade de origem e destino devem ser diferentes.")
+
         if product.controla_por_serie:
             return StockService._movimentar_com_serie(
                 db, product, tipo, user_id,
@@ -169,4 +176,34 @@ class StockService:
         db.add(movement)
         db.commit()
 
+        return movement
+
+    @staticmethod
+    def registrar_entrada_cadastro(
+        db: Session,
+        product: Product,
+        user_id: int,
+        unit_id: int,
+        quantidade: int = 1,
+        item_id: int | None = None,
+        observacao: str | None = None,
+    ) -> Movement:
+        """
+        Registra movimentação ENTRADA no cadastro do produto.
+        Não altera estoque/itens — o cadastro já criou saldo ou itens físicos.
+        """
+        _validar_unidade_existe(db, unit_id, "destino")
+
+        movement = Movement(
+            product_id=product.id,
+            item_id=item_id,
+            unit_origem_id=unit_id,
+            unit_destino_id=unit_id,
+            quantidade=quantidade,
+            tipo="ENTRADA",
+            observacao=observacao or "Entrada automática — cadastro do produto",
+            user_id=user_id,
+            data=datetime.utcnow(),
+        )
+        db.add(movement)
         return movement

@@ -55,7 +55,7 @@
         <td data-search="{{ m.tipo }}">{{ m.tipo }}</td>
         <td data-search="{{ usuario }}">{{ usuario if usuario else '—' }}</td>
         <td class="data-utc" data-utc="{{ m.data.isoformat() }}" data-search="{{ data_txt }}">{{ data_txt }}</td>
-        <td>{{ mod.actions("/movements/edit/" ~ m.id, m.id) }}</td>
+        <td>{{ mod.actions("/movements/edit/" ~ m.id, m.id, "openMovementView(" ~ m.id ~ ")") }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -65,6 +65,149 @@
   {% endif %}
   {{ mod.panel_end() }}
 </div>
+
+<!-- Modal: visualizar movimentação -->
+<div id="modal-movement-view" class="mod-modal" aria-hidden="true">
+  <div class="mod-modal__backdrop" data-close="modal-movement-view"></div>
+  <div class="mod-modal__dialog mod-modal__dialog--lg" role="dialog" aria-labelledby="movement-view-title">
+    <div class="mod-modal__header">
+      <h3 id="movement-view-title">Visualizar movimentação</h3>
+      <button type="button" class="mod-modal__close" data-close="modal-movement-view" aria-label="Fechar">&times;</button>
+    </div>
+    <div class="mod-modal__body" id="movement-view-body">
+      <p class="mod-muted" style="margin:0;">Carregando...</p>
+    </div>
+    <div class="mod-modal__footer">
+      <a href="#" id="movement-view-edit" class="mod-btn mod-btn--primary" style="display:none;">
+        <i class="fas fa-pen"></i> Editar
+      </a>
+      <button type="button" class="mod-btn mod-btn--ghost" data-close="modal-movement-view">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var movementViewScrollY = 0;
+
+function escHtmlMovement(text) {
+  var d = document.createElement("div");
+  d.textContent = text == null ? "" : String(text);
+  return d.innerHTML;
+}
+
+function formatMovementDate(utcString) {
+  if (!utcString) return "—";
+  var date = new Date(utcString);
+  date.setHours(date.getHours() - 3);
+  return date
+    .toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+    .replace(",", "");
+}
+
+function openMovementViewModal() {
+  var el = document.getElementById("modal-movement-view");
+  if (!el) return;
+  movementViewScrollY = window.scrollY || 0;
+  document.documentElement.classList.add("mod-modal-open");
+  if (el.parentNode !== document.body) document.body.appendChild(el);
+  el.classList.add("is-open");
+  el.setAttribute("aria-hidden", "false");
+}
+
+function closeMovementViewModal() {
+  var el = document.getElementById("modal-movement-view");
+  if (!el) return;
+  el.classList.remove("is-open");
+  el.setAttribute("aria-hidden", "true");
+  document.documentElement.classList.remove("mod-modal-open");
+  window.scrollTo(0, movementViewScrollY);
+}
+
+function renderMovementView(data) {
+  document.getElementById("movement-view-title").textContent =
+    "Movimentação #" + data.id + " — " + (data.tipo_label || data.tipo);
+
+  var badgeClass = "mod-status--info";
+  if (data.tipo === "ENTRADA") badgeClass = "mod-status--ok";
+  else if (data.tipo === "SAIDA") badgeClass = "mod-status--zero";
+  else if (data.tipo === "TRANSFERENCIA") badgeClass = "mod-status--crit";
+
+  var dataFmt = data.data_iso ? formatMovementDate(data.data_iso) : data.data;
+
+  document.getElementById("movement-view-body").innerHTML =
+    '<div class="mod-info-grid">' +
+    '<div class="mod-info-grid__item"><label>ID</label><span>#' + escHtmlMovement(data.id) + "</span></div>" +
+    '<div class="mod-info-grid__item"><label>Tipo</label><span><span class="mod-badge ' + badgeClass + '">' +
+    escHtmlMovement(data.tipo_label) + "</span></span></div>" +
+    '<div class="mod-info-grid__item"><label>Data</label><span>' + escHtmlMovement(dataFmt) + "</span></div>" +
+    '<div class="mod-info-grid__item"><label>Quantidade</label><span>' + escHtmlMovement(data.quantidade) + "</span></div>" +
+    '<div class="mod-info-grid__item"><label>Usuário</label><span>' + escHtmlMovement(data.usuario) + "</span></div>" +
+    '<div class="mod-info-grid__item"><label>E-mail</label><span>' + escHtmlMovement(data.usuario_email) + "</span></div>" +
+    "</div>" +
+    '<div class="mod-info-grid" style="margin-top:1rem;">' +
+    '<div class="mod-info-grid__item"><label>Produto</label><span><strong>' + escHtmlMovement(data.product_name) + "</strong></span></div>" +
+    '<div class="mod-info-grid__item"><label>Categoria</label><span>' + escHtmlMovement(data.product_category) + "</span></div>" +
+    '<div class="mod-info-grid__item"><label>Tipo equip.</label><span>' + escHtmlMovement(data.product_type) + "</span></div>" +
+    '<div class="mod-info-grid__item"><label>Marca</label><span>' + escHtmlMovement(data.product_brand) + "</span></div>" +
+    '<div class="mod-info-grid__item"><label>Controle</label><span>' +
+    (data.controla_por_serie ? "Tombo/série" : "Quantidade") + "</span></div>" +
+    "</div>" +
+    '<div class="mod-info-grid" style="margin-top:1rem;">' +
+    '<div class="mod-info-grid__item"><label>Unidade origem</label><span>' + escHtmlMovement(data.unit_origem) + "</span></div>" +
+    '<div class="mod-info-grid__item"><label>Unidade destino</label><span>' + escHtmlMovement(data.unit_destino) + "</span></div>" +
+    '<div class="mod-info-grid__item"><label>Item (' + escHtmlMovement(data.item_tipo) + ')</label><span>' +
+    escHtmlMovement(data.item_numero) + "</span></div>" +
+    "</div>" +
+    '<div class="mod-form-field mod-form-field--full" style="margin-top:1rem;">' +
+    "<label>Observação</label>" +
+    '<p style="margin:0.35rem 0 0; white-space:pre-wrap;">' + escHtmlMovement(data.observacao) + "</p></div>";
+
+  var editBtn = document.getElementById("movement-view-edit");
+  if (editBtn && data.edit_url) {
+    editBtn.href = data.edit_url;
+    editBtn.style.display = "inline-flex";
+  }
+}
+
+async function openMovementView(id) {
+  openMovementViewModal();
+  var body = document.getElementById("movement-view-body");
+  var editBtn = document.getElementById("movement-view-edit");
+  if (editBtn) editBtn.style.display = "none";
+  body.innerHTML = '<p class="mod-muted" style="margin:0;">Carregando...</p>';
+
+  try {
+    var res = await fetch("/movements/view/" + id, {
+      headers: { Accept: "application/json" },
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Erro ao carregar movimentação");
+    renderMovementView(data);
+  } catch (err) {
+    body.innerHTML =
+      '<div class="mod-alert mod-alert--error" style="padding:12px;border-radius:8px;background:#fef2f2;color:#b91c1c;">' +
+      escHtmlMovement(err.message || String(err)) +
+      "</div>";
+  }
+}
+
+document.querySelectorAll("#modal-movement-view [data-close='modal-movement-view']").forEach(function (el) {
+  el.addEventListener("click", closeMovementViewModal);
+});
+
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape") {
+    var modal = document.getElementById("modal-movement-view");
+    if (modal && modal.classList.contains("is-open")) closeMovementViewModal();
+  }
+});
+</script>
 
 <script>
 function formatToGMT3(utcString) {

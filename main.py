@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from templating import templates
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware  # ✅ Import no topo
-from middleware import MultiTenantMiddleware
+from middleware import AuthRequiredMiddleware
 from middleware_audit import AuditMiddleware
 from database import Base, engine
 import os
@@ -17,14 +17,16 @@ app = FastAPI()
 # ========================================
 SECRET_KEY = os.getenv("SECRET_KEY", "sua-chave-secreta-aqui-mude-em-producao")
 
-# ✅ SessionMiddleware PRIMEIRO
+# Ordem (interno → externo): Auth → Session → Audit
+# Na requisição: Audit → Session (popula sessão) → Auth (valida login) → rotas
+app.add_middleware(AuthRequiredMiddleware)
 app.add_middleware(
     SessionMiddleware,
     secret_key=SECRET_KEY,
     session_cookie="session",
-    max_age=3600 * 24,
+    max_age=None,
     same_site="lax",
-    https_only=False
+    https_only=False,
 )
 
 # ✅ MultiTenantMiddleware DEPOIS

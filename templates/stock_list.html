@@ -530,7 +530,12 @@ $(function () {
       closeModal("modal-movement");
       var dt = $("#stockTable").DataTable();
       if (dt) dt.ajax.reload(null, false);
-      if (typeof Swal !== "undefined") {
+      if (window.SIGENAlert) {
+        SIGENAlert.success("Movimentação registrada.", {
+          timer: 1800,
+          showConfirmButton: false,
+        });
+      } else if (typeof Swal !== "undefined") {
         Swal.fire({
           icon: "success",
           title: "Movimentação registrada",

@@ -14,6 +14,8 @@ from models import (
     Item, Movement, Stock, User, Unidade, Orgao, Municipio, Estado,
 )
 from templating import templates
+from ui_alerts import alert_back
+from services.stock_service import StockService
 from datetime import datetime
 
 router = APIRouter(prefix="/products", tags=["Products"])
@@ -375,20 +377,6 @@ def _parse_float(val, default=None):
 _TOMBO_RE = re.compile(r"^\d{3}\.\d{3}$")
 
 
-def _alert_back(message: str, status_code: int = 400) -> HTMLResponse:
-    safe = (
-        message.replace("\\", "\\\\")
-        .replace("'", "\\'")
-        .replace('"', '\\"')
-        .replace("\r", " ")
-        .replace("\n", " ")
-    )
-    return HTMLResponse(
-        content=f'<script>alert("{safe}"); history.back();</script>',
-        status_code=status_code,
-    )
-
-
 def _coletar_pares_numero(numeros: list, tipo_numeros: list) -> list[tuple[bool, str]]:
     pares: list[tuple[bool, str]] = []
     for i, num in enumerate(numeros):
@@ -419,10 +407,15 @@ def _validar_numeros_itens(
     db: Session,
     pares: list[tuple[bool, str]],
     product_id: int | None = None,
-    existing_items: list | None = None,
 ) -> str | None:
-    """Valida formato (tombo) e unicidade global de tombo/série."""
-    existing_items = existing_items or []
+    """
+    Valida formato (tombo) e unicidade de tombo/série.
+
+    - Duplicidade dentro do formulário é verificada localmente (set `vistos`).
+    - Se `product_id` for informado (edição), valida duplicidade apenas contra
+      itens de *outros* produtos, permitindo manter/realocar números dentro do
+      mesmo produto.
+    """
     vistos: set[str] = set()
 
     for idx, (is_tombo, raw) in enumerate(pares):
@@ -433,13 +426,12 @@ def _validar_numeros_itens(
             return f'O número "{num}" está repetido neste cadastro.'
         vistos.add(num)
 
-        conflitos = db.query(Item).filter(Item.num_tombo_ou_serie == num).all()
-        for outro in conflitos:
-            if product_id is None or outro.product_id != product_id:
-                return f'O número "{num}" já está cadastrado em outro produto.'
-            if idx < len(existing_items) and outro.id == existing_items[idx].id:
-                continue
-            return f'O número "{num}" já está cadastrado neste produto.'
+        q = db.query(Item).filter(Item.num_tombo_ou_serie == num)
+        if product_id is not None:
+            q = q.filter(Item.product_id != product_id)
+        outro = q.first()
+        if outro:
+            return f'O número "{num}" já está cadastrado em outro produto.'
 
     return None
 
@@ -479,10 +471,7 @@ async def add_product(
     observacao = form_data.get("observacao") or None
 
     if not type_id or not brand_id:
-        return HTMLResponse(
-            content="<script>alert('Tipo e Marca são obrigatórios.'); history.back();</script>",
-            status_code=400,
-        )
+        return alert_back("Tipo e Marca são obrigatórios.")
 
     user_obj = _user_obj(db, user)
     if not user_obj:
@@ -490,10 +479,7 @@ async def add_product(
 
     target_unit_id = unit_id_serie if controla_por_serie else unit_id
     if not target_unit_id:
-        return HTMLResponse(
-            content="<script>alert('Unidade é obrigatória.'); history.back();</script>",
-            status_code=400,
-        )
+        return alert_back("Unidade é obrigatória.")
 
     unidade = (
         db.query(Unidade)
@@ -502,23 +488,14 @@ async def add_product(
         .first()
     )
     if not unidade or not unidade.orgao or not unidade.orgao.municipio:
-        return HTMLResponse(
-            content="<script>alert('Unidade inválida.'); history.back();</script>",
-            status_code=400,
-        )
+        return alert_back("Unidade inválida.")
     if not _unidade_scope_ok(db, user_obj, unidade):
-        return HTMLResponse(
-            content="<script>alert('Você não tem permissão para cadastrar nesta unidade.'); history.back();</script>",
-            status_code=403,
-        )
+        return alert_back("Você não tem permissão para cadastrar nesta unidade.", status_code=403)
 
     tipo = db.query(EquipmentType).filter(EquipmentType.id == type_id).first()
     marca = db.query(Brand).filter(Brand.id == brand_id).first()
     if not marca or not _brand_valid_for_type(db, brand_id, type_id):
-        return HTMLResponse(
-            content="<script>alert('Marca inválida para o tipo selecionado.'); history.back();</script>",
-            status_code=400,
-        )
+        return alert_back("Marca inválida para o tipo selecionado.")
     nome_partes = [tipo.nome if tipo else "", marca.nome if marca else "", model or ""]
     name = " ".join(filter(None, nome_partes)) or "Produto sem nome"
 
@@ -528,10 +505,10 @@ async def add_product(
     if controla_por_serie:
         pares_numero = _coletar_pares_numero(numero, tipo_numero)
         if not pares_numero:
-            return _alert_back("Informe ao menos um número de tombo ou de série.")
+            return alert_back("Informe ao menos um número de tombo ou de série.")
         err_num = _validar_numeros_itens(db, pares_numero)
         if err_num:
-            return _alert_back(err_num)
+            return alert_back(err_num)
 
     product = Product(
         name=name,
@@ -552,7 +529,7 @@ async def add_product(
     db.refresh(product)
 
     if controla_por_serie:
-        items_criados = 0
+        items_criados = []
         data_aq = None
         if data_aquisicao:
             try:
@@ -573,7 +550,7 @@ async def add_product(
             is_tombo = (str(tipo_val).lower() == "tombo")
             num_norm = _normalize_numero_item(is_tombo, num_str)
             if not num_norm:
-                return _alert_back(
+                return alert_back(
                     "Número do tombo inválido. Use o formato 000.000 (6 dígitos)."
                 )
             estado_i = _parse_int(estado_id_list[i]) if i < len(estado_id_list) else estado_id
@@ -593,9 +570,24 @@ async def add_product(
                 observacao=observacao,
             )
             db.add(item)
-            items_criados += 1
+            items_criados.append(item)
+        db.flush()
+        for item in items_criados:
+            StockService.registrar_entrada_cadastro(
+                db,
+                product,
+                user_obj.id,
+                unidade.id,
+                quantidade=1,
+                item_id=item.id,
+            )
         db.commit()
-        registrar_log(db, usuario=user, acao=f"Cadastrou produto em lote: {product.name} ({items_criados} itens)", ip=request.client.host)
+        registrar_log(
+            db,
+            usuario=user,
+            acao=f"Cadastrou produto em lote: {product.name} ({len(items_criados)} itens)",
+            ip=request.client.host,
+        )
     else:
         stock = Stock(
             product_id=product.id,
@@ -635,6 +627,15 @@ async def add_product(
             observacao=observacao or f"Estoque inicial: {quantidade}",
         )
         db.add(item)
+        db.flush()
+        StockService.registrar_entrada_cadastro(
+            db,
+            product,
+            user_obj.id,
+            unidade.id,
+            quantidade=quantidade,
+            item_id=item.id,
+        )
         product.quantidade = quantidade
         product.quantidade_minima = quantidade_minima
         db.commit()
@@ -770,10 +771,7 @@ async def edit_product(
     tipo = db.query(EquipmentType).filter(EquipmentType.id == type_id).first()
     marca = db.query(Brand).filter(Brand.id == brand_id).first()
     if not marca or not _brand_valid_for_type(db, brand_id, type_id):
-        return HTMLResponse(
-            content="<script>alert('Marca inválida para o tipo selecionado.'); history.back();</script>",
-            status_code=400,
-        )
+        return alert_back("Marca inválida para o tipo selecionado.")
     nome_partes = []
     if tipo:
         nome_partes.append(tipo.nome)
@@ -819,20 +817,15 @@ async def edit_product(
         status_list = form_data.getlist("status[]")
 
         if not unit_id_int:
-            return HTMLResponse(
-                content="<script>alert('Selecione a Unidade antes de salvar.'); history.back();</script>",
-                status_code=400,
-            )
+            return alert_back("Selecione a Unidade antes de salvar.")
 
         existing_items = db.query(Item).filter(Item.product_id == product.id).order_by(Item.id).all()
         pares = _coletar_pares_numero(numeros, tipo_numeros)
         if not pares:
-            return _alert_back("Informe ao menos um número de tombo ou de série.")
-        err_num = _validar_numeros_itens(
-            db, pares, product_id=product.id, existing_items=existing_items
-        )
+            return alert_back("Informe ao menos um número de tombo ou de série.")
+        err_num = _validar_numeros_itens(db, pares, product_id=product.id)
         if err_num:
-            return _alert_back(err_num)
+            return alert_back(err_num)
 
         # Primeiro libera num_tombo_ou_serie nos itens existentes (evita UniqueViolation ao trocar ordem)
         for idx in range(min(len(pares), len(existing_items))):
@@ -842,7 +835,7 @@ async def edit_product(
         for idx, (is_tombo, num_str) in enumerate(pares):
             num_norm = _normalize_numero_item(is_tombo, num_str)
             if not num_norm:
-                return _alert_back(
+                return alert_back(
                     "Número do tombo inválido. Use o formato 000.000 (6 dígitos)."
                 )
             estado_idx = _parse_int(estado_id_list[idx]) if idx < len(estado_id_list) else estado_int
@@ -887,10 +880,7 @@ async def edit_product(
         item = db.query(Item).filter(Item.product_id == product.id).first()
         if not item:
             if not unit_id_int:
-                return HTMLResponse(
-                    content="<script>alert('Selecione a Unidade antes de salvar o produto.'); history.back();</script>",
-                    status_code=400,
-                )
+                return alert_back("Selecione a Unidade antes de salvar o produto.")
             item = Item(
                 product_id=product.id,
                 municipio_id=product.municipio_id,
@@ -905,9 +895,8 @@ async def edit_product(
             if unit_id_int is not None:
                 item.unit_id = unit_id_int
             if not item.unit_id:
-                return HTMLResponse(
-                    content="<script>alert('Item associado ao produto está sem Unidade. Defina uma Unidade e tente novamente.'); history.back();</script>",
-                    status_code=400,
+                return alert_back(
+                    "Item associado ao produto está sem Unidade. Defina uma Unidade e tente novamente."
                 )
 
         item.tombo = False
@@ -921,10 +910,7 @@ async def edit_product(
         db.add(item)
 
         if not unit_id_int:
-            return HTMLResponse(
-                content="<script>alert('Selecione a Unidade antes de salvar o produto.'); history.back();</script>",
-                status_code=400,
-            )
+            return alert_back("Selecione a Unidade antes de salvar o produto.")
 
         stock_row = (
             db.query(Stock)
