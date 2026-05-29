@@ -5,12 +5,52 @@ Garante isolamento de dados entre prefeituras automaticamente
 
 from fastapi import Request, HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response, RedirectResponse
+from starlette.responses import Response, RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
 from database import SessionLocal
 from models import User
 from typing import Callable
 import re
+
+
+class AuthRequiredMiddleware(BaseHTTPMiddleware):
+    """Exige login em todas as rotas, exceto login, estáticos e documentação."""
+
+    ROTAS_PUBLICAS_EXATAS = {
+        "/",
+        "/login",
+        "/logout",
+        "/favicon.ico",
+        "/docs",
+        "/openapi.json",
+        "/redoc",
+    }
+    ROTAS_PUBLICAS_PREFIXO = ("/static",)
+
+    def _is_rota_publica(self, path: str) -> bool:
+        if path in self.ROTAS_PUBLICAS_EXATAS:
+            return True
+        return any(path.startswith(prefix) for prefix in self.ROTAS_PUBLICAS_PREFIXO)
+
+    def _wants_json(self, request: Request) -> bool:
+        accept = request.headers.get("accept") or ""
+        if "application/json" in accept and "text/html" not in accept:
+            return True
+        return request.url.path.startswith("/api/")
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        if self._is_rota_publica(request.url.path):
+            return await call_next(request)
+
+        if not request.session.get("user"):
+            if self._wants_json(request):
+                return JSONResponse(
+                    {"detail": "Não autenticado. Faça login novamente."},
+                    status_code=401,
+                )
+            return RedirectResponse("/login", status_code=302)
+
+        return await call_next(request)
 
 
 class MultiTenantMiddleware(BaseHTTPMiddleware):

@@ -601,7 +601,8 @@ function validarNumerosFormulario() {
         if (select && select.value === 'tombo') {
             const d = val.replace(/\D/g, '');
             if (d.length !== 6) {
-                alert('Número do tombo inválido. Use o formato 000.000 (6 dígitos).');
+                if (window.SIGENAlert) SIGENAlert.warning('Número do tombo inválido. Use o formato 000.000 (6 dígitos).');
+                else alert('Número do tombo inválido. Use o formato 000.000 (6 dígitos).');
                 input.focus();
                 return false;
             }
@@ -610,7 +611,8 @@ function validarNumerosFormulario() {
         }
 
         if (vistos.has(val)) {
-            alert('O número "' + val + '" está repetido neste cadastro.');
+            if (window.SIGENAlert) SIGENAlert.error('O número "' + val + '" está repetido neste cadastro.');
+            else alert('O número "' + val + '" está repetido neste cadastro.');
             input.focus();
             return false;
         }

@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Request, Form, Depends
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse, StreamingResponse
 from starlette.status import HTTP_302_FOUND
 from sqlalchemy.orm import Session, aliased, joinedload
 from sqlalchemy import func, literal, Integer, case
-from services.audit_service import AuditService
+from services.audit_service import build_stock_audit
+from services.stock_alerts_service import build_stock_alerts
+import csv
+import io
 
 from database import get_db
 from dependencies import get_current_user, registrar_log
@@ -389,29 +392,161 @@ def get_item_details(
     }
 
 @router.get("/alerts")
-def stock_alerts(db: Session = Depends(get_db)):
-    alerts = (
-        db.query(Stock)
-        .options(joinedload(Stock.product), joinedload(Stock.unit))
-        .filter(Stock.quantidade <= Stock.quantidade_minima)
-        .all()
+def stock_alerts_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    if not user:
+        return RedirectResponse("/login")
+
+    ctx = build_stock_alerts(db)
+    return templates.TemplateResponse(
+        "stock_alerts.html",
+        {
+            "request": request,
+            "user": user,
+            "hide_app_header": True,
+            "alerts": ctx["alerts"],
+            "summary": ctx["summary"],
+            "filter_options": ctx["filter_options"],
+        },
     )
 
-    return [
-        {
-            "product": s.product.name,
-            "unit": s.unit.nome if s.unit else None,
-            "quantidade": s.quantidade,
-            "minimo": s.quantidade_minima
-        }
-        for s in alerts
-    ]
+
+@router.get("/alerts/api/data")
+def stock_alerts_api(
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    if not user:
+        return JSONResponse({"error": "Não autenticado"}, status_code=401)
+    return JSONResponse(build_stock_alerts(db))
+
+
+@router.get("/alerts/export.csv")
+def stock_alerts_export_csv(
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    if not user:
+        return RedirectResponse("/login")
+
+    ctx = build_stock_alerts(db)
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=";")
+    writer.writerow([
+        "Status",
+        "Categoria",
+        "Tipo",
+        "Produto",
+        "Marca",
+        "Unidade",
+        "Quantidade",
+        "Mínimo",
+        "Déficit",
+        "Controle",
+    ])
+    for a in ctx["alerts"]:
+        writer.writerow([
+            a["status_label"],
+            a["category_name"],
+            a["type_name"],
+            a["product_name"],
+            a["brand_name"],
+            a["unit_name"],
+            a["quantidade"],
+            a["quantidade_minima"],
+            a["deficit"],
+            a["controle_label"],
+        ])
+
+    content = "\ufeff" + output.getvalue()
+    return StreamingResponse(
+        iter([content]),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": 'attachment; filename="alertas-estoque.csv"',
+        },
+    )
 
 @router.get("/audit")
-def audit_stock(db: Session = Depends(get_db),
-                user: str = Depends(get_current_user)):
-
+def stock_audit_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
     if not user:
-        return []
+        return RedirectResponse("/login")
 
-    return AuditService.auditar_tudo(db)
+    ctx = build_stock_audit(db)
+    return templates.TemplateResponse(
+        "stock_audit.html",
+        {
+            "request": request,
+            "user": user,
+            "hide_app_header": True,
+            "rows": ctx["rows"],
+            "summary": ctx["summary"],
+            "filter_options": ctx["filter_options"],
+        },
+    )
+
+
+@router.get("/audit/api/data")
+def stock_audit_api(
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    if not user:
+        return JSONResponse({"error": "Não autenticado"}, status_code=401)
+    return JSONResponse(build_stock_audit(db))
+
+
+@router.get("/audit/export.csv")
+def stock_audit_export_csv(
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    if not user:
+        return RedirectResponse("/login")
+
+    ctx = build_stock_audit(db)
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=";")
+    writer.writerow([
+        "Resultado",
+        "Categoria",
+        "Tipo",
+        "Produto",
+        "Marca",
+        "Unidade",
+        "Saldo esperado",
+        "Saldo registrado",
+        "Diferença",
+        "Controle",
+        "Método",
+    ])
+    for r in ctx["rows"]:
+        writer.writerow([
+            r["status_label"],
+            r["category_name"],
+            r["type_name"],
+            r["product_name"],
+            r["brand_name"],
+            r["unit_name"],
+            r["saldo_calculado"],
+            r["saldo_registrado"],
+            r["divergencia"],
+            r["controle_label"],
+            r["metodo"],
+        ])
+
+    content = "\ufeff" + output.getvalue()
+    return StreamingResponse(
+        iter([content]),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": 'attachment; filename="auditoria-estoque.csv"',
+        },
+    )

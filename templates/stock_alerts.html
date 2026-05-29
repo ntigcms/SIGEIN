@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% import "macros/mod_list.html" as mod %}
+
+{% block title %}Alertas de estoque — SIGEIN{% endblock %}
+
+{% block content %}
+{{ mod.assets() }}
+<link rel="stylesheet" href="{{ url_for('static', path='css/dashboard.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/stock-alerts.css') }}">
+
+<div class="mod-page stock-alerts-page">
+  <header class="mod-header">
+    <div class="mod-header__title">
+      <h1><i class="fas fa-bell" style="color: var(--mod-warning); margin-right: 0.35rem;"></i> Alertas de estoque</h1>
+      <p>Itens abaixo do mínimo ou zerados — priorize reposição e movimentações.</p>
+    </div>
+    <div class="mod-header__actions">
+      <button type="button" id="clear-filters" class="mod-btn mod-btn--ghost">
+        <i class="fas fa-filter-circle-xmark"></i> Limpar filtros
+      </button>
+      <button type="button" id="btn-refresh" class="mod-btn mod-btn--ghost" title="Atualizar dados">
+        <i class="fas fa-rotate"></i> Atualizar
+      </button>
+      <a href="/stock/alerts/export.csv" class="mod-btn mod-btn--ghost" id="btn-export">
+        <i class="fas fa-file-csv"></i> Exportar CSV
+      </a>
+      <a href="/stock/" class="mod-btn mod-btn--ghost">
+        <i class="fas fa-warehouse"></i> Ver estoque
+      </a>
+      <a href="/movements/nova" class="mod-btn mod-btn--primary">
+        <i class="fas fa-plus"></i> Registrar entrada
+      </a>
+    </div>
+  </header>
+
+  <section class="dash-kpi-grid stock-alerts-kpi" aria-label="Resumo dos alertas">
+    <article class="dash-kpi dash-kpi--critical">
+      <div class="dash-kpi__top">
+        <span class="dash-kpi__icon" aria-hidden="true"><i class="fas fa-bell"></i></span>
+        <span class="dash-kpi__trend dash-kpi__trend--neutral">total</span>
+      </div>
+      <div class="dash-kpi__value" id="kpi-total">{{ summary.total }}</div>
+      <div class="dash-kpi__label">Alertas ativos</div>
+    </article>
+    <article class="dash-kpi dash-kpi--zero">
+      <div class="dash-kpi__top">
+        <span class="dash-kpi__icon" aria-hidden="true"><i class="fas fa-circle-xmark"></i></span>
+        <span class="dash-kpi__trend dash-kpi__trend--neutral">urgente</span>
+      </div>
+      <div class="dash-kpi__value" id="kpi-zerado">{{ summary.zerado }}</div>
+      <div class="dash-kpi__label">Estoque zerado</div>
+    </article>
+    <article class="dash-kpi dash-kpi--critical">
+      <div class="dash-kpi__top">
+        <span class="dash-kpi__icon" aria-hidden="true"><i class="fas fa-triangle-exclamation"></i></span>
+        <span class="dash-kpi__trend dash-kpi__trend--neutral">atenção</span>
+      </div>
+      <div class="dash-kpi__value" id="kpi-critico">{{ summary.critico }}</div>
+      <div class="dash-kpi__label">Abaixo do mínimo</div>
+    </article>
+    <article class="dash-kpi dash-kpi--products">
+      <div class="dash-kpi__top">
+        <span class="dash-kpi__icon" aria-hidden="true"><i class="fas fa-building"></i></span>
+        <span class="dash-kpi__trend dash-kpi__trend--neutral">locais</span>
+      </div>
+      <div class="dash-kpi__value" id="kpi-unidades">{{ summary.units_affected }}</div>
+      <div class="dash-kpi__label">Unidades afetadas</div>
+    </article>
+  </section>
+
+  <p class="stock-alerts-updated">
+    <i class="fas fa-clock"></i>
+    Última atualização: <strong id="alerts-updated-at">{{ summary.updated_at }}</strong>
+    <span class="stock-alerts-updated__hint" id="refresh-hint">· atualização automática a cada 30s</span>
+  </p>
+
+  {% if alerts %}
+  {{ mod.filters_start() }}
+  {{ mod.filter_checkbox_options("Status", 6, "status", filter_options.statuses) }}
+  {{ mod.filter_checkbox_options("Tipo", 1, "tipo", filter_options.tipos) }}
+  {{ mod.filter_checkbox_options("Unidade", 3, "unidade", filter_options.unidades) }}
+  {{ mod.filter_checkbox_options("Categoria", 0, "categoria", filter_options.categorias) }}
+  {{ mod.filter_col("Produto", 2) }}
+  {{ mod.filters_end() }}
+
+  {{ mod.panel_start("Itens que exigem ação", "alerts-count") }}
+  <table id="alertsTable" class="display" style="width:100%;">
+    <thead>
+      <tr>
+        <th>Categoria</th>
+        <th>Tipo</th>
+        <th>Produto</th>
+        <th>Unidade</th>
+        <th>Qtd.</th>
+        <th>Mínimo</th>
+        <th>Déficit</th>
+        <th>Nível</th>
+        <th>Controle</th>
+        <th>Status</th>
+        <th data-orderable="false">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in alerts %}
+      <tr data-product-id="{{ a.product_id }}" data-unit-id="{{ a.unit_id }}">
+        <td data-search="{{ a.category_name }}">{{ a.category_name }}</td>
+        <td data-search="{{ a.type_name }}">{{ a.type_name }}</td>
+        <td data-search="{{ a.product_name }}">
+          <strong>{{ a.product_name }}</strong>
+          {% if a.brand_name and a.brand_name != '—' %}
+          <br><small class="stock-alerts-meta">{{ a.brand_name }}</small>
+          {% endif %}
+        </td>
+        <td data-search="{{ a.unit_name }}">{{ a.unit_name }}</td>
+        <td data-order="{{ a.quantidade }}">{{ a.quantidade }}</td>
+        <td data-order="{{ a.quantidade_minima }}">{{ a.quantidade_minima }}</td>
+        <td data-order="{{ a.deficit }}">
+          {% if a.deficit > 0 %}
+          <span class="stock-alerts-deficit">−{{ a.deficit }}</span>
+          {% else %}
+          —
+          {% endif %}
+        </td>
+        <td data-order="{{ a.nivel_pct }}">
+          <div class="mod-level-bar" title="{{ a.nivel_pct }}% do mínimo">
+            <div class="mod-level-bar__fill mod-level-bar__fill--{% if a.status == 'ZERADO' %}zero{% else %}crit{% endif %}"
+                 style="width: {{ a.nivel_pct }}%;"></div>
+          </div>
+        </td>
+        <td data-search="{{ a.controle_label }}">
+          <span class="mod-badge mod-status--info">{{ a.controle_label }}</span>
+        </td>
+        <td class="mod-col-status" data-search="{{ a.status_label }}">
+          {% if a.status == 'ZERADO' %}
+          <span class="mod-badge mod-status--zero">Zerado</span>
+          {% else %}
+          <span class="mod-badge mod-status--crit">Crítico</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="mod-actions stock-alerts-actions">
+            <a href="{{ a.movement_url }}" class="mod-action-btn mod-action-btn--edit" title="Registrar entrada">
+              <i class="fas fa-arrow-down"></i>
+            </a>
+            <a href="{{ a.edit_url }}" class="mod-action-btn mod-action-btn--view" title="Editar produto / mínimo">
+              <i class="fas fa-pen"></i>
+            </a>
+            <button type="button" class="mod-action-btn mod-action-btn--view btn-stock-detail"
+                    title="Ver no estoque"
+                    data-product-id="{{ a.product_id }}"
+                    data-unit-id="{{ a.unit_id }}">
+              <i class="fas fa-warehouse"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {{ mod.panel_end() }}
+
+  {% else %}
+  <section class="stock-alerts-empty">
+    <div class="stock-alerts-empty__icon"><i class="fas fa-circle-check"></i></div>
+    <h2>Nenhum alerta no momento</h2>
+    <p>Todos os itens monitorados estão dentro do nível mínimo configurado.</p>
+    <div class="stock-alerts-empty__actions">
+      <a href="/stock/" class="mod-btn mod-btn--primary"><i class="fas fa-warehouse"></i> Ver estoque</a>
+      <a href="/dashboard" class="mod-btn mod-btn--ghost"><i class="fas fa-chart-line"></i> Dashboard</a>
+    </div>
+  </section>
+  {% endif %}
+</div>
+
+<script>
+(function () {
+  var REFRESH_MS = 30000;
+  var refreshTimer = null;
+
+  function escHtml(text) {
+    var d = document.createElement("div");
+    d.textContent = text == null ? "" : String(text);
+    return d.innerHTML;
+  }
+
+  function updateKpis(summary) {
+    if (!summary) return;
+    ["total", "zerado", "critico"].forEach(function (key) {
+      var el = document.getElementById("kpi-" + (key === "total" ? "total" : key));
+      if (el) el.textContent = summary[key] != null ? summary[key] : "0";
+    });
+    var u = document.getElementById("kpi-unidades");
+    if (u && summary.units_affected != null) u.textContent = summary.units_affected;
+    var at = document.getElementById("alerts-updated-at");
+    if (at && summary.updated_at) at.textContent = summary.updated_at;
+  }
+
+  async function refreshData() {
+    var btn = document.getElementById("btn-refresh");
+    if (btn) btn.disabled = true;
+    try {
+      var res = await fetch("/stock/alerts/api/data", { headers: { Accept: "application/json" } });
+      if (!res.ok) return;
+      var data = await res.json();
+      updateKpis(data.summary);
+    } catch (e) {
+      console.warn("Falha ao atualizar alertas", e);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  var refreshBtn = document.getElementById("btn-refresh");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", function () {
+      window.location.reload();
+    });
+  }
+
+  refreshTimer = setInterval(refreshData, REFRESH_MS);
+
+  document.querySelectorAll(".btn-stock-detail").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var pid = btn.getAttribute("data-product-id");
+      var uid = btn.getAttribute("data-unit-id");
+      if (pid && uid) {
+        window.location.href = "/stock/";
+      } else {
+        window.location.href = "/stock/";
+      }
+    });
+  });
+
+  var tableEl = document.getElementById("alertsTable");
+  if (tableEl && window.SIGENModList) {
+    var table = SIGENModList.initTable("#alertsTable", {
+      order: [[6, "desc"], [9, "asc"]],
+      columnDefs: [{ orderable: false, targets: 10 }],
+      countSelector: "#alerts-count",
+      pageLength: 25,
+    });
+    SIGENModList.initColumnFilters(table, { useDataSearch: true });
+    SIGENModList.initClearFilters({ table: table });
+  }
+})();
+</script>
+{% endblock %}

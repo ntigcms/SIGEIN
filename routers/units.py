@@ -24,6 +24,7 @@ from models import (
     CircularDestinatario,
 )
 from templating import templates
+from ui_alerts import alert_back
 
 router = APIRouter(prefix="/units", tags=["Unidades Administrativas"])
 
@@ -145,18 +146,12 @@ def add_unit(
     # Valida responsável: não pode ter dígitos
     resp_clean = (responsavel or "").strip()
     if resp_clean and re.search(r"\d", resp_clean):
-        return HTMLResponse(
-            "<script>alert('O campo Responsável não pode conter números.'); window.history.back();</script>",
-            status_code=400,
-        )
+        return alert_back("O campo Responsável não pode conter números.")
 
     # Valida ramal: apenas números
     ramal_clean = (ramal or "").strip()
     if ramal_clean and not ramal_clean.isdigit():
-        return HTMLResponse(
-            "<script>alert('O campo Ramal deve conter apenas números.'); window.history.back();</script>",
-            status_code=400,
-        )
+        return alert_back("O campo Ramal deve conter apenas números.")
 
     nova_unidade = Unidade(
         nome=nome,
@@ -227,18 +222,12 @@ def edit_unit(
     # Valida responsável
     resp_clean = (responsavel or "").strip()
     if resp_clean and re.search(r"\d", resp_clean):
-        return HTMLResponse(
-            "<script>alert('O campo Responsável não pode conter números.'); window.history.back();</script>",
-            status_code=400,
-        )
+        return alert_back("O campo Responsável não pode conter números.")
 
     # Valida ramal
     ramal_clean = (ramal or "").strip()
     if ramal_clean and not ramal_clean.isdigit():
-        return HTMLResponse(
-            "<script>alert('O campo Ramal deve conter apenas números.'); window.history.back();</script>",
-            status_code=400,
-        )
+        return alert_back("O campo Ramal deve conter apenas números.")
 
     unidade = db.query(Unidade).filter(Unidade.id == unit_id).first()
     if unidade:

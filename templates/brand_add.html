@@ -236,18 +236,39 @@
 
 
 
+    var existingBrandNames = {{ (existing_brand_names or []) | tojson }};
+    var currentBrandName = {% if action == 'edit' and marca %}{{ marca.nome | tojson }}{% else %}""{% endif %};
+
     document.getElementById('brand-form').addEventListener('submit', function (e) {
-
-        var any = document.querySelectorAll('.brand-type-check:checked').length > 0;
-
-        if (!any) {
-
+        var nomeInput = document.getElementById('nome');
+        var nome = (nomeInput.value || '').trim();
+        if (!nome) {
             e.preventDefault();
-
-            alert('Selecione ao menos um tipo de equipamento.');
-
+            if (window.SIGENAlert) SIGENAlert.warning('Informe o nome da marca.');
+            else alert('Informe o nome da marca.');
+            nomeInput.focus();
+            return;
         }
 
+        var nomeKey = nome.toLowerCase();
+        var currentKey = String(currentBrandName || '').trim().toLowerCase();
+        var duplicada = existingBrandNames.some(function (n) {
+            return String(n || '').trim().toLowerCase() === nomeKey && nomeKey !== currentKey;
+        });
+        if (duplicada) {
+            e.preventDefault();
+            if (window.SIGENAlert) SIGENAlert.error('A marca "' + nome + '" já está cadastrada.');
+            else alert('A marca "' + nome + '" já está cadastrada.');
+            nomeInput.focus();
+            return;
+        }
+
+        var any = document.querySelectorAll('.brand-type-check:checked').length > 0;
+        if (!any) {
+            e.preventDefault();
+            if (window.SIGENAlert) SIGENAlert.warning('Selecione ao menos um tipo de equipamento.');
+            else alert('Selecione ao menos um tipo de equipamento.');
+        }
     });
 
 })();

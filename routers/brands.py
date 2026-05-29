@@ -3,11 +3,14 @@
 from fastapi import APIRouter, Request, Form, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from starlette.status import HTTP_302_FOUND
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.exc import IntegrityError
 from database import get_db
 from dependencies import get_current_user, registrar_log
 from models import Brand, Category, EquipmentType
 from templating import templates
+from ui_alerts import alert_back
 
 router = APIRouter(prefix="/brands", tags=["Brands"])
 
@@ -30,6 +33,20 @@ def _sync_brand_types(db: Session, marca: Brand, type_ids: List[int]) -> None:
     if len(tipos) != len(set(type_ids)):
         raise HTTPException(status_code=400, detail="Um ou mais tipos selecionados são inválidos.")
     marca.equipment_types = tipos
+
+
+def _normalize_brand_nome(nome: str) -> str:
+    return (nome or "").strip()
+
+
+def _marca_nome_duplicada(db: Session, nome: str, exclude_id: int | None = None) -> bool:
+    nome_norm = _normalize_brand_nome(nome)
+    if not nome_norm:
+        return False
+    q = db.query(Brand).filter(func.lower(Brand.nome) == nome_norm.lower())
+    if exclude_id is not None:
+        q = q.filter(Brand.id != exclude_id)
+    return q.first() is not None
 
 
 def _brand_display(brand: Brand) -> dict:
@@ -90,6 +107,10 @@ def add_brand_form(
     if not user:
         return RedirectResponse("/login")
 
+    existing_brand_names = [
+        b.nome for b in db.query(Brand.nome).order_by(Brand.nome).all()
+    ]
+
     return templates.TemplateResponse(
         "brand_add.html",
         {
@@ -98,6 +119,7 @@ def add_brand_form(
             "action": "add",
             "categories": _categories_with_types(db),
             "selected_type_ids": [],
+            "existing_brand_names": existing_brand_names,
         },
     )
 
@@ -118,14 +140,25 @@ def add_brand(
     if not ids:
         raise HTTPException(status_code=400, detail="Selecione ao menos um tipo de equipamento.")
 
-    ip = request.client.host
-    nova_marca = Brand(nome=nome.strip())
-    db.add(nova_marca)
-    db.flush()
-    _sync_brand_types(db, nova_marca, ids)
-    db.commit()
+    nome_limpo = _normalize_brand_nome(nome)
+    if not nome_limpo:
+        return alert_back("Informe o nome da marca.")
 
-    registrar_log(db, usuario=user, acao=f"Cadastrou marca: {nome}", ip=ip)
+    if _marca_nome_duplicada(db, nome_limpo):
+        return alert_back(f'A marca "{nome_limpo}" já está cadastrada.')
+
+    ip = request.client.host
+    nova_marca = Brand(nome=nome_limpo)
+    db.add(nova_marca)
+    try:
+        db.flush()
+        _sync_brand_types(db, nova_marca, ids)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return alert_back(f'A marca "{nome_limpo}" já está cadastrada.')
+
+    registrar_log(db, usuario=user, acao=f"Cadastrou marca: {nome_limpo}", ip=ip)
     return RedirectResponse("/brands", status_code=HTTP_302_FOUND)
 
 
@@ -158,6 +191,7 @@ def edit_brand_form(
             "action": "edit",
             "categories": _categories_with_types(db),
             "selected_type_ids": [t.id for t in marca.equipment_types],
+            "existing_brand_names": [],
         },
     )
 
@@ -179,12 +213,22 @@ def edit_brand(
     if not ids:
         raise HTTPException(status_code=400, detail="Selecione ao menos um tipo de equipamento.")
 
+    nome_limpo = _normalize_brand_nome(nome)
+    if not nome_limpo:
+        return alert_back("Informe o nome da marca.")
+
     ip = request.client.host
     marca = db.query(Brand).filter(Brand.id == brand_id).first()
     if marca:
-        marca.nome = nome.strip()
-        _sync_brand_types(db, marca, ids)
-        db.commit()
+        if _marca_nome_duplicada(db, nome_limpo, exclude_id=brand_id):
+            return alert_back(f'A marca "{nome_limpo}" já está cadastrada.')
+        marca.nome = nome_limpo
+        try:
+            _sync_brand_types(db, marca, ids)
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            return alert_back(f'A marca "{nome_limpo}" já está cadastrada.')
         registrar_log(db, usuario=user, acao=f"Editou marca ID {brand_id}", ip=ip)
 
     return RedirectResponse("/brands", status_code=HTTP_302_FOUND)
